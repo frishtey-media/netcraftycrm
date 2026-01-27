@@ -136,6 +136,9 @@
             <a href="{{ route('labels.index') }}" class="text-white d-block mb-2">
                 Courier Labels
             </a>
+            <a href="{{ route('Invoice.index') }}" class="text-white d-block mb-2">
+                Invoice Genrate
+            </a>
 
 
 

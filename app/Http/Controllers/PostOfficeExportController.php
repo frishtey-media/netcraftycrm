@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Maatwebsite\Excel\Excel as ExcelExcel;
 use App\Models\Order;
 use App\Models\ShopifyOrder;
 use App\Exports\PostOfficeExport;
@@ -12,12 +13,21 @@ class PostOfficeExportController extends Controller
 {
     public function export()
     {
-
         $this->copyShopifyOrdersToOrders();
 
+
+        $clientId = ShopifyOrder::whereNotNull('client_id')->value('client_id') ?? 'unknown';
+
+
+        $dateTime = Carbon::now()->format('Y-m-d_H-i-s');
+
+
+        $fileName = "india_post_client_{$clientId}_{$dateTime}.xlsx";
+
         return Excel::download(
-            new PostOfficeExport,
-            'india_post_office_format.xlsx'
+            new PostOfficeExport($clientId),
+            $fileName,
+            \Maatwebsite\Excel\Excel::XLSX
         );
     }
 
@@ -27,9 +37,7 @@ class PostOfficeExportController extends Controller
 
         foreach ($shopifyOrders as $order) {
 
-
-            $exists = Order::where('order_id', $order->order_id)->exists();
-            if ($exists) {
+            if (Order::where('order_id', $order->order_id)->exists()) {
                 continue;
             }
 

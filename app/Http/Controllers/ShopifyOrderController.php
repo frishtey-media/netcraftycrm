@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -13,14 +12,21 @@ class ShopifyOrderController extends Controller
     {
         $request->validate([
             'client_id' => 'required',
-            'file'      => 'required|mimes:xls,xlsx'
+            'file'      => 'required|mimes:xls,xlsx',
         ]);
 
-        Excel::import(
-            new WhatsAppOrdersImport($request->client_id),
-            $request->file
-        );
 
-        return back()->with('success', 'Excel imported successfully');
+        $import = new WhatsAppOrdersImport($request->client_id);
+
+
+        Excel::import($import, $request->file('file'));
+
+
+        return back()->with(
+            'success',
+            "Import completed successfully.
+             Imported: {$import->imported}
+             Skipped: {$import->skipped}"
+        );
     }
 }

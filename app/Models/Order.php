@@ -25,4 +25,9 @@ class Order extends Model
         'quantity',
         'weight',
     ];
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class, 'client_id');
+    }
 }

@@ -3,26 +3,47 @@
 namespace App\Exports;
 
 use App\Models\ShopifyOrder;
+use App\Models\Client;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use App\Models\Client;
+use Maatwebsite\Excel\Concerns\WithTitle;
 
-class PostOfficeExport implements FromCollection, WithHeadings, WithMapping
+class PostOfficeExport implements FromCollection, WithHeadings, WithMapping, WithTitle
 {
-    private $i = 0;
+    private int $i = 0;
+    private int $clientId;
+    private ?Client $client = null;
 
-    public function collection()
+    public function __construct(int $clientId)
     {
-        return ShopifyOrder::orderBy('id')->get();
+        $this->clientId = $clientId;
+        $this->client   = Client::find($clientId);
     }
 
+    /* ================= COLLECTION ================= */
+    public function collection()
+    {
+        return ShopifyOrder::where('client_id', $this->clientId)
+            ->orderBy('id')
+            ->get();
+    }
+
+    /* ================= SHEET NAME (MANDATORY) ================= */
+    public function title(): string
+    {
+        return 'BulkBooking';
+    }
+
+    /* ================= HEADINGS (SAME FOR ALL CLIENTS) ================= */
     public function headings(): array
     {
         return [
             'SERIAL NUMBER',
             'BARCODE NO',
             'PHYSICAL WEIGHT',
+            'REG',
+            'OTP',
             'RECEIVER CITY',
             'RECEIVER PINCODE',
             'RECEIVER NAME',
@@ -40,7 +61,7 @@ class PostOfficeExport implements FromCollection, WithHeadings, WithMapping
             'VALUE OF INSURANCE',
             'SHAPE OF ARTICLE',
             'LENGTH',
-            'BREADTH/DIAMETER',
+            'BREADTH',
             'HEIGHT',
             'PRIORITY FLAG',
             'DELIVERY INSTRUCTION',
@@ -69,96 +90,155 @@ class PostOfficeExport implements FromCollection, WithHeadings, WithMapping
         ];
     }
 
+    /* ================= MAP ================= */
     public function map($order): array
     {
-        // 🔹 Default Sender (fallback)
-        $senderName       = 'BHANGU AYURVEDIC CLINIC';
-        $senderCompany    = 'BHANGU AYURVEDIC CLINIC';
-        $senderMobile     = '7009184421';
-        $senderCity       = 'SANGHOL';
-        $senderState      = 'PUNJAB';
-        $senderPincode    = '140802';
-        $senderAdd1       = 'SANGHOL BASSI ROAD';
-        $senderAdd2       = 'PUNJAB';
-        $senderAdd3       = '';
+        $client = $this->client;
 
-        // 🔹 Fetch client dynamically
-        if (!empty($order->client_id)) {
-            $client = Client::find($order->client_id);
-
-            if ($client) {
-                $senderName    = strtoupper($client->client_name ?? $senderName);
-                $senderCompany = strtoupper($client->company_name ?? $senderCompany);
-                $senderMobile  = $client->mobile ?? $senderMobile;
-                $senderCity    = strtoupper($client->city ?? $senderCity);
-                $senderState   = strtoupper($client->state ?? $senderState);
-                $senderPincode = $client->pincode ?? $senderPincode;
-
-                // Split address safely
-                if (!empty($client->address)) {
-                    $senderAdd1 = $client->address;
-                    $senderAdd2 = '';
-                    $senderAdd3 = '';
-                }
-            }
+        $receiverMobile = preg_replace('/\D/', '', $order->customer_phone ?? '');
+        if (strlen($receiverMobile) > 10) {
+            $receiverMobile = substr($receiverMobile, -10);
         }
 
+        $isCod     = strtolower($order->payment_mode) === 'cod';
+        $codAmount = max((int) $order->amount, 100);
+
+        /* ---------- CLIENT ID = 5 ---------- */
+        if ($this->clientId === 5) {
+            return [
+                ++$this->i,
+                $order->barcode,
+                $order->total_weight ?? 300,
+
+                'Y',        // REG
+                'N',        // OTP
+
+                strtoupper($order->city),
+                (string) $order->pincode,
+                strtoupper($order->customer_name),
+
+                $order->shipping_address,
+                '',
+                '',
+
+                'N',        // ACK
+
+                $client->mobile ?? '',
+                $receiverMobile,
+
+                'NA',
+                0,
+
+                'COD',
+                $codAmount,
+
+                'N',
+                0,
+
+                'R',
+
+                15,
+                10,
+                10,
+
+                'N',
+                'ND',
+                '',
+                '',
+
+                strtoupper($client->client_name ?? ''),
+                strtoupper($client->company_name ?? $client->client_name ?? ''),
+                strtoupper($client->city ?? ''),
+                strtoupper($client->state ?? ''),
+                (string) $client->pincode,
+
+                $client->email ?? '',
+                '',
+                '',
+                '',
+
+                '',
+                strtoupper($order->state ?? ''),
+                '',
+                '',
+                '',
+                '',
+
+                'N',
+                '88/1',
+
+                $client->address ?? '',
+                '',
+                '',
+            ];
+        }
+
+        /* ---------- OTHER CLIENTS ---------- */
         return [
             ++$this->i,
             $order->barcode,
-            $order->total_weight ?? 700,
-            $order->city,
-            ltrim($order->pincode, "'"),
-            trim($order->customer_name),
+            $order->total_weight ?? 300,
+
+            'Y',
+            'N',
+
+            strtoupper($order->city),
+            (string) $order->pincode,
+            strtoupper($order->customer_name),
+
             $order->shipping_address,
             '',
             '',
-            'FALSE',
 
-            // ✅ Sender Mobile (Dynamic)
-            $senderMobile,
+            'N',
 
-            // Receiver Mobile
-            $order->customer_phone,
+            $client->mobile ?? '',
+            $receiverMobile,
 
-            '',
-            '',
-            strtoupper($order->payment_mode) === 'COD' ? 'COD' : '',
-            strtoupper($order->payment_mode) === 'COD' ? $order->amount : '',
-            '',
-            '',
-            'NROL',
+            'NA',
+            0,
+
+            $isCod ? 'COD' : '',
+            $isCod ? $codAmount : 0,
+
+            'N',
+            0,
+
+            'R',
+
             22,
             22,
             8,
-            '',
+
+            'N',
             'ND',
             '',
             '',
 
-            // ✅ Sender Details (Dynamic)
-            $senderName,
-            $senderCompany,
-            $senderCity,
-            $senderState,
-            $senderPincode,
+            strtoupper($client->client_name ?? ''),
+            strtoupper($client->company_name ?? ''),
+            strtoupper($client->city ?? ''),
+            strtoupper($client->state ?? ''),
+            (string) $client->pincode,
+
             $client->email ?? '',
+            '',
+            '',
+            '',
+
+            '',
+            strtoupper($order->state ?? ''),
             '',
             '',
             '',
             '',
 
-            // Receiver State
-            $order->state,
+            'N',
+            '',
+
+            $client->address ?? '',
             '',
             '',
-            '',
-            '',
-            'FALSE',
-            '',
-            $senderAdd1,
-            $senderAdd2,
-            $senderAdd3,
         ];
     }
 }

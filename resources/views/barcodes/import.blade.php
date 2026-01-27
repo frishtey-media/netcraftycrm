@@ -48,9 +48,15 @@
                 </div>
 
             </form>
+            @php
+                $unusedCount = $barcodes->where('is_used', 0)->count();
+            @endphp
 
-
-
+            <div style="text-align: center;" class="mb-3">
+                <span class="badge bg-danger fs-6">
+                    Pending Barcodes: {{ $unusedCount }}
+                </span>
+            </div>
 
             <table id="barcodeTable" class="table table-bordered table-striped mb-0">
                 <thead class="table-dark">
@@ -80,7 +86,5 @@
                     @endforelse
                 </tbody>
             </table>
-
-
         </div>
     @endsection

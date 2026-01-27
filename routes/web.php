@@ -13,6 +13,7 @@ use App\Http\Controllers\LabelController;
 use App\Http\Controllers\PostOfficeExportController;
 use App\Http\Controllers\RecordController;
 use App\Http\Controllers\ShopifyOrderController;
+use App\Http\Controllers\InvoiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -119,6 +120,10 @@ Route::middleware(['auth'])->group(function () {
         ->name('labels.final.export');
     Route::post('/labels/export', [LabelController::class, 'export'])
         ->name('labels.export');
+
+    Route::get('/Invoice', [InvoiceController::class, 'InvoiceIndex'])->name('Invoice.index');
+    Route::post('/seller/store', [InvoiceController::class, 'storeSeller'])->name('seller.store');
+    Route::post('/invoice/import', [InvoiceController::class, 'importExcel'])->name('invoice.import');
 });
 
 

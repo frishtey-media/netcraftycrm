@@ -63,9 +63,6 @@ class RecordController extends Controller
                 'amount'           => $request->amount,
             ]);
 
-
-
-
             Barcode::where('barcode', $request->barcode)
                 ->where('is_used', 0)
                 ->update(['is_used' => 1]);
