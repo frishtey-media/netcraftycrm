@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h4>Orders List</h4>
+    <h4>Orders Record</h4>
 
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 

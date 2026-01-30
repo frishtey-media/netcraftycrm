@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Barcode;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\LabelSender;
+use App\Models\Client;
 
 class AdminController extends Controller
 {
@@ -12,8 +14,13 @@ class AdminController extends Controller
     public function dashboard()
     {
         $totalOrders = Order::count();
+        $totalclients =  Client::count();
 
-        return view('dashboard', compact('totalOrders'));
+        return view('dashboard', compact('totalOrders', 'totalclients'), [
+            'barcodes' => Barcode::orderBy('is_used', 'asc')
+                ->orderBy('created_at', 'desc')
+                ->get(),
+        ]);
     }
     public function labelsenders()
     {

@@ -1,104 +1,87 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <title>Netcrafty CRM</title>
+
+    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/datetime/1.4.1/css/dataTables.dateTime.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.min.js"></script>
+
+    <!-- Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 
-    <!-- jQuery -->
+    <!-- jQuery & DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-    <!-- DataTables JS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/datetime/1.4.1/js/dataTables.dateTime.min.js"></script>
-    <script>
-        $(document).ready(function() {
 
-            var minDate, maxDate;
-
-            minDate = new DateTime($('#min'), {
-                format: 'YYYY-MM-DD'
-            });
-            maxDate = new DateTime($('#max'), {
-                format: 'YYYY-MM-DD'
-            });
-
-
-            var table = $('#ordersTable').DataTable({
-                order: [
-                    [7, 'desc']
-                ], // default sort by Date column (index 7)
-            });
-
-            // Date range filtering
-            $.fn.dataTable.ext.search.push(
-                function(settings, data, dataIndex) {
-                    var date = data[7]; // Date column index
-                    var min = minDate.val();
-                    var max = maxDate.val();
-
-                    if (
-                        (min === null && max === null) ||
-                        (min === null && date <= max) ||
-                        (min <= date && max === null) ||
-                        (min <= date && date <= max)
-                    ) {
-                        return true;
-                    }
-                    return false;
-                }
-            );
-
-            // Event listener to redraw on date change
-            $('#min, #max').on('change', function() {
-                table.draw();
-            });
-        });
-    </script>
     <style>
-        .p-3 {
-            width: 250px;
-            height: 320vh;
-            padding: 0px !important;
-            margin: 0;
+        body {
+            background: #f4f6f9;
+            font-size: 14px;
         }
 
-        .mb-2 {
-            margin-bottom: 1px !important;
-            padding: 10px;
-            border-bottom: solid 1px #05689f;
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #111827, #1f2937);
+            padding: 15px;
+        }
+
+        .sidebar img {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            color: #cbd5e1;
             text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            transition: all 0.3s ease;
+            font-weight: 500;
         }
 
-        .mb-2:hover {
-            margin-bottom: 1px !important;
-            padding: 10px;
-            background: #fa2222;
-            text-decoration: none;
+        .sidebar a:hover {
+            background: #ef4444;
+            color: #fff;
+            transform: translateX(6px);
         }
 
-        .bg-light {
-
-            background-color: rgb(0 0 0) !important;
+        /* TOP NAVBAR */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 12px 20px;
         }
 
-        .navbar-brand {
-            color: white;
+        .topbar .brand {
+            font-weight: 700;
+            font-size: 18px;
         }
 
-        @media (min-width: 1200px) {
-            .fs-1 {
-                font-size: 24px !important;
-                font-weight: bold;
-                padding: 10px;
-            }
+        /* MAIN CONTENT */
+        .content-area {
+            padding: 25px;
+        }
+
+        /* BUTTON */
+        .btn-logout {
+            background: #ef4444;
+            border: none;
+        }
+
+        .btn-logout:hover {
+            background: #dc2626;
         }
     </style>
 </head>
@@ -107,66 +90,73 @@
 
     <div class="d-flex">
 
-        <div class="bg-dark text-white p-3">
-            <img src="/images/netc2.png" style="width: 100%;margin: auto;" />
-            <hr>
+        <!-- SIDEBAR -->
+        <div class="sidebar text-white">
+            <img src="/images/netc2.png" alt="Netcrafty">
 
-
-            <a href="{{ route('dashboard') }}" class="text-white d-block mb-2">Dashboard</a>
-
-
-            <a href="{{ route('record.create') }}" class="text-white d-block mb-2">Records</a>
-
-            <a href="{{ route('orders.list') }}" class="text-white d-block mb-2">Tracking Orders</a>
-            <a href="{{ route('labelsenders') }}" class="text-white d-block mb-2">Label Senders</a>
-            <a href="{{ route('clients.index') }}" class="text-white d-block mb-2">Add Client</a>
-
-
-            <a href="{{ route('client.products') }}" class="text-white d-block mb-2">
-                Product Weight Setup
+            <a href="{{ route('dashboard') }}">
+                <i class="bi bi-speedometer2"></i> Dashboard
             </a>
 
-
-            <a href="{{ route('barcodes') }}" class="text-white d-block mb-2">Barcodes</a>
-
-            <a href="{{ route('shopify.import.page') }}" class="text-white d-block mb-2">
-                Import Shopify Orders
+            <a href="{{ route('record.create') }}">
+                <i class="bi bi-upload"></i> Import Records
             </a>
 
-            <a href="{{ route('labels.index') }}" class="text-white d-block mb-2">
-                Courier Labels
-            </a>
-            <a href="{{ route('Invoice.index') }}" class="text-white d-block mb-2">
-                Invoice Genrate
+            <a href="{{ route('orders.list') }}">
+                <i class="bi bi-truck"></i> Tracking Records
             </a>
 
+            <a href="{{ route('labelsenders') }}">
+                <i class="bi bi-person-lines-fill"></i> Senders
+            </a>
 
+            <a href="{{ route('clients.index') }}">
+                <i class="bi bi-people"></i> Clients
+            </a>
 
-            <!-- <a href="{{ route('labelgenrate') }}" class="text-white d-block mb-2">Generate Labels</a>-->
+            <a href="{{ route('client.products') }}">
+                <i class="bi bi-box-seam"></i> Products
+            </a>
+
+            <a href="{{ route('barcodes') }}">
+                <i class="bi bi-upc-scan"></i> Barcodes
+            </a>
+
+            <a href="{{ route('shopify.import.page') }}">
+                <i class="bi bi-shop"></i> Shopify Orders
+            </a>
+
+            <a href="{{ route('labels.index') }}">
+                <i class="bi bi-printer"></i> Print Labels
+            </a>
+
+            <a href="{{ route('Invoice.index') }}">
+                <i class="bi bi-file-earmark-text"></i> Download Invoice
+            </a>
         </div>
 
-
-
+        <!-- MAIN -->
         <div class="flex-grow-1">
 
-            <nav class="navbar navbar-light bg-light px-3">
-                <span class="navbar-brand">Netcrafty - CRM</span>
+            <!-- TOPBAR -->
+            <div class="topbar d-flex justify-content-between align-items-center">
+                <span class="brand">Netcrafty CRM</span>
+
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button class="btn btn-danger btn-sm">Logout</button>
+                    <button class="btn btn-logout btn-sm text-white">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
                 </form>
-            </nav>
+            </div>
 
-
-            <div class="p-4">
+            <!-- PAGE CONTENT -->
+            <div class="content-area">
                 @yield('content')
             </div>
 
-
-
         </div>
     </div>
-
 
 </body>
 
