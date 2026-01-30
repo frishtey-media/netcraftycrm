@@ -138,7 +138,7 @@
         </div>
         @if (strtolower(trim($sender->customer_name)) === 'dr bhangu ayurveda')
             <div style="text-align: right;">
-                <img src="{{ public_path('images/Bhangu_Logo_1.png') }}" width="80">
+                <img src="{{ public_path('images/Bhangu_Logo_1.png') }}" width="60">
 
 
 
