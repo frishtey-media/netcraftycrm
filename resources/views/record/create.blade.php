@@ -1,6 +1,48 @@
 @extends('layouts.admin')
 
 @section('content')
+    <style>
+        .loader-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 1056;
+            /* above bootstrap modal */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader-box {
+            background: #fff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .spinner {
+            width: 55px;
+            height: 55px;
+            border: 5px solid #e5e5e5;
+            border-top: 5px solid #198754;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: auto;
+        }
+
+        .loader-box p {
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
     <div class="container">
 
 
@@ -16,7 +58,8 @@
 
         <div class="modal fade" id="excelImportModal">
             <div class="modal-dialog">
-                <form method="POST" action="{{ route('whatsapp.excel.import') }}" enctype="multipart/form-data">
+                <form id="excelImportForm" method="POST" action="{{ route('whatsapp.excel.import') }}"
+                    enctype="multipart/form-data">
                     @csrf
                     <div class="modal-content">
                         <div class="modal-header">
@@ -38,7 +81,9 @@
                         </div>
 
                         <div class="modal-footer">
-                            <button class="btn btn-success">Import</button>
+                            <button type="submit" id="importBtn" class="btn btn-success">
+                                Import
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -161,6 +206,16 @@
             <button class="btn btn-success mt-4">Save Record</button>
         </form>
     </div>
+
+    <script>
+        document.getElementById('excelImportForm').addEventListener('submit', function() {
+            document.getElementById('excelImportLoader').classList.remove('d-none');
+
+
+            document.getElementById('importBtn').disabled = true;
+        });
+    </script>
+
     <script>
         document.getElementById('client_id').addEventListener('change', function() {
             let clientId = this.value;
@@ -202,4 +257,14 @@
             document.getElementById('weight_in_gm').value = weight * this.value;
         });
     </script>
+
+    <div id="excelImportLoader" class="d-none">
+        <div class="loader-backdrop">
+            <div class="loader-box">
+                <div class="spinner"></div>
+                <p>Importing WhatsApp Excel…</p>
+                <small>Please wait, do not refresh</small>
+            </div>
+        </div>
+    </div>
 @endsection

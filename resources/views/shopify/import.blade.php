@@ -18,6 +18,46 @@
         </script>
     @endpush
 
+    <style>
+        .loader-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader-box {
+            background: #fff;
+            padding: 30px 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .spinner {
+            width: 55px;
+            height: 55px;
+            border: 5px solid #e5e5e5;
+            border-top: 5px solid #0d6efd;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: auto;
+        }
+
+        .loader-box p {
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 
     <div class="container">
         <h4>Import Shopify Orders</h4>
@@ -45,8 +85,9 @@
 
 
 
-        <form style="margin: 35px 0px 35px 0px;" method="POST" action="{{ route('shopify.import') }}"
-            enctype="multipart/form-data">
+        <form id="shopifyImportForm" style="margin: 35px 0px 35px 0px;" method="POST"
+            action="{{ route('shopify.import') }}" enctype="multipart/form-data">
+
             @csrf
 
             <div class="row align-items-end">
@@ -66,9 +107,10 @@
                 </div>
 
                 <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" id="shopifyImportBtn" class="btn btn-primary w-100">
                         Import Orders
                     </button>
+
                 </div>
             </div>
         </form>
@@ -113,5 +155,22 @@
 
         </table>
 
+    </div>
+    <script>
+        document.getElementById('shopifyImportForm').addEventListener('submit', function() {
+            document.getElementById('shopifyImportLoader').classList.remove('d-none');
+            document.getElementById('shopifyImportBtn').disabled = true;
+        });
+    </script>
+
+    <!-- Shopify Import Loader -->
+    <div id="shopifyImportLoader" class="d-none">
+        <div class="loader-backdrop">
+            <div class="loader-box">
+                <div class="spinner"></div>
+                <p>Importing Shopify Orders…</p>
+                <small>Please wait, do not refresh</small>
+            </div>
+        </div>
     </div>
 @endsection
