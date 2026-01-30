@@ -89,11 +89,17 @@
             <div class="bold">Tracking No: {{ $order->barcode }}</div>
 
             <span class="bold">Payment Mode:</span> {{ $order->payment_mode }}<br>
-            <span class="bold">Amount:</span> Rs. {{ $order->amount }}
+            @if (strtolower($order->payment_mode) !== 'prepaid')
+                <span class="bold">Amount:</span> Rs. {{ $order->amount }}
+            @endif
         </div>
 
 
         <div class="section text-right" style="text-align: right">
+            @if (strtolower(trim($sender->customer_name)) === 'dr bhangu ayurveda')
+                <span class="bold">Biller ID:</span> 60883<br>
+            @endif
+
             <span class="bold">Order ID:</span> {{ $order->order_id }}<br>
             <span class="bold">Date:</span>
             {{ \Carbon\Carbon::parse($order->order_date)->format('d-m-y') }}
@@ -130,6 +136,15 @@
             <span class="bold">Communication Address:</span><br>
             {!! nl2br(e($sender->customer_phone)) !!}
         </div>
+        @if (strtolower(trim($sender->customer_name)) === 'dr bhangu ayurveda')
+            <div style="text-align: right;">
+                <img src="{{ public_path('images/Bhangu_Logo_1.png') }}" width="80">
+
+
+
+            </div>
+        @endif
+
 
     </div>
 

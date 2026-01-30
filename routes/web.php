@@ -13,6 +13,7 @@ use App\Http\Controllers\LabelController;
 use App\Http\Controllers\PostOfficeExportController;
 use App\Http\Controllers\RecordController;
 use App\Http\Controllers\ShopifyOrderController;
+use App\Http\Controllers\RTOController;
 use App\Http\Controllers\InvoiceController;
 
 /*
@@ -88,6 +89,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/orders', [OrderController::class, 'index'])
         ->name('orders.list');
+
+    Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
+    Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
+    Route::get('/rto-export', [RTOController::class, 'export'])->name('rto.export');
+
 
 
     Route::get('/record/create', [RecordController::class, 'create'])->name('record.create');

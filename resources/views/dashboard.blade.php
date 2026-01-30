@@ -10,7 +10,19 @@
             </div>
         </div>
 
-        <!-- DOWNLOAD BARCODE CARD -->
+
+        <div class="col-md-4">
+            <a href="/rto">
+                <div class="card text-center alert alert-info" style="cursor:pointer">
+                    <div class="card-body">
+
+                        <h5 class="mt-2">RTO Find </h5>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+
         <div class="col-md-4">
             <div class="card text-center alert alert-info" style="cursor:pointer" data-bs-toggle="modal"
                 data-bs-target="#barcodeModal">
