@@ -44,7 +44,7 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
 
                 $quantity     = $this->parseQuantity($row['quantity']);
                 $totalWeight  = $this->parseWeight($row['weight_in_gm']);
-
+                // dd($this->parseDate($row['date']));
                 ShopifyOrder::create([
                     'client_id'             => $this->clientId,
                     'order_id'              => $row['order_id'],

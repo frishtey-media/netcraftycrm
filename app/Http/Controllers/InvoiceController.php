@@ -6,20 +6,81 @@ use Illuminate\Http\Request;
 use App\Models\Seller;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Client;
+use App\Models\Order;
+
 
 class InvoiceController extends Controller
 {
 
     public function InvoiceIndex()
     {
+        $clients = Client::orderBy('client_name')->get();
         $sellers = Seller::all();
-        return view('Invoice.index', compact('sellers'));
+        return view('Invoice.index', compact('sellers', 'clients'));
     }
 
+
+    public function downloadSelectedInvoices(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required',
+        ]);
+
+        $orderIds = explode(',', $request->ids);
+
+
+        $orders = Order::whereIn('id', $orderIds)->get();
+
+        if ($orders->isEmpty()) {
+            return back()->with('error', 'No orders found');
+        }
+
+
+        $clientId = $orders->first()->client_id;
+
+        $seller = Seller::where('client_id', $clientId)->firstOrFail();
+
+        $invoices = [];
+
+        foreach ($orders as $order) {
+
+            $gross = (float) $order->amount;
+            $net   = round($gross / 1.05, 2);
+            $gst   = round($gross - $net, 2);
+
+            $invoices[] = [
+                'invoice_no'   => 'INV-' . $order->order_id,
+                'order_id'     => $order->order_id,
+                'date'         => $order->date,
+                'amount'       => $gross,
+                'net'          => $net,
+                'gst'          => $gst,
+                'amount_words' => $this->amountToWords($gross),
+                'customer'     => $order->customer_name,
+                'phone'        => $order->customer_phone ?: 'NA',
+                'address'      => $order->shipping_address,
+                'city'         => $order->city ?? '',
+                'state'        => $order->state ?? '',
+                'pincode'      => $order->pincode ?? '',
+                'product'      => $order->product,
+                'qty'          => $order->quantity ?: 1,
+                'weight'       => $order->weight,
+            ];
+        }
+
+        $pdf = Pdf::loadView(
+            'Invoice.merged_pdf',
+            compact('seller', 'invoices')
+        )->setPaper('A4', 'landscape');
+
+        return $pdf->download('selected_invoices.pdf');
+    }
 
     public function storeSeller(Request $request)
     {
         $request->validate([
+            'client_id' => 'required',
             'seller_name' => 'required',
             'gst_no' => 'required',
             'address' => 'required',

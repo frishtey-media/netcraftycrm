@@ -121,7 +121,7 @@
 
         <div class="section">
             <span class="bold">Product Name:</span>
-            {{ $order->shopify_product_name }}<br>
+            {{ $order->shopify_product_name ?? $order->product }}<br>
             <span class="bold">Quantity:</span> {{ $order->quantity }}<br>
             <span class="bold">Weight:</span> {{ $order->total_weight }} GMs
         </div>

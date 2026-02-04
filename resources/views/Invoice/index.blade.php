@@ -26,6 +26,18 @@
                             @csrf
 
                             <div>
+                                <label>Client</label>
+                                <select name="client_id" id="client_id" class="form-control">
+                                    <option value="">Select Client</option>
+                                    @foreach ($clients as $client)
+                                        <option value="{{ $client->id }}"
+                                            {{ request('client_id') == $client->id ? 'selected' : '' }}>
+                                            {{ $client->client_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
                                 <label>Seller Name</label>
                                 <input type="text" name="seller_name" class="form-control" required>
                             </div>

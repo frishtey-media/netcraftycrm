@@ -83,14 +83,75 @@
         .btn-logout:hover {
             background: #dc2626;
         }
+
+
+        .sidebar-dropdown {
+            margin-bottom: 6px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            color: #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .sidebar-link:hover {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .sidebar-submenu {
+            display: none;
+            margin-left: 25px;
+        }
+
+        .sidebar-submenu a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            color: #9ca3af;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .sidebar-submenu a:hover {
+            background: #374151;
+            color: #fff;
+        }
+
+        .sidebar-dropdown.open .sidebar-submenu {
+            display: block;
+        }
+
+        .sidebar-dropdown.open .arrow {
+            transform: rotate(180deg);
+        }
+
+        .arrow {
+            transition: transform 0.3s ease;
+        }
     </style>
 </head>
+<script>
+    $(document).ready(function() {
+        $('.sidebar-link').on('click', function() {
+            $(this).parent('.sidebar-dropdown').toggleClass('open');
+        });
+    });
+</script>
+
 
 <body>
 
     <div class="d-flex">
 
-        <!-- SIDEBAR -->
+
         <div class="sidebar text-white">
             <img src="/images/netc2.png" alt="Netcrafty">
 
@@ -102,9 +163,7 @@
                 <i class="bi bi-upload"></i> Import Records
             </a>
 
-            <a href="{{ route('orders.list') }}">
-                <i class="bi bi-truck"></i> Tracking Records
-            </a>
+
 
             <a href="{{ route('labelsenders') }}">
                 <i class="bi bi-person-lines-fill"></i> Senders
@@ -121,6 +180,27 @@
             <a href="{{ route('barcodes') }}">
                 <i class="bi bi-upc-scan"></i> Barcodes
             </a>
+            <div class="sidebar-dropdown">
+                <div class="sidebar-link">
+                    <i class="bi bi-printer"></i>
+                    <span>Reports</span>
+                    <i class="bi bi-chevron-down ms-auto arrow"></i>
+                </div>
+
+                <div class="sidebar-submenu">
+                    <a href="{{ route('orders.list') }}">
+                        <i class="bi bi-truck"></i> Date wise Report
+                    </a>
+
+                    <a href="/rto">
+                        <i class="bi bi-receipt"></i> RTO Reports
+                    </a>
+
+
+                </div>
+            </div>
+
+
 
             <a href="{{ route('shopify.import.page') }}">
                 <i class="bi bi-shop"></i> Shopify Orders
@@ -130,15 +210,16 @@
                 <i class="bi bi-printer"></i> Print Labels
             </a>
 
+
             <a href="{{ route('Invoice.index') }}">
-                <i class="bi bi-file-earmark-text"></i> Download Invoice
+                <i class="bi bi-file-earmark-text"></i> Bulk Invoice Download
             </a>
         </div>
 
-        <!-- MAIN -->
+
         <div class="flex-grow-1">
 
-            <!-- TOPBAR -->
+
             <div class="topbar d-flex justify-content-between align-items-center">
                 <span class="brand">Netcrafty CRM</span>
 
@@ -150,7 +231,7 @@
                 </form>
             </div>
 
-            <!-- PAGE CONTENT -->
+
             <div class="content-area">
                 @yield('content')
             </div>

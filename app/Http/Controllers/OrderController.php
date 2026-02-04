@@ -12,6 +12,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ShopifyOrder;
 use App\Models\LabelSender;
+use App\Models\Client;
+use App\Exports\PostOfficeExport;
+
 
 class OrderController extends Controller
 {
@@ -19,17 +22,33 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $orders = Order::query()
+            ->when($request->client_id, function ($q) use ($request) {
+                $q->where('client_id', $request->client_id);
+            })
             ->when($request->date_from, function ($q) use ($request) {
-                $q->where('date', '>=', $request->date_from . ' 00:00:00');
+                $q->whereDate('date', '>=', $request->date_from);
             })
             ->when($request->date_to, function ($q) use ($request) {
-                $q->where('date', '<=', $request->date_to . ' 23:59:59');
+                $q->whereDate('date', '<=', $request->date_to);
             })
             ->orderBy('date', 'desc')
-            ->get(); // IMPORTANT: get() not paginate()
+            ->get();
 
-        return view('orders.index', compact('orders'));
+        $clients = Client::orderBy('client_name')->get();
+
+        $senders = LabelSender::orderBy('customer_name')->get();
+
+        return view('orders.index', compact(
+            'orders',
+            'clients',
+            'senders'
+        ));
     }
+
+
+
+
+
 
 
 

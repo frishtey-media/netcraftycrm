@@ -15,6 +15,7 @@ use App\Http\Controllers\RecordController;
 use App\Http\Controllers\ShopifyOrderController;
 use App\Http\Controllers\RTOController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\MoneyorderExportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -130,6 +131,29 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/Invoice', [InvoiceController::class, 'InvoiceIndex'])->name('Invoice.index');
     Route::post('/seller/store', [InvoiceController::class, 'storeSeller'])->name('seller.store');
     Route::post('/invoice/import', [InvoiceController::class, 'importExcel'])->name('invoice.import');
+
+
+    // Route::get('orders/invoice-pdf', [OrderController::class, 'invoicePdf'])->name('orders.invoice.pdf');
+    Route::get(
+        'orders/selected-invoice-pdf',
+        [InvoiceController::class, 'downloadSelectedInvoices']
+    )->name('orders.invoice.pdf');
+
+    //Route::get('orders/label-pdf', [OrderController::class, 'labelPdf'])->name('orders.label.pdf');
+
+    Route::post(
+        'labels/selected-pdf',
+        [LabelController::class, 'exportSelected']
+    )->name('labels.selected.pdf');
+
+
+
+    Route::get('orders/postoffice-excel', [PostOfficeExportController::class, 'postOfficeExcel'])
+        ->name('orders.postoffice.excel');
+    Route::post(
+        'orders/moneyorder-pdf',
+        [MoneyorderExportController::class, 'Moneyorder']
+    )->name('orders.Moneyorder.pdf');
 });
 
 

@@ -109,7 +109,7 @@
         <div class="col-md-4">
             <div class="dashboard-card card-red action-card" data-bs-toggle="modal" data-bs-target="#deleteOrdersModal">
                 <div>
-                    <div class="card-title text-danger">Delete Records</div>
+                    <div class="card-title text-danger">Delete Barcodes</div>
                     <small class="text-danger">Permanent action</small>
                 </div>
                 <i class="bi bi-trash card-icon text-danger"></i>
@@ -160,7 +160,7 @@
 
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title text-danger">Delete Orders</h5>
+                        <h5 class="modal-title text-danger">Delete Barcodes</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
 
@@ -176,7 +176,7 @@
                         </div>
 
                         <div class="alert alert-danger">
-                            ⚠️ All order data will be permanently deleted.
+                            ⚠️ All Barcodes will be permanently deleted.
                         </div>
                     </div>
 

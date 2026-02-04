@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\ShopifyOrder;
 use App\Models\Client;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -12,30 +13,48 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 class PostOfficeExport implements FromCollection, WithHeadings, WithMapping, WithTitle
 {
     private int $i = 0;
-    private int $clientId;
-    private ?Client $client = null;
 
-    public function __construct(int $clientId)
+    private ?int $clientId = null;
+    private ?Client $client = null;
+    private ?Collection $orders = null;
+
+    public function __construct(int|Collection $data)
     {
-        $this->clientId = $clientId;
-        $this->client   = Client::find($clientId);
+        if ($data instanceof Collection) {
+            // CASE 1: Orders already selected
+            $this->orders   = $data;
+            $this->clientId = $data->first()?->client_id;
+        } else {
+            // CASE 2: Client ID based export
+            $this->clientId = $data;
+        }
+
+        if ($this->clientId) {
+            $this->client = Client::find($this->clientId);
+        }
     }
 
     /* ================= COLLECTION ================= */
     public function collection()
     {
+        // If orders already passed
+        if ($this->orders instanceof Collection) {
+            return $this->orders;
+        }
+
+        // Else fallback to client-based fetch
         return ShopifyOrder::where('client_id', $this->clientId)
             ->orderBy('id')
             ->get();
     }
 
-    /* ================= SHEET NAME (MANDATORY) ================= */
+    /* ================= SHEET NAME ================= */
     public function title(): string
     {
-        return 'BulkBooking';
+        return 'ArticleDetails';
     }
 
-    /* ================= HEADINGS (SAME FOR ALL CLIENTS) ================= */
+    /* ================= HEADINGS ================= */
     public function headings(): array
     {
         return [
@@ -105,68 +124,53 @@ class PostOfficeExport implements FromCollection, WithHeadings, WithMapping, Wit
 
         /* ---------- CLIENT ID = 5 ---------- */
         if ($this->clientId === 5) {
+            // ✅ YOUR EXISTING CLIENT-5 LOGIC (unchanged)
             return [
                 ++$this->i,
                 $order->barcode,
                 $order->total_weight ?? 300,
-
-                'Y',        // REG
-                'N',        // OTP
-
+                'Y',
+                'N',
                 strtoupper($order->city),
                 (string) $order->pincode,
                 strtoupper($order->customer_name),
-
                 $order->shipping_address,
                 '',
                 '',
-
-                'N',        // ACK
-
+                'N',
                 $client->mobile ?? '',
                 $receiverMobile,
-
                 'NA',
                 0,
-
                 'COD',
                 $codAmount,
-
                 'N',
                 0,
-
                 'R',
-
                 15,
                 10,
                 10,
-
                 'N',
                 'ND',
                 '',
                 '',
-
                 strtoupper($client->client_name ?? ''),
                 strtoupper($client->company_name ?? $client->client_name ?? ''),
                 strtoupper($client->city ?? ''),
                 strtoupper($client->state ?? ''),
                 (string) $client->pincode,
-
                 $client->email ?? '',
                 '',
                 '',
                 '',
-
                 '',
                 strtoupper($order->state ?? ''),
                 '',
                 '',
                 '',
                 '',
-
                 'N',
                 '88/1',
-
                 $client->address ?? '',
                 '',
                 '',
@@ -178,64 +182,48 @@ class PostOfficeExport implements FromCollection, WithHeadings, WithMapping, Wit
             ++$this->i,
             $order->barcode,
             $order->total_weight ?? 300,
-
             'Y',
             'N',
-
             strtoupper($order->city),
             (string) $order->pincode,
             strtoupper($order->customer_name),
-
             $order->shipping_address,
             '',
             '',
-
             'N',
-
             $client->mobile ?? '',
             $receiverMobile,
-
             'NA',
             0,
-
             $isCod ? 'COD' : '',
             $isCod ? $codAmount : 0,
-
             'N',
             0,
-
             'R',
-
             22,
             22,
             8,
-
             'N',
             'ND',
             '',
             '',
-
             strtoupper($client->client_name ?? ''),
             strtoupper($client->company_name ?? ''),
             strtoupper($client->city ?? ''),
             strtoupper($client->state ?? ''),
             (string) $client->pincode,
-
             $client->email ?? '',
             '',
             '',
             '',
-
             '',
             strtoupper($order->state ?? ''),
             '',
             '',
             '',
             '',
-
             'N',
             '',
-
             $client->address ?? '',
             '',
             '',
