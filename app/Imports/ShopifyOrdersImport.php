@@ -58,7 +58,9 @@ class ShopifyOrdersImport implements ToCollection
     public function collection(Collection $rows)
     {
         // Count unused barcodes once
-        $this->availableBarcodes = Barcode::where('is_used', 0)->count();
+        $this->availableBarcodes = Barcode::where('client_id', $this->clientId)
+            ->where('is_used', 0)
+            ->count();
 
         if ($this->availableBarcodes <= 0) {
             throw new \Exception('No unused barcode available.');
@@ -126,14 +128,17 @@ class ShopifyOrdersImport implements ToCollection
                     $totalWeight   = $weightPerUnit * $quantity;
                 }
 
-                /* ---------- Get Unused Barcode ---------- */
-                $barcode = Barcode::where('is_used', 0)
+
+                /* ---------- Get Unused Barcode (CLIENT BASED) ---------- */
+                $barcode = Barcode::where('client_id', $this->clientId)
+                    ->where('is_used', 0)
                     ->lockForUpdate()
                     ->first();
 
                 if (!$barcode) {
-                    throw new \Exception('No unused barcode available');
+                    throw new \Exception('No unused barcode available for selected client');
                 }
+
 
                 /* ---------- Order Date ---------- */
                 try {

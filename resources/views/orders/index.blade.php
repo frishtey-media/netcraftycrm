@@ -187,9 +187,6 @@
                 $('body').append(form);
                 form.submit();
             });
-
-
-
         });
     </script>
 

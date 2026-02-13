@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\Barcode;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -13,11 +14,14 @@ class BarcodeController extends Controller
 
     public function index()
     {
-        return view('barcodes.import', [
-            'barcodes' => Barcode::orderBy('is_used', 'asc')
-                ->orderBy('created_at', 'desc')
-                ->get(),
-        ]);
+        $clients = Client::orderBy('client_name')->get();
+
+        $barcodes = Barcode::with('client')
+            ->orderBy('is_used', 'asc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('barcodes.import', compact('clients', 'barcodes'));
     }
 
 
@@ -25,15 +29,17 @@ class BarcodeController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|file'
+            'file' => 'required|mimes:xlsx,csv',
+            'client_id' => 'required|exists:clients,id',
         ]);
 
-        $import = new BarcodeImport();
+        $import = new BarcodeImport($request->client_id);
+
         Excel::import($import, $request->file('file'));
 
         return back()->with(
             'success',
-            "Import completed. Imported: {$import->imported}, Skipped (duplicates): {$import->skipped}"
+            "Imported: {$import->imported}, Skipped: {$import->skipped}"
         );
     }
 }

@@ -21,29 +21,27 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
+        $sortOrder = $request->get('sort_order', 'desc');
+
         $orders = Order::query()
             ->when($request->client_id, function ($q) use ($request) {
                 $q->where('client_id', $request->client_id);
             })
             ->when($request->date_from, function ($q) use ($request) {
-                $q->whereDate('date', '>=', $request->date_from);
+                $q->whereDate('created_at', '>=', $request->date_from);
             })
             ->when($request->date_to, function ($q) use ($request) {
-                $q->whereDate('date', '<=', $request->date_to);
+                $q->whereDate('created_at', '<=', $request->date_to);
             })
-            ->orderBy('date', 'desc')
+            ->orderBy('created_at', $sortOrder)
             ->get();
 
         $clients = Client::orderBy('client_name')->get();
-
         $senders = LabelSender::orderBy('customer_name')->get();
 
-        return view('orders.index', compact(
-            'orders',
-            'clients',
-            'senders'
-        ));
+        return view('orders.index', compact('orders', 'clients', 'senders'));
     }
+
 
 
 

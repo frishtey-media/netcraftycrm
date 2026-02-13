@@ -11,6 +11,14 @@ class BarcodeImport implements ToCollection
     public int $imported = 0;
     public int $skipped = 0;
 
+    protected int $clientId;
+
+    // ✅ Receive client_id when import is called
+    public function __construct(int $clientId)
+    {
+        $this->clientId = $clientId;
+    }
+
     public function collection(Collection $rows)
     {
         foreach ($rows as $index => $row) {
@@ -27,14 +35,19 @@ class BarcodeImport implements ToCollection
                 continue;
             }
 
-            $exists = Barcode::where('barcode', $barcode)->exists();
+            // Optional: unique per client
+            $exists = Barcode::where('barcode', $barcode)
+                ->where('client_id', $this->clientId)
+                ->exists();
 
             if ($exists) {
                 $this->skipped++;
             } else {
                 Barcode::create([
-                    'barcode' => $barcode,
+                    'barcode'   => $barcode,
+                    'client_id' => $this->clientId, // ✅ saved here
                 ]);
+
                 $this->imported++;
             }
         }

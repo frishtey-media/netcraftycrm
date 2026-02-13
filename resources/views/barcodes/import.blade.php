@@ -32,8 +32,17 @@
                 enctype="multipart/form-data">
                 @csrf
                 <div class="card-body">
-                    <div class="row g-2">
 
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label">Select Client</label>
+                            <select name="client_id" class="form-control" required>
+                                <option value="">-- Select Client --</option>
+                                @foreach ($clients as $client)
+                                    <option value="{{ $client->id }}">{{ $client->client_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="col-md-3">
                             <label class="form-label">Upload Barcode Excel</label>
                             <input type="file" name="file" class="form-control" required>
@@ -43,25 +52,46 @@
                             <label class="form-label">Barcode Excel</label><br>
                             <button class="btn btn-primary">Import </button>
                         </div>
+                        <div class="col-md-3">
+                            <table class="table table-bordered text-center">
 
+                                <tbody>
+                                    @foreach ($clients as $client)
+                                        @php
+                                            $unusedCount = $barcodes
+                                                ->where('client_id', $client->id)
+                                                ->where('is_used', 0)
+                                                ->count();
+                                        @endphp
+
+                                        <tr>
+                                            <td>{{ $client->client_name }} Pending</td>
+                                            <td>
+                                                @if ($unusedCount == 0)
+                                                    <span class="badge bg-danger">
+                                                        {{ $unusedCount }}
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-success">
+                                                        {{ $unusedCount }}
+                                                    </span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
             </form>
-            @php
-                $unusedCount = $barcodes->where('is_used', 0)->count();
-            @endphp
-
-            <div style="text-align: center;" class="mb-3">
-                <span class="badge bg-danger fs-6">
-                    Pending Barcodes: {{ $unusedCount }}
-                </span>
-            </div>
 
             <table id="barcodeTable" class="table table-bordered table-striped mb-0">
                 <thead class="table-dark">
                     <tr>
                         <th>Barcode</th>
+                        <th>Client Name</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -69,6 +99,12 @@
                     @forelse($barcodes as $product)
                         <tr>
                             <td>{{ $product->barcode }}</td>
+
+                            <td>
+                                {{ $product->client->client_name ?? '—' }}
+
+                            </td>
+
                             <td>
                                 @if ($product->is_used == 1)
                                     <span class="badge bg-success">Used</span>
@@ -79,12 +115,13 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="2" class="text-center">
+                            <td colspan="3" class="text-center">
                                 No Barcode added yet
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
+
             </table>
         </div>
     @endsection

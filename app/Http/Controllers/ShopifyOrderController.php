@@ -15,18 +15,15 @@ class ShopifyOrderController extends Controller
             'file'      => 'required|mimes:xls,xlsx',
         ]);
 
-
         $import = new WhatsAppOrdersImport($request->client_id);
-
 
         Excel::import($import, $request->file('file'));
 
-
-        return back()->with(
-            'success',
-            "Import completed successfully.
-             Imported: {$import->imported}
-             Skipped: {$import->skipped}"
-        );
+        return back()->with([
+            'success'  => 'Import completed',
+            'imported' => $import->imported,
+            'skipped' => $import->skipped,
+            'errors'  => $import->errors,
+        ]);
     }
 }

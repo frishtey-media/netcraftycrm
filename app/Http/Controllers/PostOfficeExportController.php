@@ -24,7 +24,7 @@ class PostOfficeExportController extends Controller
 
 
         $fileName = "india_post_client_{$clientId}_{$dateTime}.xlsx";
-        session()->flash('show_export_card', true);
+        // session()->flash('show_export_card', true);
         return Excel::download(
             new PostOfficeExport($clientId),
             $fileName,
@@ -35,11 +35,11 @@ class PostOfficeExportController extends Controller
     private function copyShopifyOrdersToOrders()
     {
         $shopifyOrders = ShopifyOrder::all();
-        //dd($shopifyOrders);
+        //  dd($shopifyOrders);
 
         foreach ($shopifyOrders as $order) {
 
-            if (Order::where('order_id', $order->order_id)->exists()) {
+            if (Order::where('barcode', $order->barcode)->exists()) {
                 continue;
             }
 

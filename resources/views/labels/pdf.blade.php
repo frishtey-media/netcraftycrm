@@ -45,6 +45,7 @@
 
     .barcode {
         text-align: center;
+
         margin-bottom: 10px;
     }
 
@@ -69,7 +70,7 @@
         @if ($order->barcode)
             <div class="barcode">
                 <img
-                    src="data:image/png;base64,{{ base64_encode($generator->getBarcode($order->barcode, $generator::TYPE_CODE_128, 2, 45)) }}">
+                    src="data:image/png;base64,{{ base64_encode($generator->getBarcode($order->barcode, $generator::TYPE_CODE_128, 1.9, 45)) }}">
                 <div class="bold">{{ $order->barcode }}</div>
 
             </div>
@@ -130,7 +131,7 @@
 
 
         <div class="section">
-            <span class="bold">From:</span><br>
+            <span class="bold">From:</span>
             {{ $sender->customer_name }}<br>
 
             <span class="bold">Communication Address:</span><br>

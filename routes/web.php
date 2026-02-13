@@ -16,6 +16,7 @@ use App\Http\Controllers\ShopifyOrderController;
 use App\Http\Controllers\RTOController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MoneyorderExportController;
+use App\Http\Controllers\convertAmazonToTally;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,6 +38,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/dashboard', [AdminController::class, 'dashboard'])
         ->name('dashboard');
+
+
+
+    Route::post('/amazon-to-tally', [convertAmazonToTally::class, 'amazonToTally']);
+
 
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])
         ->name('labelsenders');
@@ -95,8 +101,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
     Route::get('/rto-export', [RTOController::class, 'export'])->name('rto.export');
 
-
-
     Route::get('/record/create', [RecordController::class, 'create'])->name('record.create');
     Route::post('/record/store', [RecordController::class, 'store'])->name('record.store');
     Route::get(
@@ -107,8 +111,6 @@ Route::middleware(['auth'])->group(function () {
         '/whatsapp-excel-import',
         [ShopifyOrderController::class, 'whatsappExcelImport']
     )->name('whatsapp.excel.import');
-
-
 
     Route::get('/orders/import', [OrderController::class, 'importForm'])
         ->name('orders.import');

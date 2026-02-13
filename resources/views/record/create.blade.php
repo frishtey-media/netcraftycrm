@@ -48,8 +48,25 @@
 
 
         @if (session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
+            <div class="alert alert-success">
+                <strong>{{ session('success') }}</strong><br>
+                Imported: {{ session('imported') }}<br>
+                Skipped: {{ session('skipped') }}
+            </div>
         @endif
+
+        @if (session('errors') && count(session('errors')) > 0)
+            <div class="alert alert-danger">
+                <strong>Import Errors:</strong>
+                <ul class="mb-0">
+                    @foreach (session('errors') as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+
         <div style="text-align:right;">
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#excelImportModal">
                 WhatsApp Excel Import

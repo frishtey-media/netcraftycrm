@@ -25,51 +25,75 @@ class RecordController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'barcode' => 'required|exists:barcodes,barcode',
-            'payment_mode' => 'required',
-            'amount' => 'required|numeric',
+            'client_id'     => 'required|exists:clients,id',
+            'payment_mode'  => 'required',
+            'amount'        => 'required|numeric',
             'customer_name' => 'required',
         ]);
 
-        DB::transaction(function () use ($request) {
+        try {
+            DB::transaction(function () use ($request) {
 
 
-            ShopifyOrder::create([
-                'client_id'        => $request->client_id,
-                'order_id'         => $request->order_id,
-                'order_date'       => $request->date,
+                $barcode = Barcode::where('client_id', $request->client_id)
+                    ->where('is_used', 0)
+                    ->orderBy('id', 'asc')
+                    ->lockForUpdate()
+                    ->first();
 
-                'product_name'     => $request->product,
-                'shopify_product_name' => $request->product,
+                if (!$barcode) {
+                    throw new \Exception('No unused barcode available for selected client');
+                }
 
-                'quantity'         => $request->quantity ?? 1,
-                'weight'           => $request->weight_in_gm ?? 0,
-                'total_weight'     => ($request->quantity ?? 1) * ($request->weight_in_gm ?? 0),
 
-                'barcode'          => $request->barcode,
-                'customer_name'    => $request->customer_name,
-                'father_name'      => $request->father_name,
-                'customer_phone'   => $request->customer_phone,
+                ShopifyOrder::create([
+                    'client_id'        => $request->client_id,
+                    'order_id'         => $request->order_id,
+                    'order_date'       => $request->date,
 
-                'shipping_address' => trim(
-                    $request->shipping_address_line1 . ' ' . $request->shipping_address_line2
-                ),
+                    'product_name'     => $request->product,
+                    'shopify_product_name' => $request->product,
 
-                'city'             => $request->city,
-                'state'            => $request->state,
-                'pincode'          => $request->shipping_pincode,
+                    'quantity'         => $request->quantity ?? 1,
+                    'weight'           => $request->weight_in_gm ?? 0,
+                    'total_weight'     => ($request->quantity ?? 1) * ($request->weight_in_gm ?? 0),
 
-                'payment_mode'     => $request->payment_mode,
-                'amount'           => $request->amount,
-            ]);
 
-            Barcode::where('barcode', $request->barcode)
-                ->where('is_used', 0)
-                ->update(['is_used' => 1]);
-        });
+                    'barcode'          => $barcode->barcode,
 
-        return redirect()->back()->with('success', 'Order saved & barcode used');
+                    'customer_name'    => $request->customer_name,
+                    'father_name'      => $request->father_name,
+                    'customer_phone'   => $request->customer_phone,
+
+                    'shipping_address' => trim(
+                        ($request->shipping_address_line1 ?? '') . ' ' .
+                            ($request->shipping_address_line2 ?? '')
+                    ),
+
+                    'city'             => $request->city,
+                    'state'            => $request->state,
+                    'pincode'          => $request->shipping_pincode,
+
+                    'payment_mode'     => $request->payment_mode,
+                    'amount'           => $request->amount,
+                ]);
+
+
+                $barcode->update([
+                    'is_used' => 1
+                ]);
+            });
+        } catch (\Exception $e) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'client_id' => $e->getMessage()
+                ]);
+        }
+
+        return back()->with('success', 'Order saved & barcode auto-assigned');
     }
+
 
     public function getClientProducts($clientId)
     {

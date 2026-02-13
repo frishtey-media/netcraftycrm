@@ -107,12 +107,21 @@
 
         {{-- Delete Records --}}
         <div class="col-md-4">
-            <div class="dashboard-card card-red action-card" data-bs-toggle="modal" data-bs-target="#deleteOrdersModal">
+            <div class="dashboard-card card-green action-card" data-bs-toggle="modal" data-bs-target="#deleteOrdersModal">
                 <div>
                     <div class="card-title text-danger">Delete Barcodes</div>
                     <small class="text-danger">Permanent action</small>
                 </div>
                 <i class="bi bi-trash card-icon text-danger"></i>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="dashboard-card card-green action-card" data-bs-toggle="modal" data-bs-target="#amazonOrdersModal">
+                <div>
+                    <div class="card-title">Amazon To Telly</div>
+                    <small>Format Excel</small>
+                </div>
+                <i class="bi bi-cart-check card-icon"></i>
             </div>
         </div>
 
@@ -184,6 +193,39 @@
                         <button type="submit" class="btn btn-danger"
                             onclick="return confirm('Are you 100% sure? This cannot be undone.')">
                             Confirm Delete
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div class="modal fade" id="amazonOrdersModal" tabindex="-1">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ url('/amazon-to-tally') }}" enctype="multipart/form-data">
+                @csrf
+
+
+
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title text-danger">Import Amazon Excel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label>Import Amazon Excel</label>
+                            <input type="file" name="excelfile" class="form-control" required>
+                        </div>
+
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-danger">
+                            Convert and Download
                         </button>
                     </div>
                 </div>
