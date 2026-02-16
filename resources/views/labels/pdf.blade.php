@@ -70,7 +70,7 @@
         @if ($order->barcode)
             <div class="barcode">
                 <img
-                    src="data:image/png;base64,{{ base64_encode($generator->getBarcode($order->barcode, $generator::TYPE_CODE_128, 1.9, 45)) }}">
+                    src="data:image/png;base64,{{ base64_encode($generator->getBarcode($order->barcode, $generator::TYPE_CODE_128, 2, 45)) }}">
                 <div class="bold">{{ $order->barcode }}</div>
 
             </div>
@@ -124,7 +124,7 @@
             <span class="bold">Product Name:</span>
             {{ $order->shopify_product_name ?? $order->product }}<br>
             <span class="bold">Quantity:</span> {{ $order->quantity }}<br>
-            <span class="bold">Weight:</span> {{ $order->total_weight }} GMs
+            <span class="bold">Weight:</span> {{ $order->total_weight ?? $order->weight }} GMs
         </div>
 
         <hr>

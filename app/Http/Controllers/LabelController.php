@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ShopifyOrder;
-use App\Models\order;
+use App\Models\Order;
 
 use App\Models\LabelSender;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+
 use Illuminate\Support\Facades\Log;
 use App\Models\Barcode;
 
@@ -21,6 +22,8 @@ class LabelController extends Controller
         ]);
         $sender = LabelSender::findOrFail($request->sender_id);
         $orders = ShopifyOrder::whereNotNull('barcode')->get();
+
+        // dd($orders);
         if ($orders->isEmpty()) {
             return back()->with('error', 'No orders found for label generation.');
         }
@@ -34,6 +37,8 @@ class LabelController extends Controller
         $fileName = "shipping_labels_{$dateTime}.pdf";
         return $pdf->download($fileName);
     }
+
+
 
     public function exportSelected(Request $request)
     {
@@ -52,8 +57,7 @@ class LabelController extends Controller
 
         $sender = LabelSender::findOrFail($request->sender_id);
 
-
-        $orders = order::whereIn('id', $orderIds)->get();
+        $orders = Order::whereIn('id', $orderIds)->get();
 
         if ($orders->isEmpty()) {
             return response()->json([
@@ -61,30 +65,50 @@ class LabelController extends Controller
             ], 422);
         }
 
+        DB::beginTransaction();
 
-        $unusedBarcodes = Barcode::where('is_used', 0)->take($orders->count())->get();
+        try {
 
-        if ($unusedBarcodes->count() < $orders->count()) {
+            foreach ($orders as $order) {
+
+                // Get barcode based on order's client_id
+                $barcode = Barcode::where('client_id', $order->client_id)
+                    ->where('is_used', 0)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$barcode) {
+                    throw new \Exception('No unused barcode available for selected client');
+                }
+
+                // Assign barcode
+                $order->barcode = $barcode->barcode;
+                // $order->barcode_id = $barcode->id;
+                $order->save();
+
+                // Mark barcode as used
+                $barcode->update([
+                    'is_used' => 1
+                ]);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
             return response()->json([
-                'error' => 'Not enough unused barcodes'
+                'error' => $e->getMessage()
             ], 422);
         }
-
-        foreach ($orders as $index => $order) {
-            $barcode = $unusedBarcodes[$index];
-            $order->barcode = $barcode->barcode;
-            $order->barcode_id = $barcode->id;
-        }
-
 
         $pdf = Pdf::loadView('labels.pdf', [
             'orders' => $orders,
             'sender' => $sender
         ])->setPaper([0, 0, 288, 432], 'portrait');
 
-        Barcode::whereIn('id', $orders->pluck('barcode_id'))->update(['is_used' => 1]);
-
         $fileName = 'shipping_labels_' . now()->format('Y-m-d_H-i-s') . '.pdf';
+
         return $pdf->download($fileName);
     }
 }
