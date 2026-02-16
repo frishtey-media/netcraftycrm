@@ -212,7 +212,15 @@
                                 </option>
                             @endforeach
                         </select>
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" name="use_old_barcode" id="use_old_barcode"
+                                value="1">
+                            <label class="form-check-label" for="use_old_barcode">
+                                Use Old Barcode (Assign existing barcode)
+                            </label>
+                        </div>
                     </div>
+
 
                     <div class="modal-footer">
                         <button type="button" id="confirmDownloadLabel" class="btn btn-success">
