@@ -18,6 +18,8 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MoneyorderExportController;
 use App\Http\Controllers\convertAmazonToTally;
 
+require __DIR__ . '/inventory.php';
+
 Route::get('/', function () {
     return redirect()->route('login');
 });

@@ -38,8 +38,6 @@ class LabelController extends Controller
         return $pdf->download($fileName);
     }
 
-
-
     public function exportSelected(Request $request)
     {
         $request->validate([
@@ -69,23 +67,23 @@ class LabelController extends Controller
 
         try {
 
-            // Detect if "Use Old Barcode" checkbox is selected
+
             $useOldBarcode = $request->has('use_old_barcode');
 
             foreach ($orders as $order) {
 
-                // ✅ OPTION 1: Use Old Barcode
+
                 if ($useOldBarcode) {
 
                     if (empty($order->barcode)) {
                         throw new \Exception("Order ID {$order->id} does not have an existing barcode.");
                     }
 
-                    // Keep existing barcode
+
                     continue;
                 }
 
-                // ✅ OPTION 2: Generate / Assign New Barcode
+
 
                 $barcode = Barcode::where('client_id', $order->client_id)
                     ->where('is_used', 0)
@@ -96,11 +94,11 @@ class LabelController extends Controller
                     throw new \Exception("No unused barcode available for client ID {$order->client_id}");
                 }
 
-                // Assign new barcode to order
+
                 $order->barcode = $barcode->barcode;
                 $order->save();
 
-                // Mark barcode as used
+
                 $barcode->update([
                     'is_used' => 1
                 ]);
@@ -116,7 +114,7 @@ class LabelController extends Controller
             ], 422);
         }
 
-        // Generate PDF
+
         $pdf = Pdf::loadView('labels.pdf', [
             'orders' => $orders,
             'sender' => $sender

@@ -40,6 +40,10 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'inventory' => [
+            'driver' => 'session',
+            'provider' => 'inventory_users',
+        ],
     ],
 
     /*
@@ -64,7 +68,10 @@ return [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
-
+        'inventory_users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\InventoryUser::class,
+        ],
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',

@@ -8,6 +8,7 @@ use App\Imports\RTOBarcodeImport;
 use App\Exports\RTOOrdersExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Session;
+use App\Models\RtoReport;
 
 class RTOController extends Controller
 {
@@ -43,6 +44,28 @@ class RTOController extends Controller
 
         if (empty($orderIds)) {
             return redirect()->back()->with('error', 'No RTO data to export');
+        }
+
+        $orders = Order::whereIn('id', $orderIds)->get();
+
+        foreach ($orders as $order) {
+
+            RtoReport::updateOrCreate(
+                ['tracking_no' => $order->barcode],
+                [
+                    'order_id' => $order->order_id,
+                    'tracking_no' => $order->barcode,
+                    'customer_name' => $order->customer_name,
+                    'customer_phone' => $order->customer_phone,
+                    'shipping_address' => $order->shipping_address,
+                    'payment_mode' => $order->payment_mode,
+                    'amount' => $order->amount,
+                    'product' => $order->product,
+                    'quantity' => $order->quantity,
+                    'weight' => $order->weight,
+                    'order_date' => $order->date
+                ]
+            );
         }
 
         return Excel::download(

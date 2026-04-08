@@ -35,7 +35,8 @@ class BarcodeController extends Controller
 
         $import = new BarcodeImport($request->client_id);
 
-        Excel::import($import, $request->file('file'));
+        //Excel::import($import, $request->file('file'));
+        Excel::import(new BarcodeImport($request->client_id), $request->file('file'));
 
         return back()->with(
             'success',
