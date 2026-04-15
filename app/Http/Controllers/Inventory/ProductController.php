@@ -14,6 +14,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ProductStockExport;
 use App\Models\RtoReport;
 use App\Exports\RTOReportExport;
+use App\Models\ClientProduct;
 
 class ProductController extends Controller
 {
@@ -21,6 +22,7 @@ class ProductController extends Controller
     {
         $categories = Category::all();
         $warehouses = Warehouse::all();
+
 
         $query = Product::with(['category', 'warehouse']);
 
@@ -46,7 +48,7 @@ class ProductController extends Controller
             'product.category'
         ]);
 
-        // ✅ Date filter
+
         if ($request->filled('from_date') && $request->filled('to_date')) {
             $query->whereBetween('movement_date', [
                 $request->from_date,
@@ -54,19 +56,19 @@ class ProductController extends Controller
             ]);
         }
 
-        // ✅ Product search
+
         if ($request->filled('product_name')) {
             $query->whereHas('product', function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->product_name . '%');
             });
         }
 
-        // ✅ Optional: exclude wrong negative RTO data (temporary safety)
+
         $query->where(function ($q) {
             $q->where('type', '!=', 'rto_restored')
                 ->orWhere(function ($sub) {
                     $sub->where('type', 'rto_restored')
-                        ->where('quantity', '>', 0); // only valid RTO
+                        ->where('quantity', '>', 0);
                 });
         });
 
@@ -84,7 +86,7 @@ class ProductController extends Controller
             'product.category'
         ]);
 
-        // ✅ Date filter (safe)
+
         if ($request->filled('from_date') && $request->filled('to_date')) {
             $query->whereBetween('movement_date', [
                 $request->from_date,
@@ -92,14 +94,14 @@ class ProductController extends Controller
             ]);
         }
 
-        // ✅ Product search (safe)
+
         if ($request->filled('product_name')) {
             $query->whereHas('product', function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->product_name . '%');
             });
         }
 
-        // ✅ IMPORTANT: ignore wrong negative RTO data
+
         $query->where(function ($q) {
             $q->where('type', '!=', 'rto_restored')
                 ->orWhere(function ($sub) {
@@ -123,7 +125,8 @@ class ProductController extends Controller
     {
         $Warehouse = Warehouse::all();
         $categories = Category::all();
-        return view('inventory.products.create', compact('categories', 'Warehouse'));
+        $client_products = ClientProduct::all();
+        return view('inventory.products.create', compact('categories', 'Warehouse', 'client_products'));
     }
 
 
@@ -196,6 +199,38 @@ class ProductController extends Controller
         return redirect()->route('products.index')
             ->with('success', 'Product updated successfully');
     }
+
+
+
+    public function rtoStock(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $product = Product::findOrFail($request->product_id);
+
+        // ✅ Add RTO stock to main stock
+        $product->low_stock_alert += $request->quantity;
+
+        // ✅ Update total price
+        $product->total_price = $product->price * $product->low_stock_alert;
+
+        $product->save();
+
+        // ✅ Stock movement log
+        StockMovement::create([
+            'product_id' => $product->id,
+            'quantity' => $request->quantity,
+            'type' => 'rto_restored',
+            'price' => $product->price,
+            'movement_date' => now(),
+        ]);
+
+        return back()->with('success', 'RTO Stock added successfully');
+    }
+
 
     public function updateStock(Request $request)
     {
@@ -288,7 +323,23 @@ class ProductController extends Controller
         );
     }
 
+    private function getPackMultiplier($productName)
+    {
+        $productName = strtolower($productName);
 
+        // Case 1: 1+1, 1+2 etc
+        if (preg_match('/(\d+)\s*\+\s*(\d+)/', $productName, $matches)) {
+            return (int)$matches[1] + (int)$matches[2];
+        }
+
+        // Case 2: Pack Of 2, Pack Of 3
+        if (preg_match('/pack\s*of\s*(\d+)/', $productName, $matches)) {
+            return (int)$matches[1];
+        }
+
+        // Default
+        return 1;
+    }
 
     public function rtoRestock()
     {
@@ -306,18 +357,23 @@ class ProductController extends Controller
 
             foreach ($rtoData as $item) {
 
-                $product = Product::where('name', $item->product)->first();
+                // Case-insensitive match (IMPORTANT FIX)
+                $product = Product::whereRaw('LOWER(name) = ?', [strtolower(trim($item->product))])->first();
 
                 if (!$product) continue;
 
-                $qty = $item->total_qty;
+                // 🔥 Get pack multiplier
+                $multiplier = $this->getPackMultiplier($item->product);
 
+                // 🔥 Final restock quantity
+                $qty = $item->total_qty * $multiplier;
 
+                // Update stock
                 $product->low_stock_alert += $qty;
                 $product->total_price = $product->price * $product->low_stock_alert;
                 $product->save();
 
-
+                // Log stock movement
                 StockMovement::create([
                     'product_id' => $product->id,
                     'quantity' => $qty,
@@ -327,7 +383,7 @@ class ProductController extends Controller
                 ]);
             }
 
-
+            // Mark as restocked
             DB::table('rto_reports')
                 ->where('is_restocked', 0)
                 ->update(['is_restocked' => 1]);

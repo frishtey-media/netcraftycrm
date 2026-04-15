@@ -17,7 +17,6 @@
     }
 
 
-
     .label {
         width: 340px;
         /* 4 inch */
@@ -101,6 +100,9 @@
                 <span class="bold">Biller ID:</span> 60883<br>
             @endif
 
+            <!-- @if (strtolower(trim($sender->customer_name)) === 'vivaeli')
+<span class="bold">Biller ID:</span> 00001<br>
+@endif-->
             <span class="bold">Order ID:</span> {{ $order->order_id }}<br>
             <span class="bold">Date:</span>
             {{ \Carbon\Carbon::parse($order->order_date)->format('d-m-y') }}
@@ -140,6 +142,12 @@
         @if (strtolower(trim($sender->customer_name)) === 'dr bhangu ayurveda')
             <div style="text-align: right;">
                 <img src="{{ public_path('images/Bhangu_Logo_1.png') }}" width="60">
+            </div>
+        @endif
+
+        @if (strtolower(trim($sender->customer_name)) === 'vivaeli')
+            <div style="text-align: right;margin-top:30px;">
+                <img src="{{ public_path('images/Viveali_Logo_1.png') }}" width="170">
             </div>
         @endif
     </div>

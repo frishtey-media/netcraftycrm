@@ -33,6 +33,9 @@ Route::prefix('inventory')->group(function () {
         Route::post('/products/update-stock', [ProductController::class, 'updateStock'])
             ->name('products.updateStock');
 
+        Route::post('/products/RTO-stock', [ProductController::class, 'rtoStock'])
+            ->name('products.rtoStock');
+
         Route::resource('categories', CategoryController::class);
         Route::resource('warehouses', WarehouseController::class);
         Route::resource('suppliers', SupplierController::class);

@@ -32,14 +32,14 @@
             </div>
 
         </form>
-        @if (\DB::table('rto_reports')->where('is_restocked', 0)->exists())
-            <form method="POST" action="{{ route('rto.restock') }}">
-                @csrf
-                <button class="btn btn-warning">RTO Re-Stock</button>
-            </form>
-        @else
-            <button class="btn btn-secondary" disabled>Already Restocked</button>
-        @endif
+        <!--  @if (\DB::table('rto_reports')->where('is_restocked', 0)->exists())
+    <form method="POST" action="{{ route('rto.restock') }}">
+                        @csrf
+                        <button class="btn btn-warning">RTO Re-Stock</button>
+                    </form>
+@else
+    <button class="btn btn-secondary" disabled>Already Restocked</button>
+    @endif-->
         <div class="table-responsive">
 
             <table class="table table-bordered table-striped">

@@ -53,7 +53,8 @@
                             <!--  <th>Price</th>-->
                             <th>Stock</th>
                             <th>Date</th>
-                            <th width="150">Action</th>
+                            <th width="150">Update Stock</th>
+                            <th width="150">Re Stock</th>
                         </tr>
                     </thead>
 
@@ -74,8 +75,8 @@
                                 </td>
 
                                 <!-- <td class="text-success fw-bold">
-                                                ₹{{ number_format($product->price, 2) }}
-                                            </td>-->
+                                                                                                                                                                                                        ₹{{ number_format($product->price, 2) }}
+                                                                                                                                                                                                    </td>-->
                                 <td>
                                     @if ($product->low_stock_alert <= 5)
                                         <span class="badge bg-danger">
@@ -92,7 +93,7 @@
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="javascript:void(0);" class="btn btn-sm btn-danger updateStockBtn"
+                                        <a href="javascript:void(0);" class="btn btn-sm btn-success updateStockBtn"
                                             data-id="{{ $product->id }}" data-name="{{ $product->name }}"
                                             data-stock="{{ $product->low_stock_alert }}"
                                             data-price="{{ $product->price }}">
@@ -100,12 +101,22 @@
                                         </a>
 
                                         <!-- <a href="{{ route('products.edit', $product->id) }}"
-                                                            class="btn btn-sm btn-warning">
-                                                            Edit
-                                                        </a>-->
+                                                                                                                                                                class="btn btn-sm btn-warning">
+                                                                                                                                                                Edit
+                                                                                                                                                            </a>-->
 
                                         <!--<form action="{{ route('products.destroy', $product->id) }}" method="POST">
-                                                </form>-->
+                                                                                                                                                                </form>-->
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="javascript:void(0);" class="btn btn-sm btn-danger updateStockBtnrto"
+                                            data-id="{{ $product->id }}" data-name="{{ $product->name }}"
+                                            data-stock="{{ $product->low_stock_alert }}"
+                                            data-price="{{ $product->price }}">
+                                            RTO Re-Stock
+                                        </a>
                                     </div>
                                 </td>
                             </tr>
@@ -127,6 +138,51 @@
 
         </div>
     </div>
+
+
+    <div class="modal fade" id="updateStockModalrto" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Add RTO Stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <form action="{{ route('products.rtoStock') }}" method="POST">
+                    @csrf
+
+                    <div class="modal-body">
+
+                        <!-- ✅ Hidden Product ID -->
+                        <input type="hidden" name="product_id" id="modal_product_id">
+
+                        <div class="mb-3">
+                            <label class="form-label">Product Name</label>
+                            <input type="text" id="modal_product_name" class="form-control" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Add RTO Quantity</label>
+                            <input type="number" name="quantity" class="form-control" required>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">
+                            Add RTO
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+
+
     <div class="modal fade" id="updateStockModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -200,6 +256,25 @@
                     document.getElementById("modal_product_name").value = this.dataset.name;
                     document.getElementById("modal_current_stock").value = this.dataset.stock;
                     document.getElementById("modal_price").value = this.dataset.price;
+
+                    modal.show();
+                });
+            });
+
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+
+            const buttons = document.querySelectorAll(".updateStockBtnrto");
+            const modal = new bootstrap.Modal(document.getElementById("updateStockModalrto"));
+
+            buttons.forEach(button => {
+                button.addEventListener("click", function() {
+
+                    document.getElementById("modal_product_id").value = this.dataset.id;
+                    document.getElementById("modal_product_name").value = this.dataset.name;
 
                     modal.show();
                 });

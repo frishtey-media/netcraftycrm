@@ -44,7 +44,16 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orders/{id}/assign-barcode', [ShopifyController::class, 'assignBarcode'])->name('orders.assign-barcode');
     Route::get('/barcodes', [BarcodeController::class, 'index'])->name('barcodes');
     Route::post('/barcodes/import', [BarcodeController::class, 'import'])->name('barcodes.import');
+
     Route::post('/admin/download-barcodes', [OrderController::class, 'downloadBarcodes'])->name('admin.download.barcodes');
+
+    Route::post('/download-barcodes-excel', [OrderController::class, 'downloadBarcodesexcel'])
+        ->name('admin.download.barcodesexcel');
+
+    Route::post('/clear-duplicate-orders', [PostOfficeExportController::class, 'clearDuplicates'])
+        ->name('clear.duplicates');
+    Route::get('/export', [PostOfficeExportController::class, 'export'])->name('export.orders');
+
     Route::delete('/admin/orders/delete', [OrderController::class, 'deleteOrdersWithLog'])->name('admin.orders.delete');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.list');
     Route::get('/orders/import', [OrderController::class, 'importForm'])->name('orders.import');
@@ -69,6 +78,54 @@ Route::middleware(['auth'])->group(function () {
     //Route::get('orders/label-pdf', [OrderController::class, 'labelPdf'])->name('orders.label.pdf');
     Route::get('orders/postoffice-excel', [PostOfficeExportController::class, 'postOfficeExcel'])->name('orders.postoffice.excel');
     Route::post('orders/moneyorder-pdf', [MoneyorderExportController::class, 'Moneyorder'])->name('orders.Moneyorder.pdf');
+
+    Route::get('/test-pincode', function () {
+
+        $url = "https://api.postalpincode.in/pincode/125106";
+
+        $ch = curl_init();
+
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+            CURLOPT_USERAGENT => "Mozilla/5.0"
+        ]);
+
+        $response = curl_exec($ch);
+
+        if (curl_errno($ch)) {
+            $error = curl_error($ch);
+            curl_close($ch);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $error
+            ]);
+        }
+
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+
+        if (!$data) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid JSON response'
+            ]);
+        }
+
+        return response()->json($data);
+    });
+
+
+    Route::get('/phpinfo', function () {
+        phpinfo();
+    });
 });
 /*
 |--------------------------------------------------------------------------

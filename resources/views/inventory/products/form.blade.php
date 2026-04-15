@@ -42,7 +42,22 @@
     </div>
     <div class="col-md-6 mb-3">
         <label class="form-label">Product Name *</label>
-        <input type="text" name="name" class="form-control" value="{{ old('name', $product->name ?? '') }}">
+        <select name="name" class="form-select @error('name') is-invalid @enderror" required>
+
+            <option value="">Select Product</option>
+
+            @foreach ($client_products as $client_products)
+                <option value="{{ $client_products->id }}">
+                    {{ $client_products->shopify_product_name }}
+                </option>
+            @endforeach
+
+        </select>
+
+        @error('name')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+        <!---<input type="text" name="name" class="form-control" value="{{ old('name', $product->name ?? '') }}">-->
     </div>
 
 

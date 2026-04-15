@@ -84,15 +84,15 @@
 
 
                                 <!--<td>
-                                                            <form method="POST" action="{{ route('client.products.delete', $product->id) }}"
-                                                                onsubmit="return confirm('Delete this product?')">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button class="btn btn-sm btn-danger">
-                                                                    Delete
-                                                                </button>
-                                                            </form>
-                                                        </td>--->
+                                                                            <form method="POST" action="{{ route('client.products.delete', $product->id) }}"
+                                                                                onsubmit="return confirm('Delete this product?')">
+                                                                                @csrf
+                                                                                @method('DELETE')
+                                                                                <button class="btn btn-sm btn-danger">
+                                                                                    Delete
+                                                                                </button>
+                                                                            </form>
+                                                                        </td>--->
                             </tr>
                         @empty
                             <tr>
