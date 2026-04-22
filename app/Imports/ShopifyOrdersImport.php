@@ -7,10 +7,12 @@ use App\Models\ClientProduct;
 use App\Models\Barcode;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
-class ShopifyOrdersImport implements ToCollection
+class ShopifyOrdersImport implements ToCollection, WithHeadingRow
 {
     protected $clientId;
     protected $importedCount = 0;
@@ -21,43 +23,36 @@ class ShopifyOrdersImport implements ToCollection
         $this->clientId = $clientId;
     }
 
-
-    private function getClientFiveWeight(string $productName, int $quantity): ?int
+    /* ================= WEIGHT LOGIC ================= */
+    private function getClientFiveWeight(string $productName, int $quantity): int
     {
         $name = strtolower($productName);
 
-
-        if (
-            str_contains($name, 'hair oil') &&
-            str_contains($name, 'shampoo')
-        ) {
-            return match ($quantity) {
-                1 => 450,
-                2 => 900,
-                3 => 1350,
-                4 => 1800,
-                default => null,
+        if (str_contains($name, 'hair oil') && str_contains($name, 'shampoo')) {
+            return match (true) {
+                $quantity == 1 => 450,
+                $quantity == 2 => 900,
+                $quantity == 3 => 1350,
+                $quantity == 4 => 1800,
+                default => 450 * $quantity,
             };
         }
-
 
         if (str_contains($name, 'hair oil')) {
-            return match ($quantity) {
-                1 => 300,
-                2 => 500,
-                3 => 700,
-                4 => 800,
-                default => null,
+            return match (true) {
+                $quantity == 1 => 300,
+                $quantity == 2 => 500,
+                $quantity == 3 => 700,
+                $quantity == 4 => 800,
+                default => 300 * $quantity,
             };
         }
 
-        return null;
+        return 300 * $quantity; // fallback
     }
-
 
     public function collection(Collection $rows)
     {
-        // Count unused barcodes once
         $this->availableBarcodes = Barcode::where('client_id', $this->clientId)
             ->where('is_used', 0)
             ->count();
@@ -68,92 +63,68 @@ class ShopifyOrdersImport implements ToCollection
 
         foreach ($rows as $index => $row) {
 
-            // Skip header row
-            if ($index === 0) {
-                continue;
-            }
-
-            // Stop if barcodes exhausted
-            if ($this->importedCount >= $this->availableBarcodes) {
-                break;
-            }
+            if ($this->importedCount >= $this->availableBarcodes) break;
 
             DB::beginTransaction();
 
             try {
 
-                /* ---------- Basic Order Data ---------- */
-                $orderId     = ltrim(trim($row[0] ?? ''), '#');
-                $quantity    = (int) ($row[16] ?? 0);
-                $productName = trim($row[17] ?? '');
+                /* ================= CORRECT COLUMN READ ================= */
+                $orderId     = ltrim(trim($row['name'] ?? ''), '#');
+                $quantityRaw = $row['lineitem_quantity'] ?? 1;
+                $productName = trim($row['lineitem_name'] ?? '');
+                $orderDateRaw = $row['created_at'] ?? null;
 
-                if (!$orderId || !$productName || $quantity <= 0) {
-                    throw new \Exception('Invalid order data');
+                // ✅ FIX: clean quantity
+                $quantity = (int) preg_replace('/[^0-9]/', '', $quantityRaw);
+                if ($quantity <= 0 || $quantity > 10) {
+                    $quantity = 1;
                 }
 
-                /* ---------- Duplicate Order Check ---------- */
+                if (!$orderId || !$productName) {
+                    continue;
+                }
+
+                /* ================= DUPLICATE CHECK ================= */
                 if (
                     ShopifyOrder::where('client_id', $this->clientId)
                     ->where('order_id', $orderId)
                     ->exists()
                 ) {
-                    throw new \Exception("Duplicate order ID: {$orderId}");
+                    continue;
                 }
 
-                /* ---------- Product ---------- */
-                $product = ClientProduct::where('client_id', $this->clientId)
-                    ->where('shopify_product_name', $productName)
-                    ->first();
+                /* ================= WEIGHT ================= */
+                $totalWeight   = $this->getClientFiveWeight($productName, $quantity);
+                $weightPerUnit = $totalWeight / $quantity;
 
-                /* ---------- Weight Calculation ---------- */
-                if ($this->clientId == 5) {
-
-                    $specialWeight = $this->getClientFiveWeight($productName, $quantity);
-
-                    if (!$specialWeight) {
-                        throw new \Exception(
-                            "Weight rule not defined for {$productName} with qty {$quantity}"
-                        );
-                    }
-
-                    $totalWeight   = $specialWeight;
-                    $weightPerUnit = $specialWeight / $quantity;
-                } else {
-
-                    if (!$product || $product->weight_per_unit <= 0) {
-                        throw new \Exception("Weight not defined for {$productName}");
-                    }
-
-                    $weightPerUnit = $product->weight_per_unit;
-                    $totalWeight   = $weightPerUnit * $quantity;
-                }
-
-
-                /* ---------- Get Unused Barcode (CLIENT BASED) ---------- */
+                /* ================= BARCODE ================= */
                 $barcode = Barcode::where('client_id', $this->clientId)
                     ->where('is_used', 0)
                     ->lockForUpdate()
                     ->first();
 
                 if (!$barcode) {
-                    throw new \Exception('No unused barcode available for selected client');
+                    throw new \Exception('No unused barcode available');
                 }
 
-
-                /* ---------- Order Date ---------- */
+                /* ================= DATE ================= */
                 try {
-                    $orderDate = Carbon::parse($row[15])->format('Y-m-d H:i:s');
+                    $orderDate = Carbon::parse($orderDateRaw)->format('Y-m-d H:i:s');
                 } catch (\Exception $e) {
                     $orderDate = now();
                 }
 
-                /* ---------- Phone Cleanup ---------- */
-                $customerPhone = $row[33] ?? null;
-                if ($customerPhone && str_starts_with($customerPhone, '91')) {
-                    $customerPhone = substr($customerPhone, 2);
+                /* ================= PHONE ================= */
+                $customerPhone = $row['shipping_phone'] ?? null;
+                if ($customerPhone) {
+                    $customerPhone = preg_replace('/[^0-9]/', '', $customerPhone);
+                    if (str_starts_with($customerPhone, '91')) {
+                        $customerPhone = substr($customerPhone, 2);
+                    }
                 }
 
-                /* ---------- Create Order ---------- */
+                /* ================= INSERT ================= */
                 ShopifyOrder::create([
                     'client_id'            => $this->clientId,
                     'order_id'             => $orderId,
@@ -163,34 +134,32 @@ class ShopifyOrdersImport implements ToCollection
                     'weight_per_unit'      => $weightPerUnit,
                     'total_weight'         => $totalWeight,
                     'barcode'              => $barcode->barcode,
-                    'customer_name'        => $row[24] ?? null,
+                    'customer_name'        => $row['billing_name'] ?? null,
                     'customer_phone'       => $customerPhone,
-                    'father_name'          => $row[28] ?? null,
-                    'shipping_address'     => $row[25] ?? null,
-                    'city'                 => $row[29] ?? null,
-                    'state'                => $row[31] ?? null,
-                    'pincode'              => $row[30] ?? null,
-                    'payment_mode'         => $row[47] ?? 'COD',
-                    'amount'               => $row[11] ?? 0,
+                    'shipping_address'     => $row['shipping_address1'] ?? null,
+                    'city'                 => $row['shipping_city'] ?? null,
+                    'state'                => $row['shipping_province'] ?? null,
+                    'pincode'              => $row['shipping_zip'] ?? null,
+                    'payment_mode'         => $row['payment_method'] ?? 'COD',
+                    'amount'               => $row['total'] ?? 0,
                 ]);
 
-                /* ---------- Mark Barcode Used ---------- */
                 $barcode->update(['is_used' => 1]);
 
                 DB::commit();
                 $this->importedCount++;
             } catch (\Exception $e) {
                 DB::rollBack();
-                throw new \Exception("Row {$index}: " . $e->getMessage());
+
+                Log::error("Import Error", [
+                    'row' => $index,
+                    'error' => $e->getMessage()
+                ]);
+
+                continue;
             }
         }
 
-        /* ---------- Flash Warning (No Exception) ---------- */
-        if ($this->importedCount < ($rows->count() - 1)) {
-            session()->flash(
-                'import_warning',
-                "Only {$this->importedCount} orders imported because only {$this->availableBarcodes} barcodes were available."
-            );
-        }
+        session()->flash('success', "{$this->importedCount} orders imported successfully.");
     }
 }

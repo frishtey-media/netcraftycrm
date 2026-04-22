@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Order;
+use App\Models\Client;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class MoneyorderExportController extends Controller
@@ -21,8 +22,6 @@ class MoneyorderExportController extends Controller
         }
 
         $orders = Order::whereIn('id', $orderIds)->get();
-
-        //dd($orders);
 
         if ($orders->isEmpty()) {
             return back()->with('error', 'No orders found');

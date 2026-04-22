@@ -20,13 +20,22 @@
                 <input type="date" name="to" value="{{ request('to') }}" class="form-control">
             </div>
 
+            {{-- ✅ Product Filter --}}
+            <div class="col-md-3">
+                <select name="product_id" class="form-control">
+                    <option value="">All Products</option>
+                    @foreach ($products as $product)
+                        <option value="{{ $product->id }}" {{ request('product_id') == $product->id ? 'selected' : '' }}>
+                            {{ $product->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
             <div class="col-md-3 d-flex gap-2">
                 <button type="submit" class="btn btn-primary">
                     Filter
                 </button>
-
-
-
 
                 <a href="{{ route('sales.report.export', request()->all()) }}" class="btn btn-success">
                     Export Excel

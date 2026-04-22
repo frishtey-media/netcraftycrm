@@ -57,6 +57,11 @@ class ProductController extends Controller
         }
 
 
+        if ($request->filled('product_id')) {
+            $query->where('product_id', $request->product_id);
+        }
+
+
         if ($request->filled('product_name')) {
             $query->whereHas('product', function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->product_name . '%');
@@ -77,7 +82,10 @@ class ProductController extends Controller
             ->get()
             ->groupBy('product_id');
 
-        return view('inventory.products.report', compact('products'));
+
+        $allProducts = Product::all();
+
+        return view('inventory.products.report', compact('products', 'allProducts'));
     }
     public function exportProductReport(Request $request)
     {
@@ -238,17 +246,17 @@ class ProductController extends Controller
             'product_id' => 'required|exists:products,id',
             'low_stock_alert' => 'required|integer|min:1',
         ]);
-
+        // dd($request->all());
         $product = Product::findOrFail($request->product_id);
 
+        // debug
+        // dd($request->all(), $product);
 
-        $product->low_stock_alert += $request->low_stock_alert;
-
+        $product->low_stock_alert = $product->low_stock_alert + (int)$request->low_stock_alert;
 
         $product->total_price = $product->price * $product->low_stock_alert;
 
-        $product->save();
-
+        $saved = $product->save();
 
         StockMovement::create([
             'product_id' => $product->id,
@@ -258,9 +266,8 @@ class ProductController extends Controller
             'movement_date' => now(),
         ]);
 
-        return back()->with('success', 'Stock updated successfully');
+        return redirect()->back()->with('success', 'Stock updated successfully');
     }
-
 
 
 

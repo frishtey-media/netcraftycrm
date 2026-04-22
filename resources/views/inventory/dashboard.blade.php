@@ -1,26 +1,50 @@
 @extends('layouts.inventory')
 
 @section('content')
+    <style>
+        @keyframes bounceAlert {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
+        }
+
+        .low-stock-alert {
+            animation: bounceAlert 1s infinite;
+            border-left: 6px solid red;
+        }
+    </style>
     <div class="container">
 
         <h2 class="mb-4">Inventory Dashboard</h2>
 
         <div class="row mb-4">
 
+
             <div class="col-md-3">
                 <div class="card text-center shadow">
                     <div class="card-body">
-                        <h5>Total Inventory</h5>
-                        <h3 class="text-primary">{{ $totalProducts }}</h3>
+                        <h5>Total Inventory Products</h5>
+                        <a href="/inventory/productreport">
+                            <h3 class="text-primary">{{ $totalProducts }}</h3>
+                        </a>
                     </div>
                 </div>
             </div>
+
 
             <div class="col-md-3">
                 <div class="card text-center shadow">
                     <div class="card-body">
                         <h5>Total Sales</h5>
-                        <h3 class="text-primary"> {{ $totalSales }}</h3>
+                        <a href="/inventory/salesreport">
+                            <h3 class="text-primary"> {{ $totalSales }}</h3>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -29,9 +53,22 @@
                 <div class="card text-center shadow">
                     <div class="card-body">
                         <h5>Current Month Sale</h5>
+
+                        @php
+                            $currentMonth = date('n');
+                            $currentMonthSale = 0;
+
+                            foreach ($salesData as $product) {
+                                if (isset($product[$currentMonth])) {
+                                    $currentMonthSale += $product[$currentMonth];
+                                }
+                            }
+                        @endphp
+
                         <h3 class="text-success">
-                            {{ $monthlySales[date('n')] ?? '0 sale this month' }}
+                            {{ $currentMonthSale }}
                         </h3>
+
                     </div>
                 </div>
             </div>
@@ -39,9 +76,22 @@
                 <div class="card text-center shadow">
                     <div class="card-body">
                         <h5>Current Month RTO</h5>
+
+                        @php
+                            $currentMonth = date('n');
+                            $currentMonthRTO = 0;
+
+                            foreach ($rtoData as $product) {
+                                if (isset($product[$currentMonth])) {
+                                    $currentMonthRTO += $product[$currentMonth];
+                                }
+                            }
+                        @endphp
+
                         <h3 class="text-danger">
-                            {{ $totalRTO }}
+                            {{ $currentMonthRTO }}
                         </h3>
+
                     </div>
                 </div>
             </div>
@@ -50,10 +100,32 @@
 
 
         <div class="card shadow p-4">
-            <h4>Monthly Sales Graph</h4>
 
+
+
+            @if (count($lowStockList) > 0)
+                <div class="alert alert-danger low-stock-alert">
+                    <h5>⚠ Low Stock Alert</h5>
+                    <ul class="mb-0">
+                        @foreach ($lowStockList as $item)
+                            <li>
+                                <b>{{ $item['name'] }}</b> - Only {{ $item['qty'] }} left
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <select id="productSelect" class="form-control mb-3">
+                @foreach ($products as $id => $name)
+                    <option value="{{ $id }}">{{ $name }}</option>
+                @endforeach
+            </select>
+            <h4>Monthly Sales Graph</h4>
             <!-- IMPORTANT HEIGHT -->
-            <canvas id="salesChart" style="height:300px;"></canvas>
+            <div style="height:300px;">
+                <canvas id="salesChart"></canvas>
+            </div>
 
         </div>
 
@@ -66,47 +138,84 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        let salesData = {!! json_encode($salesData) !!};
+        let rtoData = {!! json_encode($rtoData) !!};
 
-            let salesData = @json($monthlySales);
-            let rtoData = @json($monthlyRTO);
+        let chart;
 
-            let labels = [
-                'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-            ];
+        function loadChart(productId) {
 
-            let sales = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-            let rto = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            let labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-            for (let month in salesData) {
-                sales[month - 1] = salesData[month];
+            let sales = Array(12).fill(0);
+            let rto = Array(12).fill(0);
+
+            // Sales Qty
+            if (salesData[productId]) {
+                Object.keys(salesData[productId]).forEach(function(m) {
+                    sales[m - 1] = salesData[productId][m];
+                });
             }
 
-            for (let month in rtoData) {
-                rto[month - 1] = rtoData[month];
+            // RTO Qty
+            if (rtoData[productId]) {
+                Object.keys(rtoData[productId]).forEach(function(m) {
+                    rto[m - 1] = rtoData[productId][m];
+                });
             }
 
-            const ctx = document.getElementById('salesChart');
+            const ctx = document.getElementById('salesChart').getContext('2d');
 
-            new Chart(ctx, {
-                type: 'bar',
+            if (chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
-                            label: 'Sales ₹',
+                            label: 'Sold Quantity',
                             data: sales,
-                            backgroundColor: 'green'
+                            borderColor: 'green',
+                            backgroundColor: 'rgba(0,128,0,0.1)',
+                            tension: 0.4,
+                            fill: true
                         },
                         {
-                            label: 'RTO Orders',
+                            label: 'RTO Quantity',
                             data: rto,
-                            backgroundColor: 'red'
+                            borderColor: 'red',
+                            backgroundColor: 'rgba(255,0,0,0.1)',
+                            tension: 0.4,
+                            fill: true
                         }
                     ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + " pcs"; // 🔥 shows quantity
+                                }
+                            }
+                        }
+                    }
                 }
             });
+        }
 
+        // Load default
+        document.addEventListener("DOMContentLoaded", function() {
+            let select = document.getElementById('productSelect');
+            loadChart(select.value);
+
+            select.addEventListener('change', function() {
+                loadChart(this.value);
+            });
         });
     </script>
 @endsection

@@ -108,9 +108,9 @@
         <a href="{{ route('products.report') }}">
             <i class="bi bi-bar-chart"></i> Inventory Report
         </a>
-        <a href="{{ route('rto.report') }}">
+        <!--<a href="{{ route('rto.report') }}">
             <i class="bi bi-bar-chart"></i> RTO Report
-        </a>
+        </a>-->
         <form method="POST" action="{{ route('inventory.logout') }}" class="mt-4 px-3">
             @csrf
             <button class="btn btn-danger w-100">Logout</button>

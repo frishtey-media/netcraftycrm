@@ -1,15 +1,3 @@
-@php
-    $receiver = [
-        'name' => 'Ram Singh',
-        'surname' => 'Gill',
-        'address' => 'SCO-51, 2nd Floor Phase-3 Model Town',
-        'city' => 'Bathinda',
-        'state' => 'Punjab',
-        'pincode' => '151001',
-        'mobile' => '9780100226',
-    ];
-@endphp
-
 <!DOCTYPE html>
 <html>
 
@@ -55,6 +43,29 @@
 <body>
 
     @foreach ($orders as $order)
+        @php
+            if ($order->client_id == 7) {
+                $receiver = [
+                    'name' => 'Vivaeli',
+                    'surname' => '',
+                    'address' => 'SCO-51, Opposite Dadi Poti Park, Phase-3',
+                    'city' => 'Bathinda',
+                    'state' => 'Punjab',
+                    'pincode' => '151001',
+                    'mobile' => '7973204143',
+                ];
+            } else {
+                $receiver = [
+                    'name' => 'Ram Singh',
+                    'surname' => 'Gill',
+                    'address' => 'SCO-51, 2nd Floor Phase-3 Model Town',
+                    'city' => 'Bathinda',
+                    'state' => 'Punjab',
+                    'pincode' => '151001',
+                    'mobile' => '9780100226',
+                ];
+            }
+        @endphp
         <div class="page">
 
             {{-- Background --}}

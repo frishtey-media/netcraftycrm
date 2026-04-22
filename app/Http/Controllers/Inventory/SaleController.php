@@ -37,6 +37,8 @@ class SaleController extends Controller
 
         ));
     }
+
+
     public function salesreport(Request $request)
     {
         $query = SaleItem::with(['sale', 'product.warehouse', 'product.client']);
@@ -49,13 +51,24 @@ class SaleController extends Controller
             ]);
         }
 
+        // ✅ Product filter
+        if ($request->product_id) {
+            $query->where('product_id', $request->product_id);
+        }
+
         $sales = $query->orderBy('product_id')
             ->orderBy('created_at')
             ->get()
             ->groupBy('product_id');
 
-        return view('inventory.sales.report', compact('sales'));
+        // Send products for dropdown
+        $products = Product::all();
+
+        return view('inventory.sales.report', compact('sales', 'products'));
     }
+
+
+
     public function store(Request $request)
     {
         $request->validate([

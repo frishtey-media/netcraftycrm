@@ -18,12 +18,25 @@
                 <input type="date" name="to_date" value="{{ request('to_date') }}" class="form-control">
             </div>
 
+
             <div class="col-md-3">
-                <input type="text" name="product_name" value="{{ request('product_name') }}" placeholder="Search Product"
-                    class="form-control">
+                <select name="product_id" class="form-control">
+                    <option value="">All Products</option>
+                    @foreach ($allProducts as $product)
+                        <option value="{{ $product->id }}" {{ request('product_id') == $product->id ? 'selected' : '' }}>
+                            {{ $product->name }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
-            <div class="col-md-3 d-flex gap-2">
+
+            <!--  <div class="col-md-3">
+                    <input type="text" name="product_name" value="{{ request('product_name') }}" placeholder="Search Product"
+                        class="form-control">
+                </div>-->
+
+            <div class="col-md-3 mt-2 d-flex gap-2">
                 <button type="submit" class="btn btn-primary">Filter</button>
 
                 <a href="{{ route('products.report.export', request()->all()) }}" class="btn btn-success">
