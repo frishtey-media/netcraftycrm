@@ -44,6 +44,10 @@ return [
             'driver' => 'session',
             'provider' => 'inventory_users',
         ],
+        'calling_user' => [
+            'driver' => 'session',
+            'provider' => 'calling_users',
+        ],
     ],
 
     /*
@@ -71,6 +75,10 @@ return [
         'inventory_users' => [
             'driver' => 'eloquent',
             'model' => App\Models\InventoryUser::class,
+        ],
+        'calling_users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\CallingUser::class,
         ],
         // 'users' => [
         //     'driver' => 'database',

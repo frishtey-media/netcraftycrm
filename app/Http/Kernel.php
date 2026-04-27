@@ -40,12 +40,14 @@ class Kernel extends HttpKernel
     /**
      * Route middleware.
      */
-    protected $routeMiddleware = [
+    protected $middlewareAliases = [
         'auth' => \App\Http\Middleware\Authenticate::class,
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
 
-        // ✅ INVENTORY MIDDLEWARE
         'inventory.auth' => \App\Http\Middleware\InventoryAuth::class,
+
+        // 🔥 YOUR MIDDLEWARE
+        'calling_user' => \App\Http\Middleware\CallingUserAuth::class,
     ];
 }

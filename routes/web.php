@@ -17,6 +17,11 @@ use App\Http\Controllers\RTOController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MoneyorderExportController;
 use App\Http\Controllers\convertAmazonToTally;
+use App\Models\CallingOrder;
+use App\Http\Controllers\CallingUserAuthController;
+use App\Http\Controllers\CallingUserController;
+use App\Http\Controllers\CallingOrderController;
+
 
 require __DIR__ . '/inventory.php';
 
@@ -26,6 +31,7 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/ordersdashboard', [AdminController::class, 'ordersdashboard'])->name('ordersdashboard');
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])->name('labelsenders');
     Route::post('/labelsenders', [AdminController::class, 'storeLabelSenders'])->name('labelsenders.store');
     Route::get('/labelgenrate', [AdminController::class, 'labelgenrate'])->name('labelgenrate');
@@ -78,54 +84,58 @@ Route::middleware(['auth'])->group(function () {
     //Route::get('orders/label-pdf', [OrderController::class, 'labelPdf'])->name('orders.label.pdf');
     Route::get('orders/postoffice-excel', [PostOfficeExportController::class, 'postOfficeExcel'])->name('orders.postoffice.excel');
     Route::post('orders/moneyorder-pdf', [MoneyorderExportController::class, 'Moneyorder'])->name('orders.Moneyorder.pdf');
+    Route::post('/assign-orders', [AdminController::class, 'assignOrders'])->name('assign.orders');
+    Route::get('/assign', [AdminController::class, 'assignPage']);
+    Route::get('/calling-users', [CallingUserController::class, 'index'])->name('calling.users');
+    Route::post('/calling-users', [CallingUserController::class, 'store'])->name('calling.users.store');
+    Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
+    Route::get('/performance', [AdminController::class, 'performance'])
+        ->name('performance.dashboard');
+    Route::get('/test-order', function () {
 
-    Route::get('/test-pincode', function () {
-
-        $url = "https://api.postalpincode.in/pincode/125106";
-
-        $ch = curl_init();
-
-        curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 20,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
-            CURLOPT_USERAGENT => "Mozilla/5.0"
+        CallingOrder::create([
+            'client_id' => 1,
+            'order_id' => 'TEST123',
+            'order_date' => now(),
+            'product_name' => 'Test Product',
+            'quantity' => 1,
+            'customer_name' => 'Test User',
+            'customer_phone' => '9999999999',
+            'shipping_address' => 'Test Address',
+            'city' => 'Test City',
+            'amount' => 500,
         ]);
 
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            $error = curl_error($ch);
-            curl_close($ch);
-
-            return response()->json([
-                'status' => 'error',
-                'message' => $error
-            ]);
-        }
-
-        curl_close($ch);
-
-        $data = json_decode($response, true);
-
-        if (!$data) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Invalid JSON response'
-            ]);
-        }
-
-        return response()->json($data);
+        return "Inserted";
     });
 
 
     Route::get('/phpinfo', function () {
         phpinfo();
     });
+});
+Route::get('/calling/login', [CallingUserAuthController::class, 'showLogin'])->name('calling.login');
+Route::post('/calling/login', [CallingUserAuthController::class, 'login'])->name('calling.login.post');
+Route::middleware('calling_user')->group(function () {
+    Route::get('/calling/dashboard', [CallingUserAuthController::class, 'dashboard'])
+        ->name('calling.dashboard');
+    Route::get('/calling/orders', [CallingUserAuthController::class, 'orders'])
+        ->name('calling.orders');
+    Route::get('/calling/verified', [CallingUserAuthController::class, 'verified'])
+        ->name('calling.verified');
+    Route::get('/calling/not_reachable', [CallingUserAuthController::class, 'not_reachable'])
+        ->name('calling.not_reachable');
+    Route::get('/calling/verified', [CallingUserAuthController::class, 'verified'])->name('calling.verified');
+    Route::get('/calling/not-reachable', [CallingUserAuthController::class, 'notReachable'])->name('calling.not.reachable');
+    Route::post('/calling/update/{id}', [CallingUserAuthController::class, 'update'])
+        ->middleware('calling_user');
+    Route::post('/calling/statusupdate/{id}', [CallingUserAuthController::class, 'statusupdate'])
+        ->middleware('calling_user');
+    Route::get('/calling/manual-order', [CallingOrderController::class, 'create'])->name('calling.manual');
+    Route::post('/calling/manual-order', [CallingOrderController::class, 'store'])->name('calling.manual.store');
+    Route::get('/calling/whatsapp-orders', [CallingOrderController::class, 'whatsappOrders'])->name('calling.whatsapp');
+    Route::post('/calling/logout', [CallingUserAuthController::class, 'logout'])
+        ->name('calling.logout');
 });
 /*
 |--------------------------------------------------------------------------

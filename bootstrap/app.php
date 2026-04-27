@@ -11,11 +11,21 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-
         $middleware->alias([
+            'calling_user' => \App\Http\Middleware\CallingUserAuth::class,
             'inventory.auth' => \App\Http\Middleware\InventoryAuth::class,
         ]);
     })
+    ->withSchedule(function ($schedule) {
+        $schedule->command('sync:shopify-orders')
+            ->everyMinute()
+            ->withoutOverlapping();
+        //->withSchedule(function ($schedule) {
+        //   $schedule->command('sync:shopify-orders')
+        //      ->dailyAt('17:00') // 5 PM
+        //   ->withoutOverlapping();
+    })
+
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();
