@@ -91,6 +91,17 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
     Route::get('/performance', [AdminController::class, 'performance'])
         ->name('performance.dashboard');
+
+
+
+    Route::get('/staff-verified', [AdminController::class, 'staffVerified'])
+        ->name('admin.staff.verified');
+
+    Route::get('/staff-verified-export', [AdminController::class, 'staffVerifiedExport'])
+        ->name('admin.staff.verified.export');
+
+
+
     Route::get('/test-order', function () {
 
         CallingOrder::create([

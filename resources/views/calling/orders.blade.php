@@ -39,7 +39,7 @@
             border-radius: 6px;
         }
 
-        /* SCROLL CONTAINER */
+
         .client-scroll {
             display: flex;
             overflow-x: auto;

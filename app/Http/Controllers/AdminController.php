@@ -13,6 +13,8 @@ use Carbon\Carbon;
 use App\Models\CallingOrder;
 use App\Models\User;
 use App\Models\CallingUser;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\VerifiedOrdersExport;
 
 class AdminController extends Controller
 {
@@ -29,8 +31,65 @@ class AdminController extends Controller
         ]);
     }
 
+    public function staffVerified(Request $request)
+    {
+        $staffId = $request->staff_id;
 
+        $query = CallingOrder::where('assigned_to', $staffId)
+            ->where('status', 'verified')
+            ->where('is_exported', 0);
 
+        // ✅ DATE FILTER
+        if ($request->from && $request->to) {
+            $from = Carbon::parse($request->from)->startOfDay();
+            $to   = Carbon::parse($request->to)->endOfDay();
+
+            $query->whereBetween('updated_at', [$from, $to]);
+        }
+
+        // ✅ CLIENT FILTER (OUTSIDE DATE)
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->latest()->get();
+
+        return view('staff_verified', compact('orders', 'staffId'));
+    }
+    public function staffVerifiedExport(Request $request)
+    {
+        $staffId = $request->staff_id;
+
+        $query = CallingOrder::where('assigned_to', $staffId)
+            ->where('status', 'verified')
+            ->where('is_exported', 0);
+
+        // ✅ DATE FILTER
+        if ($request->from && $request->to) {
+            $from = Carbon::parse($request->from)->startOfDay();
+            $to   = Carbon::parse($request->to)->endOfDay();
+
+            $query->whereBetween('updated_at', [$from, $to]);
+        }
+
+        // ✅ CLIENT FILTER (FIXED POSITION)
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->get();
+
+        // 🔥 UPDATE EXPORT STATUS
+        if ($orders->count()) {
+            CallingOrder::whereIn('id', $orders->pluck('id'))
+                ->update(['is_exported' => 1]);
+        }
+
+        return Excel::download(
+            new VerifiedOrdersExport($orders),
+            'staff_verified_' . now()->format('d_m_Y_H_i') . '.xlsx'
+        );
+    }
     public function ordersdashboard()
     {
         $clients = Client::all();
@@ -62,7 +121,6 @@ class AdminController extends Controller
 
     public function performance(Request $request)
     {
-        // 🔥 DATE CHECK
         $hasFilter = $request->from && $request->to;
 
         $from = $hasFilter
@@ -73,7 +131,6 @@ class AdminController extends Controller
             ? Carbon::parse($request->to)->endOfDay()
             : null;
 
-        // 🔥 STAFF DATA WITH GLOBAL FILTER
         $staffs = CallingUser::withCount([
 
             // TOTAL
@@ -83,9 +140,10 @@ class AdminController extends Controller
                 }
             },
 
-            // VERIFIED
+            // ✅ VERIFIED (FIXED)
             'orders as verified_orders' => function ($q) use ($from, $to, $hasFilter) {
                 $q->where('status', 'verified');
+                //->where('is_exported', 0); // 🔥 IMPORTANT FIX
 
                 if ($hasFilter) {
                     $q->whereBetween('updated_at', [$from, $to]);
@@ -94,7 +152,7 @@ class AdminController extends Controller
 
             // NOT REACHABLE
             'orders as not_reachable_orders' => function ($q) use ($from, $to, $hasFilter) {
-                $q->whereRaw("LOWER(status) = 'not_reachable'");
+                $q->where('status', 'not_reachable');
 
                 if ($hasFilter) {
                     $q->whereBetween('updated_at', [$from, $to]);
@@ -113,7 +171,7 @@ class AdminController extends Controller
         ])->get();
 
 
-        // 🔥 CLIENT DATA ALSO SAME FILTER
+        // ✅ CLIENT DATA FIX
         $clientQuery = CallingOrder::with('client')
             ->whereNotNull('assigned_to');
 
@@ -135,7 +193,7 @@ class AdminController extends Controller
             ];
         }
 
-        return view('/performance', compact(
+        return view('performance', compact(
             'staffs',
             'from',
             'to',

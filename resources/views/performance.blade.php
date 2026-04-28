@@ -18,58 +18,54 @@
             </div>
         </div>
 
-        <!-- FILTER CARD -->
+        <!-- FILTER -->
         <div class="card shadow-sm mb-4">
             <div class="card-body">
-
                 <form method="GET" class="row g-3 align-items-end">
 
                     <div class="col-md-3 col-6">
-                        <label class="form-label">From Date</label>
+                        <label>From</label>
                         <input type="date" name="from" value="{{ $from }}" class="form-control">
                     </div>
 
                     <div class="col-md-3 col-6">
-                        <label class="form-label">To Date</label>
+                        <label>To</label>
                         <input type="date" name="to" value="{{ $to }}" class="form-control">
                     </div>
 
                     <div class="col-md-2 col-12">
-                        <button class="btn btn-primary w-100">
-                            🔍 Apply Filter
-                        </button>
+                        <button class="btn btn-primary w-100">Apply</button>
                     </div>
 
                 </form>
-
             </div>
         </div>
 
-        <!-- SUMMARY CARDS -->
+        <!-- SUMMARY -->
+        @php
+            $totalOrders = $staffs->sum('total_orders');
+            $totalVerified = $staffs->sum('verified_orders');
+            $totalPending = $staffs->sum('pending_orders');
+        @endphp
+
         <div class="row mb-4">
 
-            @php
-                $totalOrders = $staffs->sum('total_orders');
-                $totalVerified = $staffs->sum('verified_orders');
-                $totalPending = $staffs->sum('pending_orders');
-            @endphp
-
             <div class="col-md-4 col-6">
-                <div class="card bg-primary text-white shadow-sm p-3">
+                <div class="card bg-primary text-white p-3">
                     <h6>Total Orders</h6>
                     <h3>{{ $totalOrders }}</h3>
                 </div>
             </div>
 
             <div class="col-md-4 col-6">
-                <div class="card bg-success text-white shadow-sm p-3">
+                <div class="card bg-success text-white p-3">
                     <h6>Verified</h6>
                     <h3>{{ $totalVerified }}</h3>
                 </div>
             </div>
 
             <div class="col-md-4 col-12 mt-3 mt-md-0">
-                <div class="card bg-warning text-dark shadow-sm p-3">
+                <div class="card bg-warning text-dark p-3">
                     <h6>Pending</h6>
                     <h3>{{ $totalPending }}</h3>
                 </div>
@@ -79,29 +75,26 @@
 
         <!-- TABLE -->
         <div class="card shadow-sm">
-            <div class="card-header fw-bold">
-                Staff Report
-            </div>
+            <div class="card-header fw-bold">Staff Report</div>
 
             <div class="table-responsive">
-
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle">
 
                     <thead class="table-dark">
                         <tr>
-                            <th>👤 Staff</th>
+                            <th>Staff</th>
                             <th>Clients</th>
                             <th>Total</th>
-                            <th class="text-success">Verified</th>
-                            <th class="text-warning">Pending</th>
-                            <th class="text-danger">Not Reachable</th>
-                            <th>Success %</th>
+                            <th>Verified</th>
+                            <th>Pending</th>
+                            <th>Not Reachable</th>
+                            <th>%</th>
                         </tr>
                     </thead>
 
                     <tbody>
 
-                        @forelse ($staffs as $staff)
+                        @foreach ($staffs as $staff)
                             @php
                                 $success =
                                     $staff->total_orders > 0
@@ -111,9 +104,8 @@
 
                             <tr>
 
-                                <td class="fw-semibold">
-                                    {{ $staff->name }}
-                                </td>
+                                <td>{{ $staff->name }}</td>
+
                                 <td>
                                     @if (isset($clientWise[$staff->id]))
                                         @foreach ($clientWise[$staff->id] as $c)
@@ -121,20 +113,25 @@
                                                 {{ $c['client'] }} ({{ $c['total'] }})
                                             </div>
                                         @endforeach
-                                    @else
-                                        <span class="text-muted">No Data</span>
                                     @endif
                                 </td>
+
                                 <td>
                                     <span class="badge bg-secondary">
                                         {{ $staff->total_orders }}
                                     </span>
                                 </td>
 
+                                <!-- ✅ CLICKABLE VERIFIED -->
                                 <td>
-                                    <span class="badge bg-success">
+                                    <a href="{{ route('admin.staff.verified', [
+                                        'staff_id' => $staff->id,
+                                        'from' => request('from'),
+                                        'to' => request('to'),
+                                    ]) }}"
+                                        class="badge bg-success text-decoration-none">
                                         {{ $staff->verified_orders }}
-                                    </span>
+                                    </a>
                                 </td>
 
                                 <td>
@@ -150,28 +147,15 @@
                                 </td>
 
                                 <td>
-                                    <div class="progress" style="height: 8px;">
-                                        <div class="progress-bar bg-info" style="width: {{ $success }}%">
-                                        </div>
-                                    </div>
                                     <small>{{ $success }}%</small>
                                 </td>
 
                             </tr>
-
-                        @empty
-
-                            <tr>
-                                <td colspan="6" class="text-center p-4">
-                                    No data found
-                                </td>
-                            </tr>
-                        @endforelse
+                        @endforeach
 
                     </tbody>
 
                 </table>
-
             </div>
         </div>
 
