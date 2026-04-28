@@ -3,9 +3,56 @@
 @section('title', 'Verify Orders')
 
 @section('content')
+    <style>
+        .client-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .client-chip {
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: #f1f1f1;
+            text-decoration: none;
+            color: #333;
+            white-space: nowrap;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+
+        .client-chip.active {
+            background: #0d6efd;
+            color: #fff;
+        }
+
+        .client-chip:hover {
+            background: #0d6efd;
+            color: #fff;
+        }
+    </style>
 
     <!-- ================= DESKTOP ================= -->
     <div class="table-responsive d-none d-md-block">
+        <div class="client-scroll mb-3">
+
+            <!-- ALL -->
+            <a href="{{ route('calling.verified') }}" class="client-chip {{ request('client_id') ? '' : 'active' }}">
+                All
+            </a>
+
+            <!-- CLIENT LOOP -->
+            @foreach ($clients as $row)
+                <a href="{{ route('calling.verified', ['client_id' => $row->client_id]) }}"
+                    class="client-chip {{ request('client_id') == $row->client_id ? 'active' : '' }}">
+
+                    {{ $row->client->client_name ?? 'Client' }}
+                    ({{ $row->total }})
+                </a>
+            @endforeach
+
+        </div>
 
         <table id="ordersTable" class="table table-hover align-middle">
 
@@ -65,7 +112,24 @@
 
     <!-- ================= MOBILE ================= -->
     <div class="d-block d-md-none">
+        <div class="client-scroll mb-3">
 
+            <!-- ALL -->
+            <a href="{{ route('calling.verified') }}" class="client-chip {{ request('client_id') ? '' : 'active' }}">
+                All
+            </a>
+
+            <!-- CLIENT LOOP -->
+            @foreach ($clients as $row)
+                <a href="{{ route('calling.verified', ['client_id' => $row->client_id]) }}"
+                    class="client-chip {{ request('client_id') == $row->client_id ? 'active' : '' }}">
+
+                    {{ $row->client->client_name ?? 'Client' }}
+                    ({{ $row->total }})
+                </a>
+            @endforeach
+
+        </div>
         @foreach ($orders as $order)
             <div class="card order-card mb-3">
 

@@ -123,15 +123,15 @@ class CallingUserAuthController extends Controller
     {
         $userId = Auth::guard('calling_user')->id();
 
-        // 🔥 ONLY THOSE CLIENTS JINKE ORDERS ASSIGNED HAIN
         $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
             ->where('assigned_to', $userId)
+            ->where('status', 'pending')
             ->groupBy('client_id')
-            ->with('client') // relation required
+            ->with('client')
             ->get();
 
-        // 🔥 FILTER
-        $query = CallingOrder::where('assigned_to', $userId);
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('status', 'pending');
 
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
@@ -139,33 +139,71 @@ class CallingUserAuthController extends Controller
 
         $orders = $query->latest()->get();
 
-        return view('calling.orders', compact('orders', 'clients'));
+        return view('calling.orders', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'Pending',
+            'statusClass' => 'danger',
+            'statusCount' => $orders->count()
+        ]);
     }
 
 
-
-
-    public function verified()
+    public function verified(Request $request)
     {
         $userId = Auth::guard('calling_user')->id();
 
-        $orders = CallingOrder::where('assigned_to', $userId)
+        $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
+            ->where('assigned_to', $userId)
             ->where('status', 'verified')
-            ->latest()
+            ->groupBy('client_id')
+            ->with('client')
             ->get();
 
-        return view('calling.verified', compact('orders'));
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('status', 'verified');
+
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->latest()->get();
+
+        return view('calling.verified', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'Verified',
+            'statusClass' => 'success',
+            'statusCount' => $orders->count()
+        ]);
     }
-    public function notReachable()
+    public function notReachable(Request $request)
     {
         $userId = Auth::guard('calling_user')->id();
 
-        $orders = CallingOrder::where('assigned_to', $userId)
+        $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
+            ->where('assigned_to', $userId)
             ->where('status', 'not_reachable')
-            ->latest()
+            ->groupBy('client_id')
+            ->with('client')
             ->get();
 
-        return view('calling.not_reachable', compact('orders'));
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('status', 'not_reachable');
+
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->latest()->get();
+
+        return view('calling.not_reachable', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'Not Reachable',
+            'statusClass' => 'secondary',
+            'statusCount' => $orders->count()
+        ]);
     }
     public function update(Request $request, $id)
     {

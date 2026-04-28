@@ -7,19 +7,22 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\CallingOrder;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Client;
 
 class CallingOrderController extends Controller
 {
     public function create()
     {
-        return view('calling.manual_order');
+        $clients = Client::all();
+
+        return view('calling.manual_order', compact('clients'));
     }
 
     public function store(Request $request)
     {
         CallingOrder::create([
 
-            'client_id' => 1, // 🔥 change if needed
+            'client_id' => $request->client_id,
 
             'order_id' => rand(10000, 99999),
 
@@ -41,7 +44,7 @@ class CallingOrderController extends Controller
 
             'status' => 'pending',
             'order_source' => 'whatsapp',
-            // 🔥 assign to current staff
+
             'assigned_to' => Auth::guard('calling_user')->id(),
         ]);
 

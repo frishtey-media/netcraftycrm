@@ -24,6 +24,7 @@ class CallingOrder extends Model
         'city',
         'amount',
         'status',
+        'order_source',
         'assigned_to'
     ];
     public function client()

@@ -30,9 +30,17 @@ class SyncShopifyOrders extends Command
                 continue;
             }
 
-            // 🔥 FIX: Wider range (avoid missing orders)
-            $start = Carbon::now()->subDays(3)->startOfDay()->toIso8601String();
-            $end   = Carbon::now()->toIso8601String();
+
+
+            // IST time define करो
+            $startIST = Carbon::yesterday('Asia/Kolkata')->setTime(17, 0, 0);
+            $endIST   = Carbon::now('Asia/Kolkata');
+
+            // Shopify के लिए UTC में convert करो
+            $start = $startIST->copy()->utc()->toIso8601String();
+            $end   = $endIST->copy()->utc()->toIso8601String();
+            // $start = Carbon::now()->subDays(3)->startOfDay()->toIso8601String();
+            // $end   = Carbon::now()->toIso8601String();
 
             $url = "https://{$client->shopify_store_url}/admin/api/2024-04/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
 

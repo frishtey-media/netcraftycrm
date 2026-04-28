@@ -19,7 +19,19 @@
             @csrf
 
             <div class="row">
+                <div class="col-md-6 mb-2">
+                    <label>Select Client</label>
+                    <select name="client_id" class="form-control" required>
+                        <option value="">-- Select Client --</option>
 
+                        @foreach ($clients as $client)
+                            <option value="{{ $client->id }}">
+                                {{ $client->client_name }}
+                            </option>
+                        @endforeach
+
+                    </select>
+                </div>
                 <div class="col-md-6 mb-2">
                     <label>Name</label>
                     <input type="text" name="customer_name" class="form-control" required>
@@ -30,7 +42,7 @@
                     <input type="text" name="customer_phone" class="form-control" required>
                 </div>
 
-                <div class="col-md-12 mb-2">
+                <div class="col-md-6 mb-2">
                     <label>Product</label>
                     <input type="text" name="product_name" class="form-control" required>
                 </div>
@@ -54,12 +66,6 @@
                     <label>Pincode</label>
                     <input type="text" name="pincode" class="form-control">
                 </div>
-
-                <div class="col-md-12 mb-2">
-                    <label>Address</label>
-                    <textarea name="address" class="form-control"></textarea>
-                </div>
-
                 <div class="col-md-6 mb-2">
                     <label>Amount</label>
                     <input type="number" name="amount" class="form-control">
@@ -72,7 +78,10 @@
                         <option value="paid">Paid</option>
                     </select>
                 </div>
-
+                <div class="col-md-12 mb-2">
+                    <label>Address</label>
+                    <textarea name="address" class="form-control"></textarea>
+                </div>
             </div>
 
             <button class="btn btn-primary w-100 mt-3">Submit Order</button>

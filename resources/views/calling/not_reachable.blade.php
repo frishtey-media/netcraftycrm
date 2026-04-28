@@ -4,6 +4,52 @@
 
 @section('content')
 
+    <style>
+        .client-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .client-chip {
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: #f1f1f1;
+            text-decoration: none;
+            color: #333;
+            white-space: nowrap;
+            font-size: 13px;
+            transition: 0.3s;
+        }
+
+        .client-chip.active {
+            background: #dc3545;
+            color: #fff;
+        }
+
+        .client-chip:hover {
+            background: #dc3545;
+            color: #fff;
+        }
+    </style>
+
+    <!-- 🔥 CLIENT FILTER -->
+    <div class="client-scroll mb-3">
+
+        <a href="{{ route('calling.not.reachable') }}" class="client-chip {{ request('client_id') ? '' : 'active' }}">
+            All
+        </a>
+
+        @foreach ($clients as $row)
+            <a href="{{ route('calling.not.reachable', ['client_id' => $row->client_id]) }}"
+                class="client-chip {{ request('client_id') == $row->client_id ? 'active' : '' }}">
+                {{ $row->client->client_name ?? 'Client' }} ({{ $row->total }})
+            </a>
+        @endforeach
+
+    </div>
+
     <!-- ================= DESKTOP ================= -->
     <div class="table-responsive d-none d-md-block">
 
@@ -31,7 +77,7 @@
                         <td>{{ $order->product_name }}</td>
 
                         <td>
-                            <a href="tel:{{ $order->customer_phone }}" class="text-primary">
+                            <a href="tel:{{ $order->customer_phone }}">
                                 {{ $order->customer_phone }}
                             </a>
                         </td>
@@ -42,13 +88,7 @@
                         <td>{{ $order->shipping_address }}</td>
 
                         <td>
-                            @if ($order->status == 'verified')
-                                <span class="badge bg-success">Verified</span>
-                            @elseif($order->status == 'pending')
-                                <span class="badge bg-warning text-dark">Pending</span>
-                            @else
-                                <span class="badge bg-danger">Not Reachable</span>
-                            @endif
+                            <span class="badge bg-danger">Not Reachable</span>
                         </td>
                     </tr>
                 @endforeach
@@ -56,7 +96,6 @@
 
         </table>
     </div>
-
 
     <!-- ================= MOBILE ================= -->
     <div class="d-block d-md-none">
@@ -66,23 +105,13 @@
 
                 <div class="card-body">
 
-                    <!-- TOP -->
                     <div class="d-flex justify-content-between">
                         <strong>#{{ $order->order_id }}</strong>
-
-                        @if ($order->status == 'pending')
-                            <span class="badge bg-warning">Pending</span>
-                        @elseif($order->status == 'verified')
-                            <span class="badge bg-success">Verified</span>
-                        @else
-                            <span class="badge bg-danger">Not Reachable</span>
-                        @endif
+                        <span class="badge bg-danger">Not Reachable</span>
                     </div>
 
-                    <!-- CUSTOMER -->
                     <div class="fw-semibold mt-1">{{ $order->customer_name }}</div>
 
-                    <!-- DETAILS -->
                     <div class="mt-2 small">
 
                         <div><strong>Product:</strong> {{ $order->product_name }}</div>
@@ -105,7 +134,6 @@
 
                     </div>
 
-                    <!-- ACTION -->
                     <div class="mt-3 d-flex gap-2">
                         <a href="tel:{{ $order->customer_phone }}" class="btn btn-success btn-sm w-50">
                             📞 Call
@@ -123,10 +151,9 @@
 
     </div>
 
-
     <!-- ================= MODALS ================= -->
     @foreach ($orders as $order)
-        <div class="modal fade" id="editModal{{ $order->id }}" tabindex="-1">
+        <div class="modal fade" id="editModal{{ $order->id }}">
             <div class="modal-dialog">
                 <div class="modal-content p-3">
 
@@ -135,26 +162,15 @@
                     <form method="POST" action="/calling/update/{{ $order->id }}">
                         @csrf
 
-                        <label>Customer Name</label>
                         <input name="customer_name" value="{{ $order->customer_name }}" class="form-control mb-2">
-
-                        <label>Phone</label>
                         <input name="customer_phone" value="{{ $order->customer_phone }}" class="form-control mb-2">
-
-                        <label>City</label>
                         <input name="city" value="{{ $order->city }}" class="form-control mb-2">
-
-                        <label>State</label>
                         <input name="state" value="{{ $order->state }}" class="form-control mb-2">
-
-                        <label>Pincode</label>
                         <input name="pincode" value="{{ $order->pincode }}" class="form-control mb-2">
 
-                        <label>Address</label>
                         <textarea name="shipping_address" class="form-control mb-2">{{ $order->shipping_address }}</textarea>
 
                         <button class="btn btn-success w-100">Update</button>
-
                     </form>
 
                 </div>
@@ -166,31 +182,17 @@
 
 
 @push('scripts')
-    <!-- jQuery + DataTable -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
     <script>
         $(document).ready(function() {
-            $('#ordersTable').DataTable({
-                pageLength: 10,
-                responsive: true
-            });
+
+            if (!$.fn.DataTable.isDataTable('#ordersTable')) {
+                $('#ordersTable').DataTable({
+                    pageLength: 10,
+                    responsive: true,
+                    destroy: true
+                });
+            }
+
         });
     </script>
 @endpush
-
-
-<style>
-    .card {
-        border-radius: 12px;
-    }
-
-    .badge {
-        font-size: 11px;
-        padding: 5px 10px;
-    }
-</style>

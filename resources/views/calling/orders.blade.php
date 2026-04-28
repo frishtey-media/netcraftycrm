@@ -298,12 +298,21 @@
     <script>
         $(document).ready(function() {
 
-            $('#ordersTable').DataTable({
-                pageLength: 10,
-                searching: true,
-                ordering: true,
-                responsive: true
-            });
+            let table = $('#ordersTable');
+
+            if (table.length) {
+
+                if ($.fn.DataTable.isDataTable(table)) {
+                    table.DataTable().destroy();
+                }
+
+                table.DataTable({
+                    pageLength: 10,
+                    searching: true,
+                    ordering: true,
+                    responsive: true
+                });
+            }
 
         });
     </script>

@@ -173,9 +173,8 @@
             </button>
 
             <h5 class="mb-0">@yield('title')</h5>
-
-            <span class="badge bg-danger">
-                Pending: {{ isset($orders) ? count($orders) : 0 }}
+            <span class="badge bg-{{ $statusClass ?? 'danger' }}">
+                {{ $statusLabel ?? 'Orders' }}: {{ $statusCount ?? 0 }}
             </span>
 
         </div>
@@ -191,13 +190,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        $('#ordersTable').DataTable({
-            pageLength: 10,
-            ordering: true,
-            searching: true,
-            responsive: true,
-            autoWidth: false
-        });
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
 
