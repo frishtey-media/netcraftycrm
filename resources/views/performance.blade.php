@@ -46,28 +46,38 @@
             $totalOrders = $staffs->sum('total_orders');
             $totalVerified = $staffs->sum('verified_orders');
             $totalPending = $staffs->sum('pending_orders');
+
+            $totalWA = $staffs->sum('wa_total');
+            $verifiedWA = $staffs->sum('wa_verified');
         @endphp
 
         <div class="row mb-4">
 
-            <div class="col-md-4 col-6">
+            <div class="col-md-3 col-6">
                 <div class="card bg-primary text-white p-3">
                     <h6>Total Orders</h6>
                     <h3>{{ $totalOrders }}</h3>
                 </div>
             </div>
 
-            <div class="col-md-4 col-6">
+            <div class="col-md-3 col-6">
                 <div class="card bg-success text-white p-3">
                     <h6>Verified</h6>
                     <h3>{{ $totalVerified }}</h3>
                 </div>
             </div>
 
-            <div class="col-md-4 col-12 mt-3 mt-md-0">
+            <div class="col-md-3 col-6">
                 <div class="card bg-warning text-dark p-3">
                     <h6>Pending</h6>
                     <h3>{{ $totalPending }}</h3>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-6">
+                <div class="card bg-dark text-white p-3">
+                    <h6>WA Leads</h6>
+                    <h3>{{ $totalWA }}</h3>
                 </div>
             </div>
 
@@ -88,7 +98,11 @@
                             <th>Verified</th>
                             <th>Pending</th>
                             <th>Not Reachable</th>
-                            <th>%</th>
+                            <th>WA Total</th>
+                            <th>WA Verified</th>
+                            <th>WA Pending</th>
+                            <th>Combined %</th>
+                            <th>Order %</th>
                         </tr>
                     </thead>
 
@@ -100,6 +114,12 @@
                                     $staff->total_orders > 0
                                         ? round(($staff->verified_orders / $staff->total_orders) * 100, 1)
                                         : 0;
+
+                                $combinedTotal = $staff->total_orders + $staff->wa_total;
+                                $combinedVerified = $staff->verified_orders + $staff->wa_verified;
+
+                                $combinedRate =
+                                    $combinedTotal > 0 ? round(($combinedVerified / $combinedTotal) * 100, 1) : 0;
                             @endphp
 
                             <tr>
@@ -116,13 +136,8 @@
                                     @endif
                                 </td>
 
-                                <td>
-                                    <span class="badge bg-secondary">
-                                        {{ $staff->total_orders }}
-                                    </span>
-                                </td>
+                                <td><span class="badge bg-secondary">{{ $staff->total_orders }}</span></td>
 
-                                <!-- ✅ CLICKABLE VERIFIED -->
                                 <td>
                                     <a href="{{ route('admin.staff.verified', [
                                         'staff_id' => $staff->id,
@@ -134,21 +149,19 @@
                                     </a>
                                 </td>
 
-                                <td>
-                                    <span class="badge bg-warning text-dark">
-                                        {{ $staff->pending_orders }}
-                                    </span>
-                                </td>
+                                <td><span class="badge bg-warning text-dark">{{ $staff->pending_orders }}</span></td>
 
-                                <td>
-                                    <span class="badge bg-danger">
-                                        {{ $staff->not_reachable_orders }}
-                                    </span>
-                                </td>
+                                <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
 
-                                <td>
-                                    <small>{{ $success }}%</small>
-                                </td>
+                                <td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
+
+                                <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
+
+                                <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
+
+                                <td><strong>{{ $combinedRate }}%</strong></td>
+
+                                <td><small>{{ $success }}%</small></td>
 
                             </tr>
                         @endforeach

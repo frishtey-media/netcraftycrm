@@ -21,14 +21,15 @@ use App\Models\CallingOrder;
 use App\Http\Controllers\CallingUserAuthController;
 use App\Http\Controllers\CallingUserController;
 use App\Http\Controllers\CallingOrderController;
-
+use App\Http\Controllers\WhatsAppController;
+use App\Http\Controllers\StaffChatController;
 
 require __DIR__ . '/inventory.php';
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
-
+Route::match(['get', 'post'], '/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/ordersdashboard', [AdminController::class, 'ordersdashboard'])->name('ordersdashboard');
@@ -92,15 +93,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/performance', [AdminController::class, 'performance'])
         ->name('performance.dashboard');
 
+    // GET → form open
+    Route::get('/client_assign_staff', [ClientController::class, 'clientStaffForm'])
+        ->name('client_staff_form');
 
+    // POST → save mapping
+    Route::post('/client_assign_staff.', [ClientController::class, 'saveClientStaff'])
+        ->name('client_staff_save');
 
     Route::get('/staff-verified', [AdminController::class, 'staffVerified'])
         ->name('admin.staff.verified');
 
     Route::get('/staff-verified-export', [AdminController::class, 'staffVerifiedExport'])
         ->name('admin.staff.verified.export');
-
-
 
     Route::get('/test-order', function () {
 
@@ -147,6 +152,13 @@ Route::middleware('calling_user')->group(function () {
     Route::get('/calling/whatsapp-orders', [CallingOrderController::class, 'whatsappOrders'])->name('calling.whatsapp');
     Route::post('/calling/logout', [CallingUserAuthController::class, 'logout'])
         ->name('calling.logout');
+
+
+    Route::get('/calling/inbox', [StaffChatController::class, 'inbox'])->name('calling.inbox');
+
+    Route::get('/calling/chat/{id}', [StaffChatController::class, 'chat'])->name('calling.chat');
+
+    Route::post('/calling/send', [StaffChatController::class, 'send'])->name('calling.send');
 });
 /*
 |--------------------------------------------------------------------------

@@ -11,8 +11,6 @@
             justify-content: space-between;
             transition: all 0.3s ease;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-            text-decoration: none;
-            color: inherit;
         }
 
         .dashboard-card:hover {
@@ -22,10 +20,6 @@
 
         .card-green {
             background: linear-gradient(135deg, #dff3ea, #c8eadb);
-        }
-
-        .card-red {
-            background: linear-gradient(135deg, #fde2e2, #f9caca);
         }
 
         .card-icon {
@@ -42,16 +36,13 @@
             font-size: 30px;
             font-weight: 700;
         }
-
-        .action-card {
-            cursor: pointer;
-        }
     </style>
 
-    <div class="row g-4">
+    <div class="container">
 
-        {{-- Unused Barcodes --}}
         <div class="row g-4">
+
+            {{-- ORDERS CARDS --}}
             @foreach ($ordersData as $data)
                 <div class="col-md-4">
                     <div class="dashboard-card card-green"
@@ -59,51 +50,57 @@
 
                         <div>
                             <div class="card-title">{{ $data['client_name'] }}</div>
-                            <div class="card-count">{{ $data['total_orders'] }} Orders</div>
+                            <div class="card-count">{{ $data['total_orders'] }}</div>
+                            <small>Pending Orders</small>
                         </div>
 
                         <i class="bi bi-cart-check card-icon"></i>
                     </div>
                 </div>
             @endforeach
+
         </div>
-        <div class="modal fade" id="assignModal">
-            <div class="modal-dialog">
-                <div class="modal-content p-3">
 
-                    <h5>Assign Orders</h5>
+    </div>
 
-                    <p>Total Orders: <strong id="totalOrders"></strong></p>
+    {{-- ASSIGN MODAL --}}
+    <div class="modal fade" id="assignModal">
+        <div class="modal-dialog">
+            <div class="modal-content p-3">
 
-                    <form method="POST" action="{{ route('assign.orders') }}">
-                        @csrf
+                <h5>Assign Orders</h5>
 
-                        <input type="hidden" name="client_id" id="client_id">
+                <p>Total Orders: <strong id="totalOrders"></strong></p>
 
-                        @foreach ($staffs as $staff)
-                            <div class="d-flex justify-content-between mb-2">
-                                <label>{{ $staff->name }}</label>
+                <form method="POST" action="{{ route('assign.orders') }}">
+                    @csrf
 
-                                <input type="number" name="assign[{{ $staff->id }}]" class="form-control w-25"
-                                    min="0" placeholder="0">
-                            </div>
-                        @endforeach
+                    <input type="hidden" name="client_id" id="client_id">
 
-                        <button class="btn btn-primary mt-3 w-100">Assign Orders</button>
-                    </form>
+                    @foreach ($allStaff as $staff)
+                        <div class="d-flex justify-content-between mb-2">
+                            <label>{{ $staff->name }}</label>
 
-                </div>
+                            <input type="number" name="assign[{{ $staff->id }}]" class="form-control w-25"
+                                min="0" placeholder="0">
+                        </div>
+                    @endforeach
+
+                    <button class="btn btn-primary mt-3 w-100">
+                        Assign Orders
+                    </button>
+                </form>
+
             </div>
         </div>
     </div>
+
     <script>
         function openAssignModal(clientId, totalOrders) {
-
             document.getElementById('client_id').value = clientId;
             document.getElementById('totalOrders').innerText = totalOrders;
 
-            let modal = new bootstrap.Modal(document.getElementById('assignModal'));
-            modal.show();
+            new bootstrap.Modal(document.getElementById('assignModal')).show();
         }
     </script>
 @endsection

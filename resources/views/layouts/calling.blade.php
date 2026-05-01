@@ -139,6 +139,10 @@
             <i class="bi bi-telephone-x"></i> Not Reachable
         </a>
 
+        <a href="{{ route('calling.inbox') }}" class="menu-link">
+            <i class="bi bi-whatsapp text-success"></i> Whatsapp Inbox
+        </a>
+
         <a href="{{ route('calling.manual') }}" class="menu-link">
             <i class="bi bi-whatsapp text-success"></i> Add WhatsApp Order
         </a>

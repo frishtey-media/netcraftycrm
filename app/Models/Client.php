@@ -25,4 +25,17 @@ class Client extends Model
     {
         return $this->hasMany(ClientProduct::class);
     }
+    public function orders()
+    {
+        return $this->hasMany(CallingOrder::class, 'client_id');
+    }
+    public function staffs()
+    {
+        return $this->belongsToMany(
+            CallingUser::class,
+            'client_staff',
+            'client_id',
+            'staff_id'
+        );
+    }
 }

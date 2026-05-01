@@ -15,6 +15,8 @@ use App\Models\User;
 use App\Models\CallingUser;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\VerifiedOrdersExport;
+use Illuminate\Support\Facades\DB;
+use App\Models\Conversation;
 
 class AdminController extends Controller
 {
@@ -92,94 +94,99 @@ class AdminController extends Controller
     }
     public function ordersdashboard()
     {
-        $clients = Client::all();
-        $ordersData = [];
+        $from = Carbon::yesterday()->startOfDay();
+        $to   = Carbon::now();
 
-        foreach ($clients as $client) {
-
-            $totalOrders = CallingOrder::where('client_id', $client->id)
-                ->whereNull('assigned_to')
-                ->where('status', 'pending')
-                ->whereBetween('order_date', [
-                    Carbon::yesterday()->startOfDay(),
-                    Carbon::now()
-                ])
-                ->count();
-
-            $ordersData[] = [
+        // 🔥 CLIENTS WITH PENDING ORDERS (OPTIMIZED)
+        $ordersData = Client::withCount([
+            'orders as total_orders' => function ($q) use ($from, $to) {
+                $q->whereNull('assigned_to')
+                    ->where('status', 'pending')
+                    ->whereBetween('order_date', [$from, $to]);
+            }
+        ])->get()->map(function ($client) {
+            return [
                 'client_name' => $client->client_name,
-                'client_id' => $client->id,
-                'total_orders' => $totalOrders,
+                'client_id'   => $client->id,
+                'total_orders' => $client->total_orders
             ];
-        }
+        });
 
+        // 🔥 WHATSAPP CLIENT-WISE (DATE FILTER ADDED)
+        $waClients = Conversation::select('client_id', DB::raw('COUNT(*) as total'))
+            ->whereBetween('updated_at', [$from, $to])
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
 
-        $staffs = CallingUser::where('status', 1)->get();
+        // 🔥 STAFF-WISE WA PERFORMANCE
+        $staff = Conversation::select('assigned_to', DB::raw('COUNT(*) as total'))
+            ->whereBetween('updated_at', [$from, $to])
+            ->groupBy('assigned_to')
+            ->with('staff')
+            ->get();
 
-        return view('ordersdashboard', compact('ordersData', 'staffs'));
+        return view('ordersdashboard', [
+            'ordersData' => $ordersData,
+            'waClients'  => $waClients,
+            'staff'      => $staff,
+            'allStaff'   => CallingUser::all()
+        ]);
     }
 
     public function performance(Request $request)
     {
-        $hasFilter = $request->from && $request->to;
+        $from = Carbon::parse($request->from ?? now())->startOfDay();
+        $to   = Carbon::parse($request->to ?? now())->endOfDay();
 
-        $from = $hasFilter
-            ? Carbon::parse($request->from)->startOfDay()
-            : null;
-
-        $to = $hasFilter
-            ? Carbon::parse($request->to)->endOfDay()
-            : null;
-
+        // ================= ORDERS =================
         $staffs = CallingUser::withCount([
 
-            // TOTAL
-            'orders as total_orders' => function ($q) use ($from, $to, $hasFilter) {
-                if ($hasFilter) {
-                    $q->whereBetween('updated_at', [$from, $to]);
-                }
+            'orders as total_orders' => function ($q) use ($from, $to) {
+                $q->whereBetween('updated_at', [$from, $to]);
             },
 
-            // ✅ VERIFIED (FIXED)
-            'orders as verified_orders' => function ($q) use ($from, $to, $hasFilter) {
-                $q->where('status', 'verified');
-                //->where('is_exported', 0); // 🔥 IMPORTANT FIX
-
-                if ($hasFilter) {
-                    $q->whereBetween('updated_at', [$from, $to]);
-                }
+            'orders as verified_orders' => function ($q) use ($from, $to) {
+                $q->where('status', 'verified')
+                    ->whereBetween('updated_at', [$from, $to]);
             },
 
-            // NOT REACHABLE
-            'orders as not_reachable_orders' => function ($q) use ($from, $to, $hasFilter) {
-                $q->where('status', 'not_reachable');
-
-                if ($hasFilter) {
-                    $q->whereBetween('updated_at', [$from, $to]);
-                }
+            'orders as pending_orders' => function ($q) use ($from, $to) {
+                $q->where('status', 'pending')
+                    ->whereBetween('updated_at', [$from, $to]);
             },
 
-            // PENDING
-            'orders as pending_orders' => function ($q) use ($from, $to, $hasFilter) {
-                $q->where('status', 'pending');
-
-                if ($hasFilter) {
-                    $q->whereBetween('updated_at', [$from, $to]);
-                }
-            }
+            'orders as not_reachable_orders' => function ($q) use ($from, $to) {
+                $q->where('status', 'not_reachable')
+                    ->whereBetween('updated_at', [$from, $to]);
+            },
 
         ])->get();
 
+        // ================= WHATSAPP =================
+        $waData = Conversation::select(
+            'assigned_to',
+            DB::raw('COUNT(*) as wa_total'),
+            DB::raw("SUM(CASE WHEN status = 'verified' THEN 1 ELSE 0 END) as wa_verified"),
+            DB::raw("SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) as wa_pending")
+        )
+            ->whereBetween('updated_at', [$from, $to])
+            ->groupBy('assigned_to')
+            ->get()
+            ->keyBy('assigned_to');
 
-        // ✅ CLIENT DATA FIX
-        $clientQuery = CallingOrder::with('client')
-            ->whereNotNull('assigned_to');
+        // ================= MERGE =================
+        foreach ($staffs as $staff) {
+            $wa = $waData[$staff->id] ?? null;
 
-        if ($hasFilter) {
-            $clientQuery->whereBetween('updated_at', [$from, $to]);
+            $staff->wa_total = $wa->wa_total ?? 0;
+            $staff->wa_verified = $wa->wa_verified ?? 0;
+            $staff->wa_pending = $wa->wa_pending ?? 0;
         }
 
-        $clientData = $clientQuery
+        // ================= CLIENT WISE =================
+        $clientData = CallingOrder::with('client')
+            ->whereBetween('updated_at', [$from, $to])
             ->selectRaw('assigned_to, client_id, COUNT(*) as total')
             ->groupBy('assigned_to', 'client_id')
             ->get();

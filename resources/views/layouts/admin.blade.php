@@ -158,6 +158,10 @@
             <a href="{{ route('dashboard') }}">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
+            <a href="{{ route('client_staff_form') }}">
+                Assign Staff Mapping
+            </a>
+
             <a href="{{ route('ordersdashboard') }}">
                 <i class="bi bi-speedometer2"></i> Orders Dashboard
             </a>
@@ -165,7 +169,7 @@
                 <i class="bi bi-people"></i> Calling Staff
             </a>
             <a href="{{ route('performance.dashboard') }}">
-                <i class="bi bi-graph-up"></i>Calling Performance
+                <i class="bi bi-graph-up"></i>Staff Performance
             </a>
             <a href="{{ route('record.create') }}">
                 <i class="bi bi-upload"></i> Import Records

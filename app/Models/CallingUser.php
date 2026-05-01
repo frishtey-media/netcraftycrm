@@ -16,4 +16,13 @@ class CallingUser extends Authenticatable
     {
         return $this->hasMany(CallingOrder::class, 'assigned_to');
     }
+    public function clients()
+    {
+        return $this->belongsToMany(
+            Client::class,
+            'client_staff',
+            'staff_id',
+            'client_id'
+        );
+    }
 }

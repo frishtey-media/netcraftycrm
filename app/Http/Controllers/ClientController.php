@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Client;
 use Illuminate\Validation\Rule;
 
+use App\Models\CallingUser;
+
 class ClientController extends Controller
 {
 
@@ -52,5 +54,27 @@ class ClientController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Client added successfully');
+    }
+    public function clientStaffForm()
+    {
+        $clients = Client::all();
+        $staffs  = CallingUser::all();
+
+        return view('client_assign_staff', compact('clients', 'staffs'));
+    }
+
+    public function saveClientStaff(Request $request)
+    {
+        $request->validate([
+            'client_id' => 'required',
+            'staff_ids' => 'array'
+        ]);
+
+        $client = Client::findOrFail($request->client_id);
+
+        // 🔥 mapping save
+        $client->staffs()->sync($request->staff_ids ?? []);
+
+        return back()->with('success', 'Mapping Saved Successfully');
     }
 }

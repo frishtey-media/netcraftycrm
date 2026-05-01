@@ -42,7 +42,7 @@ class CallingOrderController extends Controller
             'payment_mode' => $request->payment_mode ?? 'cod',
             'amount' => $request->amount ?? 0,
 
-            'status' => 'pending',
+            'status' => 'verified',
             'order_source' => 'whatsapp',
 
             'assigned_to' => Auth::guard('calling_user')->id(),
