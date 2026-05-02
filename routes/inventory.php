@@ -8,8 +8,10 @@ use App\Http\Controllers\Inventory\CategoryController;
 use App\Http\Controllers\Inventory\SupplierController;
 use App\Http\Controllers\Inventory\PurchaseController;
 use App\Http\Controllers\Inventory\SaleController;
+
 use App\Http\Controllers\Inventory\WarehouseController;
 use App\Http\Controllers\Inventory\StockController;
+use App\Http\Controllers\Inventory\CallnumberIssueController;
 
 Route::prefix('inventory')->group(function () {
 
@@ -26,6 +28,10 @@ Route::prefix('inventory')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])
             ->name('inventory.dashboard');
 
+
+        Route::resource('callnumber-issues', CallnumberIssueController::class);
+
+
         Route::post('/logout', [InventoryAuthController::class, 'logout'])
             ->name('inventory.logout');
 
@@ -38,6 +44,7 @@ Route::prefix('inventory')->group(function () {
 
         Route::resource('categories', CategoryController::class);
         Route::resource('warehouses', WarehouseController::class);
+
         Route::resource('suppliers', SupplierController::class);
         Route::resource('purchases', PurchaseController::class);
         Route::resource('stocks', StockController::class)->only(['index']);

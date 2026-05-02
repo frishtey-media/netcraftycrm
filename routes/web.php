@@ -24,6 +24,8 @@ use App\Http\Controllers\CallingOrderController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\StaffChatController;
 
+
+
 require __DIR__ . '/inventory.php';
 
 Route::get('/', function () {

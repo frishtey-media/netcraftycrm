@@ -77,6 +77,9 @@
         <a href="{{ route('inventory.dashboard') }}">
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
+        <a href="{{ route('callnumber-issues.index') }}">
+            <i class="bi bi-building"></i> Phone Numbers
+        </a>
         <a href="{{ route('warehouses.index') }}">
             <i class="bi bi-building"></i> Warehouses
         </a>
