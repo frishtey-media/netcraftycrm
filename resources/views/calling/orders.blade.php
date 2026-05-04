@@ -134,6 +134,7 @@
                             @else
                                 <span class="badge bg-danger">Not Reachable</span>
                             @endif
+
                         </td>
 
                         <td>
@@ -142,8 +143,11 @@
                                 @csrf
                                 <div class="d-flex gap-1 mb-1">
                                     <select name="status" class="form-select form-select-sm">
-                                        <option value="verified">Verified</option>
+                                        <option value="verified">Confirm</option>
+                                        <option value="same_order">Same Order</option>
                                         <option value="not_reachable">Not Reachable</option>
+                                        <option value="cancel">Cancel</option>
+
                                     </select>
                                     <button class="btn btn-success btn-sm">✔</button>
                                 </div>
@@ -250,8 +254,10 @@
 
                         <div class="d-flex gap-2 mt-3">
                             <select name="status" class="form-select form-select-sm">
-                                <option value="verified">Verified</option>
+                                <option value="verified">Confirm</option>
+                                <option value="same_order">Same Order</option>
                                 <option value="not_reachable">Not Reachable</option>
+                                <option value="cancel">Cancel</option>
                             </select>
 
                             <button class="btn btn-success btn-sm">✔</button>

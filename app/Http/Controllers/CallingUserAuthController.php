@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\CallingOrder;
+use App\Models\callingorder;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -173,6 +173,64 @@ class CallingUserAuthController extends Controller
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'Verified',
+            'statusClass' => 'success',
+            'statusCount' => $orders->count()
+        ]);
+    }
+
+    public function same_order(Request $request)
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
+            ->where('assigned_to', $userId)
+            ->where('status', 'same_order')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
+
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('status', 'same_order');
+
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->latest()->get();
+
+        return view('calling.same_order', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'same_order',
+            'statusClass' => 'success',
+            'statusCount' => $orders->count()
+        ]);
+    }
+
+    public function cancel(Request $request)
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
+            ->where('assigned_to', $userId)
+            ->where('status', 'cancel')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
+
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('status', 'cancel');
+
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->latest()->get();
+
+        return view('calling.cancel', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'cancel',
             'statusClass' => 'success',
             'statusCount' => $orders->count()
         ]);

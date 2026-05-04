@@ -139,11 +139,25 @@ Route::middleware('calling_user')->group(function () {
         ->name('calling.dashboard');
     Route::get('/calling/orders', [CallingUserAuthController::class, 'orders'])
         ->name('calling.orders');
+
+
+
     Route::get('/calling/verified', [CallingUserAuthController::class, 'verified'])
         ->name('calling.verified');
+
+
+    Route::get('/calling/same_order', [CallingUserAuthController::class, 'same_order'])
+        ->name('calling.same_order');
+
+
+    Route::get('/calling/cancel', [CallingUserAuthController::class, 'cancel'])
+        ->name('calling.cancel');
+
+
+
     Route::get('/calling/not_reachable', [CallingUserAuthController::class, 'not_reachable'])
         ->name('calling.not_reachable');
-    Route::get('/calling/verified', [CallingUserAuthController::class, 'verified'])->name('calling.verified');
+    //Route::get('/calling/verified', [CallingUserAuthController::class, 'verified'])->name('calling.verified');
     Route::get('/calling/not-reachable', [CallingUserAuthController::class, 'notReachable'])->name('calling.not.reachable');
     Route::post('/calling/update/{id}', [CallingUserAuthController::class, 'update'])
         ->middleware('calling_user');

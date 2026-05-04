@@ -135,6 +135,14 @@
             <i class="bi bi-check-circle"></i> Verified
         </a>
 
+        <a href="{{ route('calling.same_order') }}" class="menu-link">
+            <i class="bi bi-telephone-x"></i> Same Order
+        </a>
+
+        <a href="{{ route('calling.cancel') }}" class="menu-link">
+            <i class="bi bi-telephone-x"></i> Cancel Order
+        </a>
+
         <a href="{{ route('calling.not.reachable') }}" class="menu-link">
             <i class="bi bi-telephone-x"></i> Not Reachable
         </a>
