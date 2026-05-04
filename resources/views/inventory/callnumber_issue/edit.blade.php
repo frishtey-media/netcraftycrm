@@ -19,34 +19,25 @@
                 </div>
             @endif
 
-            <form action="{{ route('callnumber.update', $warehouse->id) }}" method="POST">
+            <form action="{{ route('callnumber-issues.update', $issue->id) }}" method="POST">
                 @csrf
                 @method('PUT')
 
-                <div class="mb-3">
-                    <label class="form-label">Warehouse Name *</label>
-                    <input type="text" name="name" class="form-control" value="{{ old('name', $warehouse->name) }}"
-                        required>
-                </div>
+                <label>Call Number</label>
+                <input type="text" name="callnumber" value="{{ $issue->callnumber }}" class="form-control" required>
 
-                <div class="mb-3">
-                    <label class="form-label">Location *</label>
-                    <input type="text" name="location" class="form-control"
-                        value="{{ old('location', $warehouse->location) }}" required>
-                </div>
+                <label>Staff Name</label>
+                <input type="text" name="staff_name" value="{{ $issue->staff_name }}" class="form-control" required>
 
-                <div class="d-flex justify-content-between">
-                    <a href="{{ route('callnumber.index') }}" class="btn btn-secondary">
-                        Cancel
-                    </a>
+                <label>Client Name</label>
+                <input type="text" name="client_name" value="{{ $issue->client_name }}" class="form-control" required>
 
-                    <button type="submit" class="btn btn-primary">
-                        Update callnumber
-                    </button>
-                </div>
+                <label>Remarks</label>
+                <textarea name="remarks" class="form-control">{{ $issue->remarks }}</textarea>
 
+                <br>
+                <button class="btn btn-success">Update</button>
             </form>
-
         </div>
     </div>
 

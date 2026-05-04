@@ -8,9 +8,18 @@ use App\Models\CallnumberIssue;
 
 class CallnumberIssueController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $issues = CallnumberIssue::latest()->get();
+        $query = CallnumberIssue::query();
+
+        if ($request->search) {
+            $query->where('callnumber', 'like', '%' . $request->search . '%')
+                ->orWhere('staff_name', 'like', '%' . $request->search . '%')
+                ->orWhere('client_name', 'like', '%' . $request->search . '%');
+        }
+
+        $issues = $query->latest()->get();
+
         return view('inventory.callnumber_issue.index', compact('issues'));
     }
 
@@ -45,5 +54,31 @@ class CallnumberIssueController extends Controller
 
         return redirect()->route('callnumber-issues.index')
             ->with('success', 'Deleted Successfully');
+    }
+    public function edit($id)
+    {
+        $issue = CallnumberIssue::findOrFail($id);
+        return view('inventory.callnumber_issue.edit', compact('issue'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'callnumber' => 'required',
+            'staff_name' => 'required',
+            'client_name' => 'required',
+        ]);
+
+        $issue = CallnumberIssue::findOrFail($id);
+
+        $issue->update([
+            'callnumber' => $request->callnumber,
+            'staff_name' => $request->staff_name,
+            'client_name' => $request->client_name,
+            'remarks' => $request->remarks,
+        ]);
+
+        return redirect()->route('callnumber-issues.index')
+            ->with('success', 'Updated Successfully');
     }
 }
