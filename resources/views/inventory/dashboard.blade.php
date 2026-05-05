@@ -19,12 +19,13 @@
             border-left: 6px solid red;
         }
     </style>
+
     <div class="container">
 
         <h2 class="mb-4">Inventory Dashboard</h2>
 
+        {{-- ================= STATS ================= --}}
         <div class="row mb-4">
-
 
             <div class="col-md-3">
                 <div class="card text-center shadow">
@@ -37,18 +38,18 @@
                 </div>
             </div>
 
-
             <div class="col-md-3">
                 <div class="card text-center shadow">
                     <div class="card-body">
                         <h5>Total Sales</h5>
                         <a href="/inventory/salesreport">
-                            <h3 class="text-primary"> {{ $totalSales }}</h3>
+                            <h3 class="text-primary">{{ $totalSales }}</h3>
                         </a>
                     </div>
                 </div>
             </div>
 
+            {{-- CURRENT MONTH SALE --}}
             <div class="col-md-3">
                 <div class="card text-center shadow">
                     <div class="card-body">
@@ -65,13 +66,12 @@
                             }
                         @endphp
 
-                        <h3 class="text-success">
-                            {{ $currentMonthSale }}
-                        </h3>
-
+                        <h3 class="text-success">{{ $currentMonthSale }}</h3>
                     </div>
                 </div>
             </div>
+
+            {{-- CURRENT MONTH RTO --}}
             <div class="col-md-3">
                 <div class="card text-center shadow">
                     <div class="card-body">
@@ -88,23 +88,19 @@
                             }
                         @endphp
 
-                        <h3 class="text-danger">
-                            {{ $currentMonthRTO }}
-                        </h3>
-
+                        <h3 class="text-danger">{{ $currentMonthRTO }}</h3>
                     </div>
                 </div>
             </div>
 
         </div>
 
-
+        {{-- ================= MAIN CARD ================= --}}
         <div class="card shadow p-4">
 
-
-
-            @if (count($lowStockList) > 0)
-                <div class="alert alert-danger low-stock-alert">
+            {{-- 🔥 LOW STOCK ALERT --}}
+            @if ($lowStockList->count() > 0)
+                <div id="lowStockBox" class="alert alert-danger low-stock-alert">
                     <h5>⚠ Low Stock Alert</h5>
                     <ul class="mb-0">
                         @foreach ($lowStockList as $item)
@@ -114,15 +110,19 @@
                         @endforeach
                     </ul>
                 </div>
+            @else
+                <div id="lowStockBox" style="display:none;"></div>
             @endif
 
+            {{-- PRODUCT SELECT --}}
             <select id="productSelect" class="form-control mb-3">
                 @foreach ($products as $id => $name)
                     <option value="{{ $id }}">{{ $name }}</option>
                 @endforeach
             </select>
+
             <h4>Monthly Sales Graph</h4>
-            <!-- IMPORTANT HEIGHT -->
+
             <div style="height:300px;">
                 <canvas id="salesChart"></canvas>
             </div>
@@ -131,7 +131,6 @@
 
     </div>
 @endsection
-
 
 
 @section('scripts')
@@ -150,16 +149,14 @@
             let sales = Array(12).fill(0);
             let rto = Array(12).fill(0);
 
-            // Sales Qty
             if (salesData[productId]) {
-                Object.keys(salesData[productId]).forEach(function(m) {
+                Object.keys(salesData[productId]).forEach(m => {
                     sales[m - 1] = salesData[productId][m];
                 });
             }
 
-            // RTO Qty
             if (rtoData[productId]) {
-                Object.keys(rtoData[productId]).forEach(function(m) {
+                Object.keys(rtoData[productId]).forEach(m => {
                     rto[m - 1] = rtoData[productId][m];
                 });
             }
@@ -199,7 +196,7 @@
                             beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
-                                    return value + " pcs"; // 🔥 shows quantity
+                                    return value + " pcs";
                                 }
                             }
                         }
@@ -208,14 +205,46 @@
             });
         }
 
-        // Load default
         document.addEventListener("DOMContentLoaded", function() {
+
             let select = document.getElementById('productSelect');
+
             loadChart(select.value);
 
             select.addEventListener('change', function() {
                 loadChart(this.value);
             });
+
         });
+    </script>
+
+
+    <script>
+        setInterval(() => {
+            fetch('/api/low-stock')
+                .then(res => res.json())
+                .then(res => {
+
+                    let box = document.getElementById('lowStockBox');
+
+                    if (res.data.length > 0) {
+
+                        let html = `<h5>⚠ Low Stock Alert</h5><ul>`;
+
+                        res.data.forEach(item => {
+                            html += `<li><b>${item.name}</b> - Only ${item.stock} left</li>`;
+                        });
+
+                        html += `</ul>`;
+
+                        box.innerHTML = html;
+                        box.style.display = 'block';
+
+                    } else {
+                        box.style.display = 'none';
+                    }
+
+                });
+        }, 10000);
     </script>
 @endsection

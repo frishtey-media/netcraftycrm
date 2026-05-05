@@ -108,9 +108,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/staff-verified-export', [AdminController::class, 'staffVerifiedExport'])
         ->name('admin.staff.verified.export');
+    Route::post('/shift-orders', [AdminController::class, 'shiftOrders'])
+        ->name('shift.orders');
+
 
     Route::get('/test-order', function () {
-
         CallingOrder::create([
             'client_id' => 1,
             'order_id' => 'TEST123',

@@ -4,30 +4,24 @@ namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
-//use App\Models\Sale;
 use App\Models\SaleItem;
-use App\Models\RtoReport;
-
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
+        // ================= BASIC STATS =================
         $totalProducts = Product::count();
+        $totalSales    = SaleItem::sum('quantity');
 
-        // Total Sales
-        $totalSales = SaleItem::sum('quantity');
-
-        // Total RTO (from stock_movements)
         $totalRTO = DB::table('stock_movements')
             ->where('type', 'rto_restored')
             ->sum('quantity');
 
-        // Product list
         $products = Product::pluck('name', 'id');
 
-        // ✅ Product-wise Monthly Sales
+        // ================= MONTHLY SALES =================
         $monthlySales = SaleItem::select(
             'product_id',
             DB::raw('MONTH(created_at) as month'),
@@ -35,7 +29,8 @@ class DashboardController extends Controller
         )
             ->groupBy('product_id', 'month')
             ->get();
-        // ✅ Product-wise Monthly RTO (FROM stock_movements)
+
+        // ================= MONTHLY RTO =================
         $monthlyRTO = DB::table('stock_movements')
             ->select(
                 'product_id',
@@ -45,26 +40,19 @@ class DashboardController extends Controller
             ->where('type', 'rto_restored')
             ->groupBy('product_id', 'month')
             ->get();
-        // Low Stock Products (<=100)
-        $lowStockProducts = DB::table('stock_movements')
-            ->select('product_id', DB::raw('SUM(quantity) as total_qty'))
-            ->groupBy('product_id')
-            ->havingRaw('SUM(quantity) <= 100')
-            ->get();
 
-        // Get product names
-        $productNames = Product::pluck('name', 'id');
+        // ================= LOW STOCK (CORRECT) =================
+        // 👉 using products.stock (IMPORTANT)
+        $lowStockList = Product::where('low_stock_alert', '<=', 250)
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'name' => $p->name,
+                    'qty'  => (int)$p->low_stock_alert
+                ];
+            });
 
-        // Map names with quantity
-        $lowStockList = [];
-
-        foreach ($lowStockProducts as $item) {
-            $lowStockList[] = [
-                'name' => $productNames[$item->product_id] ?? 'Unknown',
-                'qty' => $item->total_qty
-            ];
-        }
-        // Format data
+        // ================= FORMAT DATA =================
         $salesData = [];
         foreach ($monthlySales as $sale) {
             $salesData[$sale->product_id][$sale->month] = (int)$sale->total;
@@ -74,6 +62,7 @@ class DashboardController extends Controller
         foreach ($monthlyRTO as $rto) {
             $rtoData[$rto->product_id][$rto->month] = (int)$rto->total;
         }
+
         return view('inventory.dashboard', compact(
             'totalProducts',
             'totalSales',
@@ -83,5 +72,19 @@ class DashboardController extends Controller
             'rtoData',
             'lowStockList'
         ));
+    }
+
+    // ================= API FOR AUTO ALERT =================
+    public function lowStockApi()
+    {
+        $data = Product::where('stock', '<=', 250)
+            ->select('id', 'name', 'stock')
+            ->get();
+
+        return response()->json([
+            'status' => true,
+            'count'  => $data->count(),
+            'data'   => $data
+        ]);
     }
 }

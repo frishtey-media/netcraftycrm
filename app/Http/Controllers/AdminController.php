@@ -41,7 +41,7 @@ class AdminController extends Controller
             ->where('status', 'verified')
             ->where('is_exported', 0);
 
-        // ✅ DATE FILTER
+
         if ($request->from && $request->to) {
             $from = Carbon::parse($request->from)->startOfDay();
             $to   = Carbon::parse($request->to)->endOfDay();
@@ -49,7 +49,7 @@ class AdminController extends Controller
             $query->whereBetween('updated_at', [$from, $to]);
         }
 
-        // ✅ CLIENT FILTER (OUTSIDE DATE)
+
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
         }
@@ -66,7 +66,6 @@ class AdminController extends Controller
             ->where('status', 'verified')
             ->where('is_exported', 0);
 
-        // ✅ DATE FILTER
         if ($request->from && $request->to) {
             $from = Carbon::parse($request->from)->startOfDay();
             $to   = Carbon::parse($request->to)->endOfDay();
@@ -74,14 +73,13 @@ class AdminController extends Controller
             $query->whereBetween('updated_at', [$from, $to]);
         }
 
-        // ✅ CLIENT FILTER (FIXED POSITION)
+
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
         }
 
         $orders = $query->get();
 
-        // 🔥 UPDATE EXPORT STATUS
         if ($orders->count()) {
             CallingOrder::whereIn('id', $orders->pluck('id'))
                 ->update(['is_exported' => 1]);
@@ -91,6 +89,36 @@ class AdminController extends Controller
             new VerifiedOrdersExport($orders),
             'staff_verified_' . now()->format('d_m_Y_H_i') . '.xlsx'
         );
+    }
+
+
+    public function shiftOrders(Request $request)
+    {
+        $request->validate([
+            'from_staff' => 'required',
+            'to_staff'   => 'required',
+            'remark'     => 'required'
+        ]);
+
+        $orders = CallingOrder::where('assigned_to', $request->from_staff)
+            ->where('status', 'pending')
+            ->get();
+
+        foreach ($orders as $order) {
+            $order->assigned_to = $request->to_staff;
+            $order->save();
+
+
+            DB::table('order_shift_logs')->insert([
+                'order_id'   => $order->id,
+                'from_staff' => $request->from_staff,
+                'to_staff'   => $request->to_staff,
+                'remark'     => $request->remark,
+                'created_at' => now()
+            ]);
+        }
+
+        return back()->with('success', 'Orders shifted successfully');
     }
     public function ordersdashboard()
     {
@@ -200,11 +228,14 @@ class AdminController extends Controller
             ];
         }
 
+        $allStaff = CallingUser::all();
+
         return view('performance', compact(
             'staffs',
             'from',
             'to',
-            'clientWise'
+            'clientWise',
+            'allStaff'
         ));
     }
     public function assignOrders(Request $request)
@@ -215,9 +246,9 @@ class AdminController extends Controller
         $orders = CallingOrder::where('client_id', $clientId)
             ->whereNull('assigned_to')
             ->where('status', 'pending')
-            ->get();
+            ->get()
+            ->shuffle();
 
-        // 🔥 Validation
         $totalRequested = array_sum($assignData);
 
         if ($totalRequested > $orders->count()) {

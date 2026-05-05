@@ -149,7 +149,12 @@
                                     </a>
                                 </td>
 
-                                <td><span class="badge bg-warning text-dark">{{ $staff->pending_orders }}</span></td>
+                                <td>
+                                    <span class="badge bg-warning text-dark" style="cursor:pointer"
+                                        onclick="openShiftModal({{ $staff->id }})">
+                                        {{ $staff->pending_orders }}
+                                    </span>
+                                </td>
 
                                 <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
 
@@ -171,6 +176,50 @@
                 </table>
             </div>
         </div>
+        <div class="modal fade" id="shiftModal">
+            <div class="modal-dialog">
+                <div class="modal-content p-3">
 
+                    <h5>Shift Pending Orders</h5>
+
+                    <form method="POST" action="{{ route('shift.orders') }}">
+                        @csrf
+
+                        <input type="hidden" name="from_staff" id="from_staff">
+
+                        {{-- NEW STAFF --}}
+                        <div class="mb-2">
+                            <label>Select Staff</label>
+                            <select name="to_staff" class="form-control" required>
+                                <option value="">Select Staff</option>
+                                @foreach ($allStaff as $s)
+                                    <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        {{-- REMARK --}}
+                        <div class="mb-2">
+                            <label>Remark</label>
+                            <textarea name="remark" class="form-control" required></textarea>
+                        </div>
+
+                        <button class="btn btn-primary w-100 mt-2">
+                            Shift Orders
+                        </button>
+
+                    </form>
+
+                </div>
+            </div>
+        </div>
+        <script>
+            function openShiftModal(staffId) {
+                document.getElementById('from_staff').value = staffId;
+
+                let modal = new bootstrap.Modal(document.getElementById('shiftModal'));
+                modal.show();
+            }
+        </script>
     </div>
 @endsection
