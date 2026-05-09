@@ -108,8 +108,8 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
                 */
 
                 $barcodeType = $paymentMode == 'VPP'
-                    ? 'vpp'
-                    : 'cod';
+                    ? 'VPP'
+                    : 'COD';
 
                 /* ================= BARCODE ASSIGN ================= */
 

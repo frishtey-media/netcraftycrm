@@ -79,13 +79,13 @@
 
                                             $vppCount = $barcodes
                                                 ->where('client_id', $client->id)
-                                                ->where('barcode_type', 'vpp')
+                                                ->where('barcode_type', 'VPP')
                                                 ->where('is_used', 0)
                                                 ->count();
 
                                             $codCount = $barcodes
                                                 ->where('client_id', $client->id)
-                                                ->where('barcode_type', 'cod')
+                                                ->where('barcode_type', 'COD')
                                                 ->where('is_used', 0)
                                                 ->count();
 
@@ -147,15 +147,15 @@
                         <tr>
                             <td>{{ $product->barcode }}</td>
                             <td>
-                                @if ($product->barcode_type == 'vpp')
+                                {{ $product->client->client_name ?? '—' }}
+                            </td>
+
+                            <td>
+                                @if ($product->barcode_type == 'VPP')
                                     <span class="badge bg-primary">VPP</span>
                                 @else
                                     <span class="badge bg-warning text-dark">COD</span>
                                 @endif
-                            </td>
-                            <td>
-                                {{ $product->client->client_name ?? '—' }}
-
                             </td>
 
                             <td>
