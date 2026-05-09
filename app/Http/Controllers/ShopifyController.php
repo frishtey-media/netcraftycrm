@@ -50,20 +50,56 @@ class ShopifyController extends Controller
 
     public function assignBarcodes()
     {
-        $orders = ShopifyOrder::whereNull('barcode')->get();
+        $orders = ShopifyOrder::whereNull('barcode')
+            ->orderBy('id', 'asc')
+            ->get();
 
         foreach ($orders as $order) {
-            $barcode = Barcode::where('is_used', 0)->first();
+
+            /*
+        PAYMENT MODE MAPPING
+
+        VPP -> vpp barcode
+        COD -> cod barcode
+        */
+
+            $paymentMode = strtoupper(
+                trim($order->payment_mode ?? 'COD')
+            );
+
+            $barcodeType = $paymentMode == 'VPP'
+                ? 'vpp'
+                : 'cod';
+
+            /*
+        FETCH UNUSED BARCODE
+        */
+
+            $barcode = Barcode::where('client_id', $order->client_id)
+                ->where('barcode_type', $barcodeType)
+                ->where('is_used', 0)
+                ->orderBy('id', 'asc')
+                ->first();
+
+            /*
+        IF BARCODE AVAILABLE
+        */
 
             if ($barcode) {
+
                 $order->update([
                     'barcode' => $barcode->barcode
                 ]);
 
-                $barcode->update(['is_used' => 1]);
+                $barcode->update([
+                    'is_used' => 1
+                ]);
             }
         }
 
-        return back()->with('success', 'Barcodes assigned');
+        return back()->with(
+            'success',
+            'Barcodes assigned successfully'
+        );
     }
 }

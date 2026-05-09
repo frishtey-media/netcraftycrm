@@ -24,33 +24,17 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
     {
         $this->clientId = $clientId;
     }
-    private function autoParseDate($value)
-    {
-        try {
-            return Carbon::parse($value)->format('Y-m-d');
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
 
     public function collection(Collection $rows)
     {
         DB::transaction(function () use ($rows) {
 
-            $barcodes = Barcode::where('client_id', $this->clientId)
-                ->where('is_used', 0)
-                ->orderBy('id', 'asc')
-                ->lockForUpdate()
-                ->limit($rows->count())
-                ->get()
-                ->values();
-
-            // dd($barcodes);
             foreach ($rows as $index => $row) {
 
-                $rowNumber = $index + 2; // Excel row number
+                $rowNumber = $index + 2;
 
-                /* ================= REQUIRED COLUMNS ================= */
+                /* ================= REQUIRED FIELDS ================= */
+
                 $required = [
                     'order_id',
                     'date',
@@ -66,93 +50,167 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
                 ];
 
                 foreach ($required as $field) {
+
                     if (!isset($row[$field]) || trim($row[$field]) === '') {
-                        $this->addError($rowNumber, "Column '{$field}' is empty");
+
+                        $this->addError(
+                            $rowNumber,
+                            "Column '{$field}' is empty"
+                        );
+
                         $this->skipped++;
                         continue 2;
                     }
                 }
 
-                /* ================= DUPLICATE ORDER ID (FILE) ================= */
+                /* ================= DUPLICATE IN FILE ================= */
+
                 if (in_array($row['order_id'], $this->seenOrderIds)) {
-                    $this->addError($rowNumber, "Duplicate order_id in Excel file");
+
+                    $this->addError(
+                        $rowNumber,
+                        "Duplicate order_id in Excel file"
+                    );
+
                     $this->skipped++;
                     continue;
                 }
 
                 $this->seenOrderIds[] = $row['order_id'];
 
-                /* ================= DUPLICATE ORDER ID (DB) ================= */
-                if (ShopifyOrder::where('order_id', $row['order_id'])->exists()) {
-                    $this->addError($rowNumber, "order_id already exists in database");
+                /* ================= DUPLICATE IN DB ================= */
+
+                if (
+                    ShopifyOrder::where(
+                        'order_id',
+                        $row['order_id']
+                    )->exists()
+                ) {
+
+                    $this->addError(
+                        $rowNumber,
+                        "order_id already exists in database"
+                    );
+
                     $this->skipped++;
                     continue;
                 }
 
-                /* ================= BARCODE ================= */
-                if (!isset($barcodes[$index]) || $barcodes[$index]->client_id != $this->clientId) {
+                /* ================= PAYMENT MODE ================= */
 
-                    $this->addError($rowNumber, "Barcode not available");
+                $paymentMode = strtoupper(
+                    trim($row['payment_mode'] ?? 'COD')
+                );
+
+                /*
+                    VPP -> vpp barcode
+                    COD -> cod barcode
+                */
+
+                $barcodeType = $paymentMode == 'VPP'
+                    ? 'vpp'
+                    : 'cod';
+
+                /* ================= BARCODE ASSIGN ================= */
+
+                $barcode = Barcode::where('client_id', $this->clientId)
+                    ->where('barcode_type', $barcodeType)
+                    ->where('is_used', 0)
+                    ->orderBy('id', 'asc')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$barcode) {
+
+                    $this->addError(
+                        $rowNumber,
+                        strtoupper($barcodeType) . " barcode not available"
+                    );
+
                     $this->skipped++;
                     continue;
                 }
-
-                $barcode = $barcodes[$index];
-
-
-                /* ================= DATE ================= */
-                // $orderDate = $this->parseDate($row['date']);
-                //if (!$orderDate) {
-                //    $this->addError($rowNumber, "Invalid date format (expected d-M-y)");
-                //    $this->skipped++;
-                ////    continue;
-                //}
 
                 /* ================= QUANTITY ================= */
+
                 $quantity = $this->parseQuantity($row['quantity']);
+
                 if ($quantity <= 0) {
-                    $this->addError($rowNumber, "Invalid quantity");
+
+                    $this->addError(
+                        $rowNumber,
+                        "Invalid quantity"
+                    );
+
                     $this->skipped++;
                     continue;
                 }
 
                 /* ================= WEIGHT ================= */
-                $totalWeight = $this->parseWeight($row['weight_in_gm']);
+
+                $totalWeight = $this->parseWeight(
+                    $row['weight_in_gm']
+                );
+
                 if ($totalWeight <= 0) {
-                    $this->addError($rowNumber, "Invalid weight");
+
+                    $this->addError(
+                        $rowNumber,
+                        "Invalid weight"
+                    );
+
                     $this->skipped++;
                     continue;
                 }
 
-                /* ================= INSERT ================= */
+                /* ================= INSERT ORDER ================= */
+
                 ShopifyOrder::create([
+
                     'client_id' => $this->clientId,
-                    'order_id'  => $row['order_id'],
-                    'order_date'            => $this->parseDate($row['date']),
 
+                    'order_id' => $row['order_id'],
 
-                    'barcode' => $barcode?->barcode,
+                    'order_date' => $this->parseDate(
+                        $row['date']
+                    ),
 
+                    'barcode' => $barcode->barcode,
 
-                    'product_name'         => $row['product'],
+                    'product_name' => $row['product'],
+
                     'shopify_product_name' => $row['product'],
 
-                    'quantity'      => $quantity,
-                    'weight'        => $totalWeight / $quantity,
-                    'total_weight'  => $totalWeight,
+                    'quantity' => $quantity,
 
-                    'payment_mode'    => $row['payment_mode'] ?? 'COD',
-                    'amount'          => $row['amount'] ?? 0,
-                    'customer_name'   => $row['customer_name'],
-                    'father_name'     => $row['father_name'] ?? null,
-                    'customer_phone'  => $row['customer_phone'],
+                    'weight' => $totalWeight / $quantity,
+
+                    'total_weight' => $totalWeight,
+
+                    'payment_mode' => $paymentMode,
+
+                    'amount' => $row['amount'] ?? 0,
+
+                    'customer_name' => $row['customer_name'],
+
+                    'father_name' => $row['father_name'] ?? null,
+
+                    'customer_phone' => $row['customer_phone'],
+
                     'shipping_address' => $row['shipping_address'],
-                    'city'            => $row['city'],
-                    'state'           => $row['state'],
-                    'pincode'         => $row['shipping_pincode'],
+
+                    'city' => $row['city'],
+
+                    'state' => $row['state'],
+
+                    'pincode' => $row['shipping_pincode'],
                 ]);
 
-                $barcode->update(['is_used' => 1]);
+                /* ================= MARK BARCODE USED ================= */
+
+                $barcode->update([
+                    'is_used' => 1
+                ]);
 
                 $this->imported++;
             }
@@ -173,6 +231,7 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
         }
 
         if (str_contains($value, '+')) {
+
             return collect(explode('+', $value))
                 ->map(fn($v) => (int) trim($v))
                 ->sum();
@@ -189,8 +248,13 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
     private function parseDate($value)
     {
         try {
-            return Carbon::createFromFormat('d-M-y', $value)->format('Y-m-d');
+
+            return Carbon::createFromFormat(
+                'd-M-y',
+                $value
+            )->format('Y-m-d');
         } catch (\Exception $e) {
+
             return now()->format('Y-m-d');
         }
     }

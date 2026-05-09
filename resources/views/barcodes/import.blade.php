@@ -34,7 +34,7 @@
                 <div class="card-body">
 
                     <div class="row g-2">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">Select Client</label>
                             <select name="client_id" class="form-control" required>
                                 <option value="">-- Select Client --</option>
@@ -44,42 +44,88 @@
                             </select>
                         </div>
                         <div class="col-md-3">
+                            <label class="form-label">Barcode Type</label>
+
+                            <select name="barcode_type" class="form-control" required>
+                                <option value="">-- Select Type --</option>
+                                <option value="VPP">VPP</option>
+                                <option value="COD">COD</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label">Upload Barcode Excel</label>
                             <input type="file" name="file" class="form-control" required>
                         </div>
 
-                        <div class="col-md-3">
+                        <div class="col-md-1">
                             <label class="form-label">Barcode Excel</label><br>
                             <button class="btn btn-primary">Import </button>
                         </div>
                         <div class="col-md-3">
                             <table class="table table-bordered text-center">
 
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Client</th>
+                                        <th>VPP</th>
+                                        <th>COD</th>
+                                    </tr>
+                                </thead>
+
                                 <tbody>
+
                                     @foreach ($clients as $client)
                                         @php
-                                            $unusedCount = $barcodes
+
+                                            $vppCount = $barcodes
                                                 ->where('client_id', $client->id)
+                                                ->where('barcode_type', 'vpp')
                                                 ->where('is_used', 0)
                                                 ->count();
+
+                                            $codCount = $barcodes
+                                                ->where('client_id', $client->id)
+                                                ->where('barcode_type', 'cod')
+                                                ->where('is_used', 0)
+                                                ->count();
+
                                         @endphp
 
                                         <tr>
-                                            <td>{{ $client->client_name }} Pending</td>
+
                                             <td>
-                                                @if ($unusedCount == 0)
+                                                {{ $client->client_name }}
+                                            </td>
+
+                                            <td>
+                                                @if ($vppCount == 0)
                                                     <span class="badge bg-danger">
-                                                        {{ $unusedCount }}
+                                                        {{ $vppCount }}
                                                     </span>
                                                 @else
-                                                    <span class="badge bg-success">
-                                                        {{ $unusedCount }}
+                                                    <span class="badge bg-primary">
+                                                        {{ $vppCount }}
                                                     </span>
                                                 @endif
                                             </td>
+
+                                            <td>
+                                                @if ($codCount == 0)
+                                                    <span class="badge bg-danger">
+                                                        {{ $codCount }}
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-warning text-dark">
+                                                        {{ $codCount }}
+                                                    </span>
+                                                @endif
+                                            </td>
+
                                         </tr>
                                     @endforeach
+
                                 </tbody>
+
                             </table>
                         </div>
                     </div>
@@ -92,6 +138,7 @@
                     <tr>
                         <th>Barcode</th>
                         <th>Client Name</th>
+                        <th>Type</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -99,7 +146,13 @@
                     @forelse($barcodes as $product)
                         <tr>
                             <td>{{ $product->barcode }}</td>
-
+                            <td>
+                                @if ($product->barcode_type == 'vpp')
+                                    <span class="badge bg-primary">VPP</span>
+                                @else
+                                    <span class="badge bg-warning text-dark">COD</span>
+                                @endif
+                            </td>
                             <td>
                                 {{ $product->client->client_name ?? '—' }}
 

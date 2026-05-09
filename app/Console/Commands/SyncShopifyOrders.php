@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Client;
-use App\Models\CallingOrder;
+use App\Models\callingorder;
 use GuzzleHttp\Client as GuzzleClient;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +24,7 @@ class SyncShopifyOrders extends Command
 
             Log::info("➡️ Client: {$client->id} | {$client->shopify_store_url}");
 
-            // ❌ Skip invalid client
+
             if (empty($client->shopify_store_url) || empty($client->shopify_access_token)) {
                 Log::error("❌ Missing credentials for client ID: {$client->id}");
                 continue;
@@ -32,11 +32,11 @@ class SyncShopifyOrders extends Command
 
 
 
-            // IST time define करो
+
             $startIST = Carbon::yesterday('Asia/Kolkata')->setTime(17, 0, 0);
             $endIST   = Carbon::now('Asia/Kolkata');
 
-            // Shopify के लिए UTC में convert करो
+
             $start = $startIST->copy()->utc()->toIso8601String();
             $end   = $endIST->copy()->utc()->toIso8601String();
             // $start = Carbon::now()->subDays(3)->startOfDay()->toIso8601String();
@@ -69,7 +69,7 @@ class SyncShopifyOrders extends Command
                             ? str_replace('#', '', $order['name'])
                             : $order['id'];
 
-                        // 🔥 DUPLICATE FIX (better check)
+
                         $exists = CallingOrder::where('order_id', $orderId)
                             ->where('client_id', $client->id)
                             ->exists();

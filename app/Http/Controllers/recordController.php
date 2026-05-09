@@ -35,7 +35,14 @@ class RecordController extends Controller
             DB::transaction(function () use ($request) {
 
 
+                $paymentMode = strtoupper($request->payment_mode);
+
+                $barcodeType = $paymentMode == 'VPP'
+                    ? 'vpp'
+                    : 'cod';
+
                 $barcode = Barcode::where('client_id', $request->client_id)
+                    ->where('barcode_type', $barcodeType)
                     ->where('is_used', 0)
                     ->orderBy('id', 'asc')
                     ->lockForUpdate()

@@ -8,8 +8,9 @@ class Barcode extends Model
 {
     protected $fillable = [
         'barcode',
-        'is_used',
-        'client_id'
+        'client_id',
+        'barcode_type',
+        'is_used'
     ];
 
     protected $casts = [

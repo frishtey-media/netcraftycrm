@@ -11,7 +11,6 @@ use App\Imports\BarcodeImport;
 class BarcodeController extends Controller
 {
 
-
     public function index()
     {
         $clients = Client::orderBy('client_name')->get();
@@ -24,19 +23,20 @@ class BarcodeController extends Controller
         return view('barcodes.import', compact('clients', 'barcodes'));
     }
 
-
-
     public function import(Request $request)
     {
         $request->validate([
             'file' => 'required|mimes:xlsx,csv',
             'client_id' => 'required|exists:clients,id',
+            'barcode_type' => 'required|in:VPP,COD',
         ]);
 
-        $import = new BarcodeImport($request->client_id);
+        $import = new BarcodeImport(
+            $request->client_id,
+            $request->input('barcode_type')
+        );
 
-        //Excel::import($import, $request->file('file'));
-        Excel::import(new BarcodeImport($request->client_id), $request->file('file'));
+        Excel::import($import, $request->file('file'));
 
         return back()->with(
             'success',

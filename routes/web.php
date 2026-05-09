@@ -32,6 +32,9 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 Route::match(['get', 'post'], '/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
+
+//Route::post('/webhook/shopify/order', [WhatsAppController::class, 'orderCreate']);
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/ordersdashboard', [AdminController::class, 'ordersdashboard'])->name('ordersdashboard');
