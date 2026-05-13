@@ -117,7 +117,7 @@
                 searching: true,
                 ordering: true,
                 pageLength: 10,
-                lengthMenu: [10, 25, 50, 100],
+                lengthMenu: [10, 25, 50, 100, 500, 1000],
                 language: {
                     search: "Search Orders:"
                 }

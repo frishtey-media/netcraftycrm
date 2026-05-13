@@ -10,6 +10,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\DuplicateOrderLog;
+use App\Exports\PostOfficeMultiSheetExport;
 
 class PostOfficeExportController extends Controller
 {
@@ -17,17 +18,24 @@ class PostOfficeExportController extends Controller
     {
         $duplicates = $this->copyShopifyOrdersToOrders();
 
-        // 🚫 Stop if duplicates found
         if (!empty($duplicates)) {
             return redirect()->back()->with([
                 'duplicate_orders' => array_values($duplicates)
             ]);
         }
 
-        $clientId = ShopifyOrder::whereNotNull('client_id')->value('client_id') ?? 'unknown';
+        $orders = ShopifyOrder::latest()->get();
+
+        if ($orders->isEmpty()) {
+            return redirect()->back()->with('error', 'No Shopify orders found.');
+        }
+
         $fileName = "india_post_" . Carbon::now()->format('Y-m-d_H-i-s') . ".xlsx";
 
-        return Excel::download(new PostOfficeExport($clientId), $fileName);
+        return Excel::download(
+            new PostOfficeMultiSheetExport($orders),
+            $fileName
+        );
     }
 
     private function copyShopifyOrdersToOrders()
@@ -76,9 +84,17 @@ class PostOfficeExportController extends Controller
     public function postOfficeExcel(Request $request)
     {
         $ids = explode(',', $request->ids);
+
         $orders = Order::whereIn('id', $ids)->get();
 
-        return Excel::download(new PostOfficeExport($orders), 'post_office.xlsx');
+        if ($orders->isEmpty()) {
+            return back()->with('error', 'No orders found.');
+        }
+
+        return Excel::download(
+            new PostOfficeMultiSheetExport($orders),
+            'india-post-bulk-booking.xlsx'
+        );
     }
 
     public function clearDuplicates(Request $request)

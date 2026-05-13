@@ -31,7 +31,10 @@ class PostOfficeExport implements FromCollection, WithHeadings, WithMapping, Wit
         }
     }
 
-    /* ================= COLLECTION ================= */
+    /* =========================================================
+       COLLECTION
+    ========================================================= */
+
     public function collection()
     {
         if ($this->orders instanceof Collection) {
@@ -43,16 +46,23 @@ class PostOfficeExport implements FromCollection, WithHeadings, WithMapping, Wit
             ->get();
     }
 
-    /* ================= SHEET NAME ================= */
+    /* =========================================================
+       SHEET TITLE
+    ========================================================= */
+
     public function title(): string
     {
         return 'ArticleDetails';
     }
 
-    /* ================= HEADINGS ================= */
+    /* =========================================================
+       HEADINGS
+    ========================================================= */
+
     public function headings(): array
     {
         return [
+
             'SERIAL NUMBER',
             'BARCODE NO',
             'PHYSICAL WEIGHT',
@@ -62,7 +72,9 @@ class PostOfficeExport implements FromCollection, WithHeadings, WithMapping, Wit
             'HEIGHT',
             'PRIORITY FLAG',
             'DELIVERY INSTRUCTION',
+            'DELIVERY SLOT',
             'INSTRUCTION RTS',
+
             'SENDER NAME',
             'SENDER COMPANY',
             'SENDER ADD LINE 1',
@@ -74,6 +86,7 @@ class PostOfficeExport implements FromCollection, WithHeadings, WithMapping, Wit
             'SENDER ALT CONTACT',
             'SENDER KYC',
             'SENDER TAX REFERENCE',
+
             'RECEIVER NAME',
             'RECEIVER COMPANY',
             'RECEIVER ADD LINE 1',
@@ -85,183 +98,229 @@ class PostOfficeExport implements FromCollection, WithHeadings, WithMapping, Wit
             'RECEIVER ALT CONTACT',
             'RECEIVER KYC',
             'RECEIVER TAX REFERENCE',
+
             'ALT ADDRESS FLAG',
             'PICKUP ADDRESS FLAG',
             'DROP OFF PINCODE',
             'DROPOFF/PICKUP OFFICE ID',
+
             'SENDER MOBILE NO',
             'RECEIVER MOBILE NO',
+
             'PREPAYMENT CODE',
             'VALUE OF PREPAYMENT',
+
             'CODR/COD',
             'VALUE FOR CODR/COD',
+
             'INSURANCE TYPE',
             'VALUE OF INSURANCE',
+
             'ACK',
             'REGISTRATION',
             'OTP BASED DELIVERY',
+
             'BULK REFERENCE',
         ];
     }
 
-    /* ================= ADDRESS SPLITTER ================= */
+    /* =========================================================
+       ADDRESS SPLITTER
+    ========================================================= */
+
     private function splitAddress(string $address, int $limit = 50): array
     {
         $address = trim(preg_replace('/\s+/', ' ', $address));
 
         if ($address === '') {
-            return ['NA', 'NA'];
+            return ['NA', ''];
         }
 
-        $line1 = substr($address, 0, $limit) ?: 'NA';
+        if (strlen($address) <= $limit) {
+            return [$address, ''];
+        }
+
+        $line1 = substr($address, 0, $limit);
+        $line2 = substr($address, $limit);
 
         return [
-            $line1,
-            $line1, // ✅ copy line1 to line2 (CEPT safe)
+            trim($line1),
+            trim($line2),
         ];
     }
 
-    /* ================= MAP ================= */
+    /* =========================================================
+       MAP DATA
+    ========================================================= */
+
     public function map($order): array
     {
         $client = $this->client;
 
+        /* ================= MOBILE CLEAN ================= */
+
         $receiverMobile = preg_replace('/\D/', '', $order->customer_phone ?? '');
-        $receiverMobile = strlen($receiverMobile) > 10
-            ? substr($receiverMobile, -10)
-            : $receiverMobile;
 
-        [$senderLine1, $senderLine2] = $this->splitAddress(
-            ($client->address_line1 ?? 'Main Office') . ' ' . ($client->address_line2 ?? '')
-        );
-
-        [$receiverLine1, $receiverLine2] = $this->splitAddress(
-            $order->shipping_address ?? 'NA'
-        );
-
-        $isCod = strtolower($order->payment_mode ?? '') === 'cod';
-
-        $dropOffPincode = trim((string)($order->pincode ?? ''));
-        if ($dropOffPincode === '') {
-            $dropOffPincode = (string)($client->pincode ?? '');
+        if (strlen($receiverMobile) > 10) {
+            $receiverMobile = substr($receiverMobile, -10);
         }
 
-        /* =====================================================
-           CLIENT ID = 5 (SPECIAL LOGIC)
-        ====================================================== */
+        $senderMobile = preg_replace('/\D/', '', $client->mobile ?? '');
+
+        if (strlen($senderMobile) > 10) {
+            $senderMobile = substr($senderMobile, -10);
+        }
+
+        /* ================= ADDRESS ================= */
+
         if ($this->clientId === 5) {
 
-            return [
-                ++$this->i,
-                $order->barcode ?? '',
-                (int)($order->total_weight ?? 1000),
-                'PARCEL', // ✅ safer than NROL
-                30,
-                20,
-                10,
-                'TRUE',
-                'ND',
-                'RTS',
+            $senderLine1 = 'Sco 51 Phase 3';
+            $senderLine2 = 'Model Town';
+        } else {
 
-                strtoupper($client->client_name ?? ''),
-                strtoupper($client->company_name ?? ''),
-                $senderLine1,
-                $senderLine2,
-                strtoupper($client->city ?? ''),
-                strtoupper($client->state ?? ''),
-                (string)($client->pincode ?? ''),
-                $client->email ?? '',
-                '',
-                $client->kyc_no ?? '',
-                $client->gst_no ?? '',
-
-                strtoupper($order->customer_name ?? ''),
-                '',
-                $receiverLine1,
-                $receiverLine2,
-                strtoupper($order->city ?? ''),
-                strtoupper($order->state ?? ''),
-                (string)($order->pincode ?? ''),
-                $order->customer_email ?? '',
-                '',
-                '',
-                '',
-
-                'FALSE',
-                'FALSE',
-                $dropOffPincode,
-                '',
-                $client->mobile ?? '',
-                $receiverMobile,
-                '',
-                0,
-                'COD',
-                max((int)($order->amount ?? 0), 100),
-                'FALSE',
-                0,
-                'TRUE',
-                'TRUE',
-                'TRUE',
-                $order->order_id ?? '',
-            ];
+            [$senderLine1, $senderLine2] = $this->splitAddress(
+                ($client->address_line1 ?? '') . ' ' . ($client->address_line2 ?? '')
+            );
         }
 
-        /* =====================================================
-           OTHER CLIENTS
-        ====================================================== */
+        [$receiverLine1, $receiverLine2] = $this->splitAddress(
+            $order->shipping_address ?? ''
+        );
+
+        /* ================= PAYMENT MODE ================= */
+
+        $paymentMode = strtoupper(trim($order->payment_mode ?? 'COD'));
+
+        $isCod = in_array($paymentMode, ['COD', 'VPP', 'CODR']);
+
+        $indiaPostPaymentType = '';
+
+        if ($paymentMode == 'COD') {
+            $indiaPostPaymentType = 'COD';
+        } elseif ($paymentMode == 'VPP') {
+            $indiaPostPaymentType = 'CODR';
+        }
+
+        /* ================= DROP PINCODE ================= */
+
+        $dropOffPincode = trim((string)($client->pincode ?? ''));
+
+        /* ================= WEIGHT ================= */
+
+        $weight = (int)($order->total_weight ?? 500);
+
+        if ($weight <= 0) {
+            $weight = 500;
+        }
+
+        /* ================= COD VALUE ================= */
+
+        $codAmount = (int)($order->amount ?? 0);
+
+        if ($codAmount <= 0) {
+            $codAmount = 1;
+        }
 
         return [
+
             ++$this->i,
+
             $order->barcode ?? '',
-            (int)($order->total_weight ?? 1000),
-            'PARCEL',
-            30,
-            20,
+
+            $weight,
+
+            'NROL',
+
+            15,
+
             10,
+
+            5,
+
             'TRUE',
+
             'ND',
+
+            '',
+
             'RTS',
 
             strtoupper($client->client_name ?? ''),
+
             strtoupper($client->company_name ?? ''),
+
             $senderLine1,
+
             $senderLine2,
+
             strtoupper($client->city ?? ''),
+
             strtoupper($client->state ?? ''),
+
             (string)($client->pincode ?? ''),
+
             $client->email ?? '',
+
             '',
-            $client->kyc_no ?? '',
-            $client->gst_no ?? '',
+
+            '',
+
+            '',
 
             strtoupper($order->customer_name ?? ''),
+
             '',
+
             $receiverLine1,
+
             $receiverLine2,
+
             strtoupper($order->city ?? ''),
+
             strtoupper($order->state ?? ''),
+
             (string)($order->pincode ?? ''),
+
             $order->customer_email ?? '',
+
             '',
+
             '',
+
             '',
 
             'FALSE',
+
             'FALSE',
+
             $dropOffPincode,
-            '',
-            $client->mobile ?? '',
+
+            '', // DROPOFF/PICKUP OFFICE ID
+
+            $senderMobile,
+
             $receiverMobile,
+
             $isCod ? '' : 'PREPAID',
-            $isCod ? 0 : (int)$order->amount,
-            $isCod ? 'COD' : '',
-            $isCod ? (int)$order->amount : 0,
-            'FALSE',
-            0,
-            'TRUE',
-            'TRUE',
-            'TRUE',
-            $order->order_id ?? '',
+
+            $isCod ? '' : $codAmount,
+
+            $indiaPostPaymentType,
+
+            $isCod ? $codAmount : '',
+
+            '',
+
+            '',
+
+            'FALSE', // ACK
+
+            'FALSE', // REGISTRATION
+
+            'FALSE', // OTP BASED DELIVERY
+
+            '#' . ($order->order_id ?? ''),
         ];
     }
 }

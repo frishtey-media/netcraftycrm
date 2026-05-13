@@ -6,9 +6,9 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
 
             <!--<a href="{{ route('labels.final.export') }}" class="btn btn-primary">
-                                                                            <i class="fas fa-file-excel"></i>
-                                                                            Export Courier Excel
-                                                                        </a>-->
+                                        <i class="fas fa-file-excel"></i>
+                                        Export Courier Excel
+                                    </a>-->
 
             @php
                 use App\Models\ShopifyOrder;
@@ -99,9 +99,6 @@
                 @endif
             </div>
 
-
-
-
         </div>
 
         <div class="modal fade" id="senderModal">
@@ -130,74 +127,69 @@
         </div>
 
         <!--<div class="card">
-                                                                                                                                                                                                        <div class="card-body table-responsive">
-                                                                                                                                                                                                        <table class="table table-bordered table-striped">
-                                                                                                                                                                                                            <thead class="table-dark">
-                                                                                                                                                                                                                <tr>
-                                                                                                                                                                                                                    <th>#</th>
-                                                                                                                                                                                                                    <th>Order ID</th>
-                                                                                                                                                                                                                    <th>Client</th>
-                                                                                                                                                                                                                    <th>Customer</th>
-                                                                                                                                                                                                                    <th>Phone</th>
-                                                                                                                                                                                                                    <th>Product</th>
-                                                                                                                                                                                                                    <th>Qty</th>
-                                                                                                                                                                                                                    <th>Weight per Unit (GM)</th>
-                                                                                                                                                                                                                    <th>Total Weight (GM)</th>
-                                                                                                                                                                                                                    <th>Barcode</th>
-                                                                                                                                                                                                                    <th>Amount</th>
-                                                                                                                                                                                                                    <th>Payment Mode</th>
-                                                                                                                                                                                                                    <th>Shipping Address</th>
-                                                                                                                                                                                                                    <th>City</th>
-                                                                                                                                                                                                                    <th>State</th>
-                                                                                                                                                                                                                    <th>Pincode</th>
-                                                                                                                                                                                                                    <th>Order Date</th>
-                                                                                                                                                                                                                    <th>Created At</th>
-                                                                                                                                                                                                                </tr>
-                                                                                                                                                                                                            </thead>
-                                                                                                                                                                                                            <tbody>
-                                                                                                                                                                                                                @forelse($orders as $order)
+                                            <div class="card-body table-responsive">
+                                        <table class="table table-bordered table-striped">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Order ID</th>
+                                                    <th>Client</th>
+                                                    <th>Customer</th>
+                                                    <th>Phone</th>
+                                                    <th>Product</th>
+                                                    <th>Qty</th>
+                                                    <th>Weight per Unit (GM)</th>
+                                                    <th>Total Weight (GM)</th>
+                                                    <th>Barcode</th>
+                                                    <th>Amount</th>
+                                                    <th>Payment Mode</th>
+                                                    <th>Shipping Address</th>
+                                                    <th>City</th>
+                                                    <th>State</th>
+                                                    <th>Pincode</th>
+                                                    <th>Order Date</th>
+                                                    <th>Created At</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @forelse($orders as $order)
     <tr>
-                                                                                                                                                                                                                        <td>{{ $loop->iteration }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->order_id }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->client->client_name ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->customer_name ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->customer_phone ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->shopify_product_name ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->quantity ?? 0 }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->weight_per_unit ?? 0 }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->total_weight ?? 0 }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->barcode ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>₹{{ $order->amount ?? 0 }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->payment_mode ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->shipping_address ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->city ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->state ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->pincode ?? '-' }}</td>
-                                                                                                                                                                                                                        <td>{{ $order->order_date ? \Carbon\Carbon::parse($order->order_date)->format('d-m-Y H:i') : '-' }}
-                                                                                                                                                                                                                        </td>
-                                                                                                                                                                                                                        <td>{{ $order->created_at ? \Carbon\Carbon::parse($order->created_at)->format('d-m-Y H:i') : '-' }}
-                                                                                                                                                                                                                        </td>
-                                                                                                                                                                                                                    </tr>
+                                    <td>{{ $loop->iteration }}</td>
+                                    <td>{{ $order->order_id }}</td>
+                                    <td>{{ $order->client->client_name ?? '-' }}</td>
+                                    <td>{{ $order->customer_name ?? '-' }}</td>
+                                    <td>{{ $order->customer_phone ?? '-' }}</td>
+                                    <td>{{ $order->shopify_product_name ?? '-' }}</td>
+                                    <td>{{ $order->quantity ?? 0 }}</td>
+                                    <td>{{ $order->weight_per_unit ?? 0 }}</td>
+                                    <td>{{ $order->total_weight ?? 0 }}</td>
+                                    <td>{{ $order->barcode ?? '-' }}</td>
+                                    <td>₹{{ $order->amount ?? 0 }}</td>
+                                    <td>{{ $order->payment_mode ?? '-' }}</td>
+                                    <td>{{ $order->shipping_address ?? '-' }}</td>
+                                    <td>{{ $order->city ?? '-' }}</td>
+                                    <td>{{ $order->state ?? '-' }}</td>
+                                    <td>{{ $order->pincode ?? '-' }}</td>
+                                    <td>{{ $order->order_date ? \Carbon\Carbon::parse($order->order_date)->format('d-m-Y H:i') : '-' }}
+                                    </td>
+                                    <td>{{ $order->created_at ? \Carbon\Carbon::parse($order->created_at)->format('d-m-Y H:i') : '-' }}
+                                    </td>
+                        </tr>
 @empty
-                                                                                                                                                                                                                    <tr>
-                                                                                                                                                                                                                        <td colspan="18" class="text-center">No records found</td>
-                                                                                                                                                                                                                    </tr>
+                        <tr>
+                        <td colspan="18" class="text-center">No records found</td>
+                        </tr>
     @endforelse
-                                                                                                                                                                                                            </tbody>
-                                                                                                                                                                                                        </table>
-                                                                                                                                                                                                        </div>
+                        </tbody>
+                        </table>
+                        </div>
 
-                                                                                                                                                                                                        @if ($orders->count())
+                        @if ($orders->count())
     <div class="card-footer">
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            {{ $orders->links() }}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                        </div>
+                        {{ $orders->links() }}
+                        </div>
     @endif
-                                                                                                                                                                                                                                                                                                                                                                                                                                                </div>-->
-
-
-
-
-
+                        </div>-->
 
     </div>
 @endsection

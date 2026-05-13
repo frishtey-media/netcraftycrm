@@ -48,7 +48,7 @@ class ShopifyOrdersImport implements ToCollection, WithHeadingRow
             };
         }
 
-        return 300 * $quantity; // fallback
+        return 300 * $quantity;
     }
 
     public function collection(Collection $rows)
@@ -99,13 +99,21 @@ class ShopifyOrdersImport implements ToCollection, WithHeadingRow
                 $weightPerUnit = $totalWeight / $quantity;
 
                 /* ================= BARCODE ================= */
+                /* ================= PAYMENT MODE ================= */
+                $paymentMode = strtoupper(trim($row['payment_mode'] ?? 'COD'));
+
+                /* ================= BARCODE TYPE ================= */
+                $barcodeType = ($paymentMode == 'VPP') ? 'VPP' : 'COD';
+
+                /* ================= BARCODE ================= */
                 $barcode = Barcode::where('client_id', $this->clientId)
+                    ->where('barcode_type', $barcodeType)
                     ->where('is_used', 0)
                     ->lockForUpdate()
                     ->first();
 
                 if (!$barcode) {
-                    throw new \Exception('No unused barcode available');
+                    throw new \Exception("No unused {$barcodeType} barcode available");
                 }
 
                 /* ================= DATE ================= */
@@ -140,7 +148,7 @@ class ShopifyOrdersImport implements ToCollection, WithHeadingRow
                     'city'                 => $row['shipping_city'] ?? null,
                     'state'                => $row['shipping_province'] ?? null,
                     'pincode'              => $row['shipping_zip'] ?? null,
-                    'payment_mode'         => $row['payment_method'] ?? 'COD',
+                    'payment_mode'         => $paymentMode,
                     'amount'               => $row['total'] ?? 0,
                 ]);
 
