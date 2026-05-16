@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\CallingUser;
+use App\Models\Client;
 
 class CallingOrder extends Model
 {
@@ -18,6 +20,7 @@ class CallingOrder extends Model
         'customer_phone',
         'shipping_address',
         'father_name',
+        'age',
         'state',
         'pincode',
         'payment_mode',
@@ -27,8 +30,16 @@ class CallingOrder extends Model
         'order_source',
         'assigned_to'
     ];
+
+    // Client Relation
     public function client()
     {
-        return $this->belongsTo(\App\Models\Client::class, 'client_id');
+        return $this->belongsTo(Client::class, 'client_id', 'id');
+    }
+
+    // Staff Relation
+    public function staff()
+    {
+        return $this->belongsTo(CallingUser::class, 'assigned_to', 'id');
     }
 }

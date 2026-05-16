@@ -75,8 +75,8 @@
                                 </td>
 
                                 <!-- <td class="text-success fw-bold">
-                                                                                                                                                                                                                                                                                                                                                                                    ₹{{ number_format($product->price, 2) }}
-                                                                                                                                                                                                                                                                                                                                                                                </td>-->
+                                                                                                                                                                                                                                                                                                                                                                                        ₹{{ number_format($product->price, 2) }}
+                                                                                                                                                                                                                                                                                                                                                                                    </td>-->
                                 <td>
                                     @if ($product->low_stock_alert <= 5)
                                         <span class="badge bg-danger">
@@ -94,11 +94,11 @@
                                 <td>
                                     <div class="btn-group">
                                         <!--  <a href="javascript:void(0);" class="btn btn-sm btn-success updateStockBtn"
-                                                                                                        data-id="{{ $product->id }}" data-name="{{ $product->name }}"
-                                                                                                        data-stock="{{ $product->low_stock_alert }}"
-                                                                                                        data-price="{{ $product->price }}">
-                                                                                                        Update Stock
-                                                                                                    </a>-->
+                                                                                                            data-id="{{ $product->id }}" data-name="{{ $product->name }}"
+                                                                                                            data-stock="{{ $product->low_stock_alert }}"
+                                                                                                            data-price="{{ $product->price }}">
+                                                                                                            Update Stock
+                                                                                                        </a>-->
                                         <button type="button" class="btn btn-primary" data-bs-toggle="modal"
                                             data-bs-target="#updateStockModal" data-id="{{ $product->id }}"
                                             data-name="{{ $product->name }}" data-stock="{{ $product->low_stock_alert }}"
@@ -106,12 +106,12 @@
                                             Add Stock
                                         </button>
                                         <!-- <a href="{{ route('products.edit', $product->id) }}"
-                                                                                                                                                                                                                                                                                                                                            class="btn btn-sm btn-warning">
-                                                                                                                                                                                                                                                                                                                                            Edit
-                                                                                                                                                                                                                                                                                                                                        </a>-->
+                                                                                                                                                                                                                                                                                                                                                class="btn btn-sm btn-warning">
+                                                                                                                                                                                                                                                                                                                                                Edit
+                                                                                                                                                                                                                                                                                                                                            </a>-->
 
                                         <!--<form action="{{ route('products.destroy', $product->id) }}" method="POST">
-                                                                                                                                                                                                                                                                                                                                            </form>-->
+                                                                                                                                                                                                                                                                                                                                                </form>-->
                                     </div>
                                 </td>
                                 <td>

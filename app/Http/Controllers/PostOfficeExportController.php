@@ -65,6 +65,7 @@ class PostOfficeExportController extends Controller
                 'barcode'          => $order->barcode,
                 'payment_mode'     => $order->payment_mode,
                 'amount'           => $order->amount,
+                'age'    => $order->age,
                 'customer_name'    => trim($order->customer_name),
                 'father_name'      => trim($order->father_name),
                 'customer_phone'   => $order->customer_phone,

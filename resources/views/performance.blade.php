@@ -44,7 +44,17 @@
         <!-- SUMMARY -->
         @php
             $totalOrders = $staffs->sum('total_orders');
-            $totalVerified = $staffs->sum('verified_orders');
+            // WEB VERIFIED
+            $totalWebVerified = \App\Models\CallingOrder::where('status', 'verified')
+                ->whereNull('order_source')
+                ->count();
+
+            // WHATSAPP VERIFIED
+            $totalWhatsappVerified = \App\Models\CallingOrder::where('status', 'verified')
+                ->where('order_source', 'whatsapp')
+                ->count();
+
+            // $totalVerified = $staffs->sum('verified_orders');
             $totalPending = $staffs->sum('pending_orders');
 
             $totalWA = $staffs->sum('wa_total');
@@ -60,14 +70,24 @@
                 </div>
             </div>
 
-            <div class="col-md-3 col-6">
+            <!-- WEB VERIFIED -->
+            <div class="col-md-2 col-6 mb-4">
                 <div class="card bg-success text-white p-3">
-                    <h6>Verified</h6>
-                    <h3>{{ $totalVerified }}</h3>
+                    <h6>Web Verified</h6>
+                    <h3>{{ $totalWebVerified }}</h3>
+
+                </div>
+            </div>
+            <div class="col-md-2 col-6 mb-4">
+                <div class="card bg-success text-white p-3">
+
+                    <h6>WhatsApp Verified</h6>
+                    <h3>{{ $totalWhatsappVerified }}</h3>
                 </div>
             </div>
 
-            <div class="col-md-3 col-6">
+
+            <div class="col-md-2 col-6">
                 <div class="card bg-warning text-dark p-3">
                     <h6>Pending</h6>
                     <h3>{{ $totalPending }}</h3>

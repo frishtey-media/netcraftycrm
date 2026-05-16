@@ -16,6 +16,7 @@ class ShopifyOrder extends Model
         'quantity',
         'weight_per_unit',
         'total_weight',
+        'age',
         'barcode',
         'customer_name',
         'customer_phone',

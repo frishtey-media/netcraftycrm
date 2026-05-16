@@ -192,6 +192,7 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
                     'amount' => $row['amount'] ?? 0,
 
                     'customer_name' => $row['customer_name'],
+                    'age' => $row['age'],
 
                     'father_name' => $row['father_name'] ?? null,
 

@@ -69,6 +69,7 @@ class RecordController extends Controller
                     'barcode'          => $barcode->barcode,
 
                     'customer_name'    => $request->customer_name,
+                    'age'    => $request->age,
                     'father_name'      => $request->father_name,
                     'customer_phone'   => $request->customer_phone,
 

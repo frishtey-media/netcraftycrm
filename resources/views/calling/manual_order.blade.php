@@ -36,7 +36,14 @@
                     <label>Name</label>
                     <input type="text" name="customer_name" class="form-control" required>
                 </div>
-
+                <div class="col-md-6 mb-2">
+                    <label>Father Name</label>
+                    <input type="text" name="father_name" class="form-control" required>
+                </div>
+                <div class="col-md-6 mb-2">
+                    <label>Customer Age</label>
+                    <input type="text" name="age" class="form-control" required>
+                </div>
                 <div class="col-md-6 mb-2">
                     <label>Phone</label>
                     <input type="text" name="customer_phone" class="form-control" required>

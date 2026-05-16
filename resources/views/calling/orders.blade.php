@@ -280,16 +280,66 @@
                     <form method="POST" action="/calling/update/{{ $order->id }}">
                         @csrf
 
-                        <input name="customer_name" value="{{ $order->customer_name }}" class="form-control mb-2">
-                        <input name="customer_phone" value="{{ $order->customer_phone }}" class="form-control mb-2">
-                        <input name="city" value="{{ $order->city }}" class="form-control mb-2">
-                        <input name="state" value="{{ $order->state }}" class="form-control mb-2">
-                        <input name="pincode" value="{{ $order->pincode }}" class="form-control mb-2">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Customer Name</label>
+                            <input type="text" name="customer_name" value="{{ $order->customer_name }}"
+                                class="form-control" placeholder="Enter customer name">
+                        </div>
 
-                        <textarea name="shipping_address" class="form-control mb-2">{{ $order->shipping_address }}</textarea>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Customer Phone</label>
+                            <input type="text" name="customer_phone" value="{{ $order->customer_phone }}"
+                                class="form-control" placeholder="Enter phone number">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Product Name</label>
+                            <input type="text" name="product_name" value="{{ $order->product_name }}"
+                                class="form-control" placeholder="Enter Father Name">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Customer Father Name</label>
+                            <input type="text" name="father_name" value="{{ $order->father_name }}"
+                                class="form-control" placeholder="Enter Father Name">
+                        </div>
 
-                        <button class="btn btn-success w-100">Update</button>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Quantity</label>
+                            <input type="text" name="quantity" value="{{ $order->quantity }}" class="form-control"
+                                placeholder="Enter quantity">
+                        </div>
 
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Age</label>
+                            <input type="number" name="age" value="{{ $order->age }}" class="form-control"
+                                placeholder="Enter age">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">City</label>
+                            <input type="text" name="city" value="{{ $order->city }}" class="form-control"
+                                placeholder="Enter city">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">State</label>
+                            <input type="text" name="state" value="{{ $order->state }}" class="form-control"
+                                placeholder="Enter state">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Pincode</label>
+                            <input type="text" name="pincode" value="{{ $order->pincode }}" class="form-control"
+                                placeholder="Enter pincode">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Shipping Address</label>
+                            <textarea name="shipping_address" class="form-control" rows="4" placeholder="Enter shipping address">{{ $order->shipping_address }}</textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">
+                            Update Order
+                        </button>
                     </form>
 
                 </div>

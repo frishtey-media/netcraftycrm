@@ -33,7 +33,7 @@ class ProductController extends Controller
         if ($request->warehouse_id) {
             $query->where('warehouse_id', $request->warehouse_id);
         }
-
+ 
         $products = $query
             ->latest()
             ->paginate(10);

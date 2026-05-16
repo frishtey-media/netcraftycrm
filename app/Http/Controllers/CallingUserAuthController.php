@@ -269,12 +269,16 @@ class CallingUserAuthController extends Controller
 
         $order->update([
             'customer_name'   => $request->customer_name,
+            'father_name'   => $request->father_name,
+            'product_name'   => $request->product_name,
             'customer_phone'  => $request->customer_phone,
             'city'            => $request->city,
             'state'           => $request->state,
+            'quantity'           => $request->quantity,
+            'age'           => $request->age,
             'pincode'         => $request->pincode,
             'shipping_address' => $request->shipping_address,
-            'status'          => $request->status ?? $order->status, // fallback safe
+            'status'          => $request->status ?? $order->status,
         ]);
 
         return back()->with('success', 'Order Updated');

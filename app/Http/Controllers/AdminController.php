@@ -62,27 +62,34 @@ class AdminController extends Controller
     {
         $staffId = $request->staff_id;
 
-        $query = CallingOrder::where('assigned_to', $staffId)
+        $query = CallingOrder::with(['staff', 'client'])
+            ->where('assigned_to', $staffId)
             ->where('status', 'verified')
             ->where('is_exported', 0);
 
+        // Date Filter
         if ($request->from && $request->to) {
+
             $from = Carbon::parse($request->from)->startOfDay();
             $to   = Carbon::parse($request->to)->endOfDay();
 
             $query->whereBetween('updated_at', [$from, $to]);
         }
 
-
+        // Client Filter
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
         }
 
         $orders = $query->get();
 
+        // Mark Exported
         if ($orders->count()) {
+
             CallingOrder::whereIn('id', $orders->pluck('id'))
-                ->update(['is_exported' => 1]);
+                ->update([
+                    'is_exported' => 1
+                ]);
         }
 
         return Excel::download(
