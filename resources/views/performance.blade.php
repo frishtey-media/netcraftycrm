@@ -78,6 +78,8 @@
 
                 </div>
             </div>
+
+
             <div class="col-md-2 col-6 mb-4">
                 <div class="card bg-success text-white p-3">
 
@@ -115,11 +117,12 @@
                             <th>Staff</th>
                             <th>Clients</th>
                             <th>Total</th>
-                            <th>Verified</th>
+                            <th>Web Verified</th>
+                            <th>WA Verified</th>
                             <th>Pending</th>
                             <th>Not Reachable</th>
                             <th>WA Total</th>
-                            <th>WA Verified</th>
+                            <!--  <th>WA Verified</th>-->
                             <th>WA Pending</th>
                             <th>Combined %</th>
                             <th>Order %</th>
@@ -132,11 +135,16 @@
                             @php
                                 $success =
                                     $staff->total_orders > 0
-                                        ? round(($staff->verified_orders / $staff->total_orders) * 100, 1)
+                                        ? round(
+                                            (($staff->web_verified_orders + $staff->whatsapp_verified_orders) /
+                                                max($staff->total_orders, 1)) *
+                                                100,
+                                            1,
+                                        )
                                         : 0;
 
                                 $combinedTotal = $staff->total_orders + $staff->wa_total;
-                                $combinedVerified = $staff->verified_orders + $staff->wa_verified;
+                                $combinedVerified = $staff->web_verified_orders + $staff->whatsapp_verified_orders;
 
                                 $combinedRate =
                                     $combinedTotal > 0 ? round(($combinedVerified / $combinedTotal) * 100, 1) : 0;
@@ -158,15 +166,38 @@
 
                                 <td><span class="badge bg-secondary">{{ $staff->total_orders }}</span></td>
 
+                                <!-- WEB VERIFIED -->
                                 <td>
+
                                     <a href="{{ route('admin.staff.verified', [
                                         'staff_id' => $staff->id,
+                                        'type' => 'web',
                                         'from' => request('from'),
                                         'to' => request('to'),
                                     ]) }}"
                                         class="badge bg-success text-decoration-none">
-                                        {{ $staff->verified_orders }}
+
+                                        {{ $staff->web_verified_orders }}
+
                                     </a>
+
+                                </td>
+
+                                <!-- WHATSAPP VERIFIED -->
+                                <td>
+
+                                    <a href="{{ route('admin.staff.verified', [
+                                        'staff_id' => $staff->id,
+                                        'type' => 'whatsapp',
+                                        'from' => request('from'),
+                                        'to' => request('to'),
+                                    ]) }}"
+                                        class="badge bg-primary text-decoration-none">
+
+                                        {{ $staff->whatsapp_verified_orders }}
+
+                                    </a>
+
                                 </td>
 
                                 <td>
@@ -180,7 +211,7 @@
 
                                 <td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
 
-                                <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
+                                <!-- <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>-->
 
                                 <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
 

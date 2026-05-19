@@ -177,20 +177,32 @@ class AdminController extends Controller
         // ================= ORDERS =================
         $staffs = CallingUser::withCount([
 
+            // TOTAL WEB ORDERS
             'orders as total_orders' => function ($q) use ($from, $to) {
                 $q->whereBetween('updated_at', [$from, $to]);
             },
 
-            'orders as verified_orders' => function ($q) use ($from, $to) {
+            // WEB VERIFIED
+            'orders as web_verified_orders' => function ($q) use ($from, $to) {
                 $q->where('status', 'verified')
+                    ->whereNull('order_source')
                     ->whereBetween('updated_at', [$from, $to]);
             },
 
+            // WHATSAPP VERIFIED FROM CALLING ORDER
+            'orders as whatsapp_verified_orders' => function ($q) use ($from, $to) {
+                $q->where('status', 'verified')
+                    ->where('order_source', 'whatsapp')
+                    ->whereBetween('updated_at', [$from, $to]);
+            },
+
+            // PENDING
             'orders as pending_orders' => function ($q) use ($from, $to) {
                 $q->where('status', 'pending')
                     ->whereBetween('updated_at', [$from, $to]);
             },
 
+            // NOT REACHABLE
             'orders as not_reachable_orders' => function ($q) use ($from, $to) {
                 $q->where('status', 'not_reachable')
                     ->whereBetween('updated_at', [$from, $to]);

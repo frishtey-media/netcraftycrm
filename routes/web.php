@@ -57,6 +57,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/barcodes', [BarcodeController::class, 'index'])->name('barcodes');
     Route::post('/barcodes/import', [BarcodeController::class, 'import'])->name('barcodes.import');
 
+    Route::get('/barcodesview', [BarcodeController::class, 'indexbarcode']);
+
+    Route::get('/download-barcodes', [BarcodeController::class, 'download'])
+        ->name('download.barcodes');
+
     Route::post('/admin/download-barcodes', [OrderController::class, 'downloadBarcodes'])->name('admin.download.barcodes');
 
     Route::post('/download-barcodes-excel', [OrderController::class, 'downloadBarcodesexcel'])

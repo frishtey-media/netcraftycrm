@@ -168,6 +168,7 @@
             <a href="{{ route('calling.users') }}">
                 <i class="bi bi-people"></i> Calling Staff
             </a>
+
             <a href="{{ route('performance.dashboard') }}">
                 <i class="bi bi-graph-up"></i>Staff Performance
             </a>
@@ -192,6 +193,7 @@
             <a href="{{ route('barcodes') }}">
                 <i class="bi bi-upc-scan"></i> Barcodes
             </a>
+
             <div class="sidebar-dropdown">
                 <div class="sidebar-link">
                     <i class="bi bi-printer"></i>

@@ -217,6 +217,10 @@
                     <div class="value mb-2">
                         {{ $order->product_name }}
                     </div>
+                    <div class="label">Payment Mode</div>
+                    <div class="value mb-2">
+                        {{ $order->payment_mode }}
+                    </div>
 
                     <!-- PHONE -->
                     <div class="label">Mobile</div>

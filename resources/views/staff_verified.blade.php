@@ -39,16 +39,18 @@
 
     </div>
 
-    <a href="{{ route('admin.staff.verified.export', request()->all()) }}" class="btn btn-success mb-3">
-        ⬇ Export Excel
-    </a>
-
+    @if ($orders->count() <= 10)
+        <a href="{{ route('admin.staff.verified.export', request()->all()) }}" class="btn btn-success mb-3">
+            ⬇ Export Excel
+        </a>
+    @endif
     <div class="table-responsive">
         <table class="table table-bordered">
 
             <thead>
                 <tr>
                     <th>#</th>
+                    <th>Order Id</th>
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Product</th>
@@ -58,14 +60,23 @@
             </thead>
 
             <tbody>
-                @foreach ($orders as $o)
+                @foreach ($orders as $key => $o)
                     <tr>
+
+                        <td>{{ $key + 1 }}</td>
+
                         <td>#{{ $o->order_id }}</td>
+
                         <td>{{ $o->customer_name }}</td>
+
                         <td>{{ $o->customer_phone }}</td>
+
                         <td>{{ $o->product_name }}</td>
+
                         <td>{{ $o->city }}</td>
+
                         <td>{{ $o->updated_at }}</td>
+
                     </tr>
                 @endforeach
             </tbody>
