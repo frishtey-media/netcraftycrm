@@ -98,6 +98,7 @@
                     <th>Product</th>
                     <th>Phone</th>
                     <th>Address</th>
+                    <th>Order Date</th>
                     <th>Status</th>
                     <th>Action</th>
                 </tr>
@@ -125,7 +126,9 @@
                             {{ $order->shipping_address }}<br>
                             <strong>{{ $order->pincode }}</strong>
                         </td>
-
+                        <td>
+                            {{ $order->order_date }}
+                        </td>
                         <td>
                             @if ($order->status == 'pending')
                                 <span class="badge bg-warning">Pending</span>
@@ -193,7 +196,7 @@
                     <!-- TOP -->
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="fw-bold">#{{ $order->order_id }}</div>
-
+                        {{ $order->order_date }}
                         @if ($order->status == 'pending')
                             <span class="badge bg-warning">Pending</span>
                         @elseif($order->status == 'verified')

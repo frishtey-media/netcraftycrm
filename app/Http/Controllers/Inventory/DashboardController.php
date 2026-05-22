@@ -41,14 +41,21 @@ class DashboardController extends Controller
             ->groupBy('product_id', 'month')
             ->get();
 
-        // ================= LOW STOCK (CORRECT) =================
+
         // 👉 using products.stock (IMPORTANT)
-        $lowStockList = Product::where('low_stock_alert', '<=', 250)
+        $lowStockList = Product::leftJoin('warehouses', 'products.warehouse_id', '=', 'warehouses.id')
+            ->where('products.low_stock_alert', '<=', 250)
+            ->select(
+                'products.name as product_name',
+                'products.low_stock_alert',
+                'warehouses.name as warehouse_name'
+            )
             ->get()
             ->map(function ($p) {
                 return [
-                    'name' => $p->name,
-                    'qty'  => (int)$p->low_stock_alert
+                    'name'      => $p->product_name,
+                    'qty'       => (int)$p->low_stock_alert,
+                    'warehouse' => $p->warehouse_name ?? 'N/A',
                 ];
             });
 

@@ -30,7 +30,7 @@ class BarcodeController extends Controller
     {
         $barcodes = [];
 
-        for ($i = 0; $i < 110; $i++) {
+        for ($i = 0; $i < 11000; $i++) {
 
             do {
 
@@ -50,8 +50,11 @@ class BarcodeController extends Controller
     // Download PDF
     public function download()
     {
+        ini_set('memory_limit', '2048M');
+        ini_set('max_execution_time', 0);
+
         $barcodes = printbar_codes::latest()
-            ->take(110)
+            ->take(11000)
             ->get();
 
         $pdf = Pdf::loadView('barcodes.pdf', compact('barcodes'))

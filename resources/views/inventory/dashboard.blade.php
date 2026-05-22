@@ -102,10 +102,13 @@
             @if ($lowStockList->count() > 0)
                 <div id="lowStockBox" class="alert alert-danger low-stock-alert">
                     <h5>⚠ Low Stock Alert</h5>
+
                     <ul class="mb-0">
                         @foreach ($lowStockList as $item)
                             <li>
-                                <b>{{ $item['name'] }}</b> - Only {{ $item['qty'] }} left
+                                <b>{{ $item['name'] }}</b>
+                                (Warehouse: <b>{{ $item['warehouse'] }}</b>)
+                                - Only {{ $item['qty'] }} left
                             </li>
                         @endforeach
                     </ul>

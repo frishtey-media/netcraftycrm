@@ -46,7 +46,8 @@
             width: 2.2in;
 
             height: 0.65in;
-
+            margin: 5px;
+            padding: 5px;
             border: 1px solid #cfcfcf;
 
             padding: 0.03in;
@@ -61,7 +62,8 @@
             width: 1.9in;
 
             height: 0.30in;
-
+            margin: 5px;
+            padding: 5px;
             display: block;
 
             margin: 0 auto;

@@ -65,6 +65,7 @@
                     <th>State</th>
                     <th>Pincode</th>
                     <th>Address</th>
+                    <th>Date</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -86,6 +87,7 @@
                         <td>{{ $order->state }}</td>
                         <td>{{ $order->pincode }}</td>
                         <td>{{ $order->shipping_address }}</td>
+                        <td>{{ $order->order_date }}</td>
 
                         <td>
                             <span class="badge bg-danger">Not Reachable</span>
@@ -113,7 +115,7 @@
                     <div class="fw-semibold mt-1">{{ $order->customer_name }}</div>
 
                     <div class="mt-2 small">
-
+                        {{ $order->order_date }}
                         <div><strong>Product:</strong> {{ $order->product_name }}</div>
                         <div class="label">Payment Mode</div>
                         <div class="value mb-2">

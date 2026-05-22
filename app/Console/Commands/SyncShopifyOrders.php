@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Client;
-use App\Models\callingorder;
+use App\Models\CallingOrder;
 use GuzzleHttp\Client as GuzzleClient;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -24,27 +24,21 @@ class SyncShopifyOrders extends Command
 
             Log::info("➡️ Client: {$client->id} | {$client->shopify_store_url}");
 
-
             if (empty($client->shopify_store_url) || empty($client->shopify_access_token)) {
                 Log::error("❌ Missing credentials for client ID: {$client->id}");
                 continue;
             }
 
-
-
-
             $startIST = Carbon::yesterday('Asia/Kolkata')->setTime(17, 0, 0);
             $endIST   = Carbon::now('Asia/Kolkata');
 
-
             $start = $startIST->copy()->utc()->toIso8601String();
             $end   = $endIST->copy()->utc()->toIso8601String();
-            // $start = Carbon::now()->subDays(3)->startOfDay()->toIso8601String();
-            // $end   = Carbon::now()->toIso8601String();
 
             $url = "https://{$client->shopify_store_url}/admin/api/2024-04/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
 
             try {
+
                 $http = new GuzzleClient([
                     'timeout' => 30,
                 ]);
@@ -63,20 +57,64 @@ class SyncShopifyOrders extends Command
 
                 foreach ($orders as $order) {
 
+                    // -----------------------------
+                    // Read Note Attributes
+                    // -----------------------------
+                    $fullName = '';
+                    $mobile = '';
+                    $noteAddress = [];
+
+                    foreach (($order['note_attributes'] ?? []) as $attr) {
+
+                        $name = strtolower(trim($attr['name']));
+                        $value = trim($attr['value'] ?? '');
+
+                        if ($name === 'full name') {
+                            $fullName = $value;
+                        }
+
+                        if ($name === 'mobile number') {
+                            $mobile = $value;
+                        }
+
+                        if (
+                            in_array($name, [
+                                'complete full address',
+                                'landmark (famous spot nearby)',
+                                'address',
+                                'landmark'
+                            ])
+                        ) {
+                            $noteAddress[] = $value;
+                        }
+                    }
+
+                    // -----------------------------
+                    // Build Full Address
+                    // -----------------------------
+                    $fullAddress = implode(', ', array_filter([
+                        $order['shipping_address']['address1'] ?? null,
+                        $order['shipping_address']['address2'] ?? null,
+                        $order['shipping_address']['company'] ?? null,
+                        implode(', ', $noteAddress),
+                    ]));
+
                     foreach ($order['line_items'] as $item) {
 
                         $orderId = isset($order['name'])
                             ? str_replace('#', '', $order['name'])
                             : $order['id'];
 
-
                         $exists = CallingOrder::where('order_id', $orderId)
                             ->where('client_id', $client->id)
                             ->exists();
 
-                        if ($exists) continue;
+                        if ($exists) {
+                            continue;
+                        }
 
                         CallingOrder::create([
+
                             'client_id' => $client->id,
 
                             'order_id' => $orderId,
@@ -86,22 +124,29 @@ class SyncShopifyOrders extends Command
                                 : now(),
 
                             'product_name' => $item['title'] ?? 'Product',
+
                             'quantity' => $item['quantity'] ?? 1,
 
-                            'customer_name' => $order['shipping_address']['name']
-                                ?? ($order['customer']['first_name'] ?? 'Guest'),
+                            'customer_name' => $fullName
+                                ?: ($order['shipping_address']['name']
+                                    ?? ($order['customer']['first_name'] ?? 'Guest')),
 
                             'father_name' => $order['shipping_address']['company'] ?? '',
 
-                            'customer_phone' => $order['phone']
-                                ?? ($order['shipping_address']['phone'] ?? ''),
+                            'customer_phone' => $mobile
+                                ?: ($order['phone']
+                                    ?? ($order['shipping_address']['phone'] ?? '')),
 
-                            'shipping_address' => $order['shipping_address']['address1'] ?? '',
+                            'shipping_address' => $fullAddress,
+
                             'city' => $order['shipping_address']['city'] ?? '',
+
                             'state' => $order['shipping_address']['province'] ?? '',
+
                             'pincode' => $order['shipping_address']['zip'] ?? '',
 
                             'payment_mode' => $order['financial_status'] ?? '',
+
                             'amount' => $order['total_price'] ?? 0,
 
                             'status' => 'pending',
@@ -109,7 +154,12 @@ class SyncShopifyOrders extends Command
                     }
                 }
             } catch (\Exception $e) {
-                Log::error("❌ Shopify Error (Client {$client->id}): " . $e->getMessage());
+
+                Log::error(
+                    "❌ Shopify Error (Client {$client->id}): "
+                        . $e->getMessage()
+                );
+
                 continue;
             }
         }
