@@ -11,7 +11,6 @@ class Client extends Model
 
     protected $fillable = [
         'client_name',
-        'shopify_store_url',
         'company_name',
         'mobile',
         'email',
@@ -19,6 +18,11 @@ class Client extends Model
         'city',
         'state',
         'pincode',
+        'shopify_store_url',
+        'shopify_access_token',
+        'phone_number_id',
+        'whatsapp_number',
+        'webhook_secret',
     ];
 
     public function products()

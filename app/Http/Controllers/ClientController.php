@@ -2,25 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Client;
 use Illuminate\Validation\Rule;
-
 use App\Models\CallingUser;
 
 class ClientController extends Controller
 {
-
     public function index()
     {
-        $clients = Client::all();
+        $clients = Client::latest()->get();
+
         return view('clients.index', compact('clients'));
     }
 
     public function store(Request $request)
     {
-
         $request->validate([
             'client_name' => [
                 'required',
@@ -28,39 +25,52 @@ class ClientController extends Controller
                 'max:255',
                 Rule::unique('clients', 'client_name'),
             ],
-            'company_name' => ['nullable', 'string', 'max:255'],
-            'mobile' => ['nullable', 'string', 'max:20'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'city' => ['nullable', 'string', 'max:255'],
-            'state' => ['nullable', 'string', 'max:255'],
-            'pincode' => ['nullable', 'string', 'max:20'],
-            'shopify_store_url' => ['nullable', 'string', 'max:255'],
-        ], [
-            'client_name.unique' => 'Client name already exists.',
-        ]);
 
+            'company_name'         => 'nullable|string|max:255',
+            'mobile'               => 'nullable|string|max:20',
+            'email'                => 'nullable|email|max:255',
+            'address'              => 'nullable|string|max:1000',
+            'city'                 => 'nullable|string|max:255',
+            'state'                => 'nullable|string|max:255',
+            'pincode'              => 'nullable|string|max:20',
+            'shopify_store_url'    => 'nullable|string|max:255',
+            'shopify_access_token' => 'nullable|string',
+            'phone_number_id'      => 'nullable|string|max:255',
+            'whatsapp_number'      => 'nullable|string|max:50',
+            'webhook_secret'       => 'nullable|string',
+        ]);
 
         Client::create([
-            'client_name' => $request->client_name,
-            'company_name' => $request->company_name,
-            'mobile' => $request->mobile,
-            'email' => $request->email,
-            'address' => $request->address,
-            'city' => $request->city,
-            'state' => $request->state,
-            'pincode' => $request->pincode,
-            'shopify_store_url' => $request->shopify_store_url,
+            'client_name'          => $request->client_name,
+            'company_name'         => $request->company_name,
+            'mobile'               => $request->mobile,
+            'email'                => $request->email,
+            'address'              => $request->address,
+            'city'                 => $request->city,
+            'state'                => $request->state,
+            'pincode'              => $request->pincode,
+            'shopify_store_url'    => $request->shopify_store_url,
+            'shopify_access_token' => $request->shopify_access_token,
+            'phone_number_id'      => $request->phone_number_id,
+            'whatsapp_number'      => $request->whatsapp_number,
+            'webhook_secret'       => $request->webhook_secret,
         ]);
 
-        return redirect()->back()->with('success', 'Client added successfully');
+        return redirect()->back()->with(
+            'success',
+            'Client added successfully.'
+        );
     }
+
     public function clientStaffForm()
     {
         $clients = Client::all();
-        $staffs  = CallingUser::all();
+        $staffs = CallingUser::all();
 
-        return view('client_assign_staff', compact('clients', 'staffs'));
+        return view(
+            'client_assign_staff',
+            compact('clients', 'staffs')
+        );
     }
 
     public function saveClientStaff(Request $request)
@@ -72,9 +82,11 @@ class ClientController extends Controller
 
         $client = Client::findOrFail($request->client_id);
 
-        // 🔥 mapping save
         $client->staffs()->sync($request->staff_ids ?? []);
 
-        return back()->with('success', 'Mapping Saved Successfully');
+        return back()->with(
+            'success',
+            'Mapping Saved Successfully'
+        );
     }
 }
