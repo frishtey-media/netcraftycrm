@@ -176,8 +176,6 @@
                 <i class="bi bi-upload"></i> Import Records
             </a>
 
-
-
             <a href="{{ route('labelsenders') }}">
                 <i class="bi bi-person-lines-fill"></i> Senders
             </a>

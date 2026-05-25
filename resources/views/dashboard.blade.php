@@ -125,6 +125,19 @@
             </div>
         </div>
 
+
+        <div class="col-md-4">
+            <a href="/delivery" class="dashboard-card card-green">
+                <div>
+                    <div class="card-title">Delivery Status Update</div>
+                    <small>Format Excel India post bulk tracking</small>
+                </div>
+                <i class="bi bi-cart-check card-icon"></i>
+            </a>
+        </div>
+
+
+
     </div>
 
     {{-- ================= BARCODE MODAL ================= --}}

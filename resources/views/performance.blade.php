@@ -152,7 +152,11 @@
 
                             <tr>
 
-                                <td>{{ $staff->name }}</td>
+                                <td>
+                                    <a href="{{ route('staff.report', $staff->id) }}">
+                                        {{ $staff->name }}
+                                    </a>
+                                </td>
 
                                 <td>
                                     @if (isset($clientWise[$staff->id]))

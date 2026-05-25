@@ -26,6 +26,9 @@ class Order extends Model
         'product',
         'quantity',
         'weight',
+        'delivery_status',
+        'delivery_date',
+        'delivery_remark',
     ];
 
     public function client()

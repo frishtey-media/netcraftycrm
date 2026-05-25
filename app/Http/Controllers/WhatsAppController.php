@@ -16,69 +16,144 @@ class WhatsAppController extends Controller
 
     public function webhook(Request $request)
     {
-        // 🔐 VERIFY WEBHOOK
+        // ==========================
+        // WEBHOOK VERIFY
+        // ==========================
         if ($request->isMethod('get')) {
-            if ($request->get('hub_verify_token') === env('WA_VERIFY_TOKEN')) {
-                return response($request->get('hub_challenge'), 200);
+
+            if (
+                $request->query('hub_mode') === 'subscribe' &&
+                $request->query('hub_verify_token') === env('WA_VERIFY_TOKEN')
+            ) {
+                return response(
+                    $request->query('hub_challenge'),
+                    200
+                );
             }
+
             return response('Invalid token', 403);
         }
 
+        // ==========================
+        // WEBHOOK DATA
+        // ==========================
         $data = $request->all();
 
-        $msg = data_get($data, 'entry.0.changes.0.value.messages.0');
+        // Ignore delivery/read status callbacks
+        if (data_get($data, 'entry.0.changes.0.value.statuses')) {
+            return response()->json(['ok' => true]);
+        }
+
+        $msg = data_get(
+            $data,
+            'entry.0.changes.0.value.messages.0'
+        );
 
         if (!$msg) {
             return response()->json(['ok' => true]);
         }
 
+        // ==========================
+        // MESSAGE DETAILS
+        // ==========================
         $phone = $msg['from'] ?? null;
-        $text  = data_get($msg, 'text.body', 'New Lead');
         $waId  = $msg['id'] ?? null;
+        $type  = $msg['type'] ?? 'text';
 
-        $phoneNumberId = data_get($data, 'entry.0.changes.0.value.metadata.phone_number_id');
+        // Handle multiple message types
+        $text = match ($type) {
+            'text'     => data_get($msg, 'text.body'),
+            'image'    => '📷 Image',
+            'document' => '📄 Document',
+            'audio'    => '🎤 Audio',
+            'video'    => '🎥 Video',
+            default    => 'New Message'
+        };
 
-        // 🔥 CLIENT FIND (DB से, hardcode नहीं)
-        $client = Client::where('phone_number_id', $phoneNumberId)->first();
-
-        if (!$client) {
-            return response()->json(['error' => 'Client not mapped'], 200);
+        if (!$phone) {
+            return response()->json(['ok' => true]);
         }
 
-        // 🔥 EXISTING OR NEW CONVERSATION
-        $conv = Conversation::firstOrCreate(
+        // ==========================
+        // WHICH CLIENT?
+        // ==========================
+        $phoneNumberId = data_get(
+            $data,
+            'entry.0.changes.0.value.metadata.phone_number_id'
+        );
+
+        $client = Client::where(
+            'phone_number_id',
+            $phoneNumberId
+        )->first();
+
+        if (!$client) {
+
+            Log::warning(
+                'WhatsApp Client Mapping Missing',
+                [
+                    'phone_number_id' => $phoneNumberId
+                ]
+            );
+
+            return response()->json([
+                'error' => 'Client not mapped'
+            ]);
+        }
+
+        // ==========================
+        // STAFF ASSIGNMENT
+        // ==========================
+        $staffId = $this->assignStaff($client->id);
+
+        // ==========================
+        // CREATE/FIND CONVERSATION
+        // ==========================
+        $conversation = Conversation::firstOrCreate(
             [
                 'customer_phone' => $phone,
                 'client_id'      => $client->id
             ],
             [
-                'assigned_to' => $this->assignStaff($client->id)
+                'assigned_to'    => $staffId,
+                'status'         => 'open',
+                'last_message'   => $text,
+                'last_message_at' => now()
             ]
         );
 
-        // 🔥 अगर पहले assign नहीं था → assign करो
-        if (!$conv->assigned_to) {
-            $conv->assigned_to = $this->assignStaff($client->id);
-            $conv->save();
+        // If conversation exists but no staff assigned
+        if (!$conversation->assigned_to && $staffId) {
+
+            $conversation->assigned_to = $staffId;
+            $conversation->save();
         }
 
-        // 🔥 DUPLICATE MESSAGE CHECK
-        if ($waId && !Message::where('wa_message_id', $waId)->exists()) {
+        // ==========================
+        // DUPLICATE CHECK
+        // ==========================
+        if (
+            $waId &&
+            !Message::where('wa_message_id', $waId)->exists()
+        ) {
 
             Message::create([
-                'conversation_id' => $conv->id,
+                'conversation_id' => $conversation->id,
                 'sender'          => 'user',
                 'message'         => $text,
                 'wa_message_id'   => $waId
             ]);
 
-            $conv->update([
+            $conversation->update([
                 'last_message'     => $text,
-                'last_message_at'  => now()
+                'last_message_at'  => now(),
+                'status'           => 'open'
             ]);
         }
 
-        return response()->json(['ok' => true]);
+        return response()->json([
+            'success' => true
+        ]);
     }
 
 

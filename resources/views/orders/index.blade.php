@@ -71,6 +71,7 @@
                     <th><input type="checkbox" id="selectAll"></th>
                     <th>#</th>
                     <th>Order ID</th>
+                    <th>Delivery Status</th>
                     <th>Barcode</th>
                     <th>Customer Name</th>
                     <th>Customer Phone</th>
@@ -81,6 +82,7 @@
                     <th>Quantity</th>
                     <th>Weight</th>
                     <th>Date</th>
+                    <th>Delivery Remarks</th>
                 </tr>
             </thead>
             <tbody>
@@ -91,6 +93,21 @@
                         </td>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $order->order_id }}</td>
+                        <td>
+                            @if (strtolower($order->delivery_status) == 'delivered')
+                                <span class="badge bg-success fs-6">
+                                    {{ $order->delivery_status }}
+                                </span>
+                            @elseif(strtolower($order->delivery_status) == 'in transit' || strtolower($order->delivery_status) == 'out for delivery')
+                                <span class="badge bg-primary fs-6">
+                                    {{ $order->delivery_status }}
+                                </span>
+                            @else
+                                <span class="badge bg-danger fs-6">
+                                    {{ $order->delivery_status }}
+                                </span>
+                            @endif
+                        </td>
                         <td>{{ $order->barcode }}</td>
                         <td>{{ $order->customer_name }}</td>
                         <td>{{ $order->customer_phone }}</td>
@@ -101,6 +118,7 @@
                         <td>{{ $order->quantity }}</td>
                         <td>{{ $order->weight }}</td>
                         <td>{{ $order->date }}</td>
+                        <td>{{ $order->delivery_remark }}</td>
                     </tr>
                 @endforeach
             </tbody>

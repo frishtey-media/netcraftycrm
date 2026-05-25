@@ -23,6 +23,8 @@ use App\Http\Controllers\CallingUserController;
 use App\Http\Controllers\CallingOrderController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\StaffChatController;
+use App\Http\Controllers\DeliveryController;
+use App\Http\Controllers\ReportController;
 
 
 
@@ -31,7 +33,8 @@ require __DIR__ . '/inventory.php';
 Route::get('/', function () {
     return redirect()->route('login');
 });
-Route::match(['get', 'post'], '/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
+Route::get('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
+Route::post('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
 
 //Route::post('/webhook/shopify/order', [WhatsAppController::class, 'orderCreate']);
 
@@ -102,6 +105,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
     Route::get('/performance', [AdminController::class, 'performance'])
         ->name('performance.dashboard');
+    Route::get('/staff-report/{staff_id}', [ReportController::class, 'staffReport'])
+        ->name('staff.report');
+
+    Route::get('/delivery', [DeliveryController::class, 'index'])
+        ->name('delivery.index');
+
+    Route::post('/delivery/upload', [DeliveryController::class, 'upload'])
+        ->name('delivery.upload');
+
 
     // GET → form open
     Route::get('/client_assign_staff', [ClientController::class, 'clientStaffForm'])
