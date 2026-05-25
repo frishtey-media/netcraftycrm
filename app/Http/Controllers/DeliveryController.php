@@ -49,11 +49,33 @@ class DeliveryController extends Controller
             }
 
             // Status Mapping
-            $crmStatus = match (strtolower($status)) {
-                'delivered'      => 'Delivered',
-                'not delivered'  => 'In Transit',
-                default          => $status,
-            };
+            $event = strtolower($lastEvent);
+            $status = strtolower(trim($status));
+
+            if (
+                str_contains($event, 'sender') ||
+                str_contains($event, 'return to sender') ||
+                str_contains($event, 'returned to sender')
+            ) {
+
+                $crmStatus = 'RTO';
+            } elseif (
+                $status == 'delivered' &&
+                str_contains($event, 'addressee')
+            ) {
+
+                $crmStatus = 'Delivered';
+            } elseif (
+                $status == 'not delivered' ||
+                str_contains($event, 'in transit') ||
+                str_contains($event, 'out for delivery')
+            ) {
+
+                $crmStatus = 'In Transit';
+            } else {
+
+                $crmStatus = 'In Transit';
+            }
 
             // Extract Delivery Date only when Delivered
             $deliveryDate = null;

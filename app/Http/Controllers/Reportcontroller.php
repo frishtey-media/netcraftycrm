@@ -92,7 +92,8 @@ class ReportController extends Controller
             ])
             ->whereIn('orders.delivery_status', [
                 'In Transit',
-                'Out For Delivery'
+                'Out For Delivery',
+                'Not Delivered'
             ])
             ->count();
 
