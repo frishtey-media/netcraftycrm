@@ -9,5 +9,6 @@ class LabelSender extends Model
     protected $fillable = [
         'customer_name',
         'customer_phone',
+        'client_id'
     ];
 }

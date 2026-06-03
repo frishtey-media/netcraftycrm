@@ -10,103 +10,155 @@ use App\Models\ShopifyOrder;
 use Illuminate\Support\Facades\DB;
 use App\Models\ClientProduct;
 use App\Models\Client;
+use App\Models\CallingOrder;
+use App\Models\CallingUser;
+
 
 class RecordController extends Controller
 {
 
     public function create()
     {
-        $orderId = 'ORD-' . now()->format('Ymd') . '-' . strtoupper(Str::random(3));
-        $barcodes = Barcode::where('is_used', 0)->pluck('barcode');
-        $clients = Client::orderBy('client_name')->get();
-        return view('record.create', compact('orderId', 'barcodes', 'clients'));
-    }
+        $user = auth()->user();
 
+        // Super Admin => All Clients
+        if ($user->role == 'super_admin') {
+            $clients = Client::orderBy('client_name')->get();
+        } else {
+            $clients = Client::where('id', $user->client_id)->get();
+        }
+
+        $staffs = CallingUser::where('status', 1)->get();
+
+        // Temporary Order ID
+        $orderId = 'AUTO-GENERATED';
+
+        return view(
+            'record.create',
+            compact(
+                'orderId',
+                'clients',
+                'staffs'
+            )
+        );
+    }
+    public function generateOrderId($staffId)
+    {
+        $staff = CallingUser::findOrFail($staffId);
+
+        $name = trim($staff->name);
+
+        $shortName =
+            strtoupper(substr($name, 0, 1)) .
+            strtolower(substr($name, -1));
+
+        $date = now()->format('d-m-y');
+
+        $todayCount = CallingOrder::whereDate('created_at', today())
+            ->where('assigned_to', $staff->id)
+            ->count() + 1;
+
+        $orderId = $shortName . '-' . $date . '-' . $todayCount;
+
+        return response()->json([
+            'order_id' => $orderId
+        ]);
+    }
     public function store(Request $request)
     {
         $request->validate([
-            'client_id'     => 'required|exists:clients,id',
-            'payment_mode'  => 'required',
-            'amount'        => 'required|numeric',
-            'customer_name' => 'required',
+            'client_id'      => 'required',
+            'assigned_to'    => 'required',
+            'product'        => 'required',
+            'customer_name'  => 'required',
+            'customer_phone' => 'required',
+            'payment_mode'   => 'required',
+            'age'   => 'required',
+            'amount'         => 'required|numeric',
         ]);
 
-        try {
-            DB::transaction(function () use ($request) {
+        // Selected Staff
+        $staff = CallingUser::findOrFail($request->assigned_to);
 
+        $name = trim($staff->name);
 
-                $paymentMode = strtoupper($request->payment_mode);
+        $shortName =
+            strtoupper(substr($name, 0, 1)) .
+            strtolower(substr($name, -1));
 
-                $barcodeType = $paymentMode == 'VPP'
-                    ? 'vpp'
-                    : 'cod';
+        $date = now()->format('d-m-y');
 
-                $barcode = Barcode::where('client_id', $request->client_id)
-                    ->where('barcode_type', $barcodeType)
-                    ->where('is_used', 0)
-                    ->orderBy('id', 'asc')
-                    ->lockForUpdate()
-                    ->first();
+        $todayCount = CallingOrder::whereDate('created_at', today())
+            ->where('assigned_to', $staff->id)
+            ->count() + 1;
 
-                if (!$barcode) {
-                    throw new \Exception('No unused barcode available for selected client');
-                }
+        $orderId = $shortName . '-' . $date . '-' . $todayCount;
 
+        CallingOrder::create([
 
-                ShopifyOrder::create([
-                    'client_id'        => $request->client_id,
-                    'order_id'         => $request->order_id,
-                    'order_date'       => $request->date,
+            'client_id' => $request->client_id,
 
-                    'product_name'     => $request->product,
-                    'shopify_product_name' => $request->product,
+            'assigned_to' => $request->assigned_to,
 
-                    'quantity'         => $request->quantity ?? 1,
-                    'weight'           => $request->weight_in_gm ?? 0,
-                    'total_weight'     => ($request->quantity ?? 1) * ($request->weight_in_gm ?? 0),
+            'order_id' => $orderId,
 
+            'order_date' => $request->date ?? now(),
 
-                    'barcode'          => $barcode->barcode,
+            'product_name' => $request->product,
 
-                    'customer_name'    => $request->customer_name,
-                    'age'    => $request->age,
-                    'father_name'      => $request->father_name,
-                    'customer_phone'   => $request->customer_phone,
+            'shopify_product_name' => $request->product,
 
-                    'shipping_address' => trim(
-                        ($request->shipping_address_line1 ?? '') . ' ' .
-                            ($request->shipping_address_line2 ?? '')
-                    ),
+            'quantity' => $request->quantity ?? 1,
 
-                    'city'             => $request->city,
-                    'state'            => $request->state,
-                    'pincode'          => $request->shipping_pincode,
+            'weight' => $request->weight_in_gm ?? 0,
 
-                    'payment_mode'     => $request->payment_mode,
-                    'amount'           => $request->amount,
-                ]);
+            'total_weight' => ($request->quantity ?? 1) *
+                ($request->weight_in_gm ?? 0),
 
+            'customer_name' => $request->customer_name,
 
-                $barcode->update([
-                    'is_used' => 1
-                ]);
-            });
-        } catch (\Exception $e) {
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'client_id' => $e->getMessage()
-                ]);
-        }
+            'father_name' => $request->father_name,
+            'age' => $request->age,
 
-        return back()->with('success', 'Order saved & barcode auto-assigned');
+            'customer_phone' => $request->customer_phone,
+
+            'shipping_address' => trim(
+                ($request->shipping_address_line1 ?? '') . ' ' .
+                    ($request->shipping_address_line2 ?? '')
+            ),
+
+            'city' => $request->city,
+
+            'state' => $request->state,
+
+            'pincode' => $request->shipping_pincode,
+
+            'payment_mode' => $request->payment_mode,
+
+            'amount' => $request->amount,
+
+            'status' => 'verified',
+
+            'order_source' => 'whatsapp',
+        ]);
+
+        return back()->with(
+            'success',
+            'Order Saved Successfully'
+        );
     }
-
 
     public function getClientProducts($clientId)
     {
-        $products = ClientProduct::where('client_id', $clientId)
-            ->select('id', 'shopify_product_name', 'weight_per_unit')
+        $products = ClientProduct::where(
+            'client_id',
+            $clientId
+        )
+            ->select(
+                'id',
+                'shopify_product_name',
+                'weight_per_unit'
+            )
             ->get();
 
         return response()->json($products);

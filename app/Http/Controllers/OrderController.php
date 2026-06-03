@@ -18,38 +18,69 @@ use App\Exports\PostOfficeExport;
 
 class OrderController extends Controller
 {
+    private function isClient()
+    {
+        return auth()->check() && auth()->user()->role === 'client';
+    }
 
+    private function clientId()
+    {
+        return auth()->user()->client_id;
+    }
     public function index(Request $request)
     {
         $sortOrder = $request->get('sort_order', 'desc');
 
         $orders = Order::query()
-            ->when($request->client_id, function ($q) use ($request) {
+
+            ->when($this->isClient(), function ($q) {
+                $q->where('client_id', $this->clientId());
+            })
+
+            ->when($request->client_id && !$this->isClient(), function ($q) use ($request) {
                 $q->where('client_id', $request->client_id);
             })
+
             ->when($request->date_from, function ($q) use ($request) {
                 $q->whereDate('created_at', '>=', $request->date_from);
             })
+
             ->when($request->date_to, function ($q) use ($request) {
                 $q->whereDate('created_at', '<=', $request->date_to);
             })
+
             ->orderBy('created_at', $sortOrder)
             ->get();
 
-        $clients = Client::orderBy('client_name')->get();
-        $senders = LabelSender::orderBy('customer_name')->get();
+        if ($this->isClient()) {
 
-        return view('orders.index', compact('orders', 'clients', 'senders'));
+            $clients = Client::where(
+                'id',
+                $this->clientId()
+            )->get();
+
+            $senders = LabelSender::where(
+                'client_id',
+                $this->clientId()
+            )
+                ->orderBy('customer_name')
+                ->get();
+        } else {
+
+            $clients = Client::orderBy('client_name')->get();
+
+            $senders = LabelSender::orderBy('customer_name')->get();
+        }
+
+        return view(
+            'orders.index',
+            compact(
+                'orders',
+                'clients',
+                'senders'
+            )
+        );
     }
-
-
-
-
-
-
-
-
-
 
     public function downloadBarcodes(Request $request)
     {
@@ -58,28 +89,47 @@ class OrderController extends Controller
             'to_date'   => 'required|date',
         ]);
 
-        $barcodes = DB::table('orders')
+        $query = DB::table('orders')
             ->whereDate('date', '>=', $request->from_date)
-            ->whereDate('date', '<=', $request->to_date)
+            ->whereDate('date', '<=', $request->to_date);
+
+        if ($this->isClient()) {
+            $query->where(
+                'client_id',
+                $this->clientId()
+            );
+        }
+
+        $barcodes = $query
             ->whereNotNull('barcode')
             ->pluck('barcode')
             ->toArray();
 
-        if (count($barcodes) === 0) {
-            return back()->with('error', 'No barcodes found for selected date range.');
+        if (empty($barcodes)) {
+            return back()->with(
+                'error',
+                'No barcodes found.'
+            );
         }
 
-        $content = implode(',', $barcodes);
-
-        $filename = 'barcodes_' . now()->format('Ymd_His') . '.txt';
-
-        return response($content)
+        return response(
+            implode(',', $barcodes)
+        )
             ->header('Content-Type', 'text/plain')
-            ->header('Content-Disposition', "attachment; filename={$filename}");
+            ->header(
+                'Content-Disposition',
+                'attachment; filename=barcodes_' .
+                    now()->format('Ymd_His') .
+                    '.txt'
+            );
     }
 
     public function deleteOrdersWithLog(Request $request)
     {
+        if ($this->isClient()) {
+            abort(403);
+        }
+
         $request->validate([
             'from_date' => 'required|date',
             'to_date'   => 'required|date',
@@ -87,22 +137,20 @@ class OrderController extends Controller
 
         DB::transaction(function () use ($request) {
 
-
             $orders = DB::table('orders')
                 ->whereDate('date', '>=', $request->from_date)
                 ->whereDate('date', '<=', $request->to_date)
                 ->get();
 
-
             foreach ($orders as $order) {
+
                 DB::table('order_delete_logs')->insert([
                     'barcode'     => $order->barcode,
                     'order_date'  => $order->date,
-                    'deleted_by'  => Auth::user()->name ?? 'system',
+                    'deleted_by'  => Auth::user()->name,
                     'deleted_at'  => now(),
                 ]);
             }
-
 
             DB::table('orders')
                 ->whereDate('date', '>=', $request->from_date)
@@ -110,12 +158,31 @@ class OrderController extends Controller
                 ->delete();
         });
 
-        return back()->with('success', 'Orders deleted and logged successfully.');
+        return back()->with(
+            'success',
+            'Orders deleted successfully.'
+        );
     }
 
     public function importForm()
     {
-        return view('orders.import');
+        if ($this->isClient()) {
+
+            $clients = Client::where(
+                'id',
+                $this->clientId()
+            )->get();
+        } else {
+
+            $clients = Client::orderBy(
+                'client_name'
+            )->get();
+        }
+
+        return view(
+            'orders.import',
+            compact('clients')
+        );
     }
 
 
@@ -125,29 +192,101 @@ class OrderController extends Controller
             'file' => 'required|mimes:xlsx,xls'
         ]);
 
-        $import = new OrdersImport();
-        Excel::import($import, $request->file('file'));
+        $import = new OrdersImport(
+            $this->isClient()
+                ? $this->clientId()
+                : null
+        );
 
-        $message = $import->imported . " orders imported successfully.";
+        Excel::import(
+            $import,
+            $request->file('file')
+        );
+
+        $message =
+            $import->imported .
+            ' orders imported successfully.';
 
         if (count($import->duplicates)) {
-            $message .= " Duplicate Order IDs skipped: " . implode(', ', $import->duplicates);
-            return back()->with('warning', $message);
+
+            $message .=
+                ' Duplicate IDs: ' .
+                implode(',', $import->duplicates);
+
+            return back()->with(
+                'warning',
+                $message
+            );
         }
 
-        return back()->with('success', $message);
+        return back()->with(
+            'success',
+            $message
+        );
     }
 
     public function finalLabelExport()
     {
-        return Excel::download(new FinalLabelExport, 'Courier-Labels.xlsx');
+        $query = ShopifyOrder::query();
+
+        if ($this->isClient()) {
+
+            $query->where(
+                'client_id',
+                $this->clientId()
+            );
+        }
+
+        $orders = $query->get();
+
+        return Excel::download(
+            new FinalLabelExport($orders),
+            'Courier-Labels.xlsx'
+        );
     }
     public function labelIndex()
     {
-        $orders = ShopifyOrder::latest()->paginate(20);
+        if ($this->isClient()) {
 
-        $senders = LabelSender::orderBy('customer_name')->get();
+            $orders = ShopifyOrder::where(
+                'client_id',
+                $this->clientId()
+            )
+                ->latest()
+                ->paginate(20);
 
-        return view('labels.index', compact('orders', 'senders'));
+            $senders = LabelSender::where(
+                'client_id',
+                $this->clientId()
+            )
+                ->orderBy('customer_name')
+                ->get();
+
+            $clients = Client::where(
+                'id',
+                $this->clientId()
+            )->get();
+        } else {
+
+            $orders = ShopifyOrder::latest()
+                ->paginate(20);
+
+            $senders = LabelSender::orderBy(
+                'customer_name'
+            )->get();
+
+            $clients = Client::orderBy(
+                'client_name'
+            )->get();
+        }
+
+        return view(
+            'labels.index',
+            compact(
+                'orders',
+                'senders',
+                'clients'
+            )
+        );
     }
 }

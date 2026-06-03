@@ -158,15 +158,34 @@
             <a href="{{ route('dashboard') }}">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
-            <a href="{{ route('client_staff_form') }}">
-                Assign Staff Mapping
-            </a>
+            @if (auth()->user()->role == 'super_admin')
+                <a href="{{ route('client_staff_form') }}">
+                    Assign Staff Mapping
+                </a>
+
+                <a href="{{ route('calling.users') }}">
+                    <i class="bi bi-people"></i> Calling Staff
+                </a>
+                <a href="{{ route('labelsenders') }}">
+                    <i class="bi bi-person-lines-fill"></i> Senders
+                </a>
+                <a href="{{ route('clients.index') }}">
+                    <i class="bi bi-people"></i> Clients
+                </a>
+
+                <a href="{{ route('client.products') }}">
+                    <i class="bi bi-box-seam"></i> Products
+                </a>
+                <a href="{{ route('Invoice.index') }}">
+                    <i class="bi bi-file-earmark-text"></i> Bulk Invoice Download
+                </a>
+                <a href="{{ route('users.index') }}">
+                    <i class="bi bi-people"></i> Client Users
+                </a>
+            @endif
 
             <a href="{{ route('ordersdashboard') }}">
                 <i class="bi bi-speedometer2"></i> Orders Dashboard
-            </a>
-            <a href="{{ route('calling.users') }}">
-                <i class="bi bi-people"></i> Calling Staff
             </a>
 
             <a href="{{ route('performance.dashboard') }}">
@@ -176,17 +195,9 @@
                 <i class="bi bi-upload"></i> Import Records
             </a>
 
-            <a href="{{ route('labelsenders') }}">
-                <i class="bi bi-person-lines-fill"></i> Senders
-            </a>
 
-            <a href="{{ route('clients.index') }}">
-                <i class="bi bi-people"></i> Clients
-            </a>
 
-            <a href="{{ route('client.products') }}">
-                <i class="bi bi-box-seam"></i> Products
-            </a>
+
 
             <a href="{{ route('barcodes') }}">
                 <i class="bi bi-upc-scan"></i> Barcodes
@@ -223,9 +234,7 @@
             </a>
 
 
-            <a href="{{ route('Invoice.index') }}">
-                <i class="bi bi-file-earmark-text"></i> Bulk Invoice Download
-            </a>
+
         </div>
 
 
@@ -233,14 +242,25 @@
 
 
             <div class="topbar d-flex justify-content-between align-items-center">
-                <span class="brand">Netcrafty CRM</span>
+
+                <span class="brand">
+
+                    @if (auth()->check() && auth()->user()->role == 'client')
+                        {{ auth()->user()->client->client_name ?? auth()->user()->name }}
+                    @else
+                        Super Admin
+                    @endif
+
+                </span>
 
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
+
                     <button class="btn btn-logout btn-sm text-white">
                         <i class="bi bi-box-arrow-right"></i> Logout
                     </button>
                 </form>
+
             </div>
 
 

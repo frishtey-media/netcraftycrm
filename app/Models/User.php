@@ -21,7 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role'
+        'role',
+        'client_id',
     ];
 
     /**
@@ -45,5 +46,12 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+    public function client()
+    {
+        return $this->belongsTo(
+            Client::class,
+            'client_id'
+        );
     }
 }

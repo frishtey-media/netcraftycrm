@@ -11,12 +11,43 @@ use App\Imports\ShopifyOrdersImport;
 
 class ShopifyController extends Controller
 {
+    private function isClient()
+    {
+        return auth()->check()
+            && auth()->user()->role === 'client';
+    }
+
+    private function clientId()
+    {
+        return auth()->user()->client_id;
+    }
     public function importPage()
     {
-        return view('shopify.import', [
-            'clients' => Client::all(),
-            'orders'  => ShopifyOrder::latest()->get(),
-        ]);
+        if ($this->isClient()) {
+
+            $clients = Client::where(
+                'id',
+                $this->clientId()
+            )->get();
+
+            $orders = ShopifyOrder::where(
+                'client_id',
+                $this->clientId()
+            )
+                ->latest()
+                ->get();
+        } else {
+
+            $clients = Client::all();
+
+            $orders = ShopifyOrder::latest()
+                ->get();
+        }
+
+        return view('shopify.import', compact(
+            'clients',
+            'orders'
+        ));
     }
 
 

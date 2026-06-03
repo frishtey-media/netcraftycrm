@@ -36,12 +36,26 @@
                     <div class="row g-2">
                         <div class="col-md-2">
                             <label class="form-label">Select Client</label>
-                            <select name="client_id" class="form-control" required>
-                                <option value="">-- Select Client --</option>
-                                @foreach ($clients as $client)
-                                    <option value="{{ $client->id }}">{{ $client->client_name }}</option>
-                                @endforeach
-                            </select>
+                            @if (auth()->user()->role == 'client')
+                                <input type="hidden" name="client_id" value="{{ $clients->first()->id }}">
+
+                                <input type="text" class="form-control" value="{{ $clients->first()->client_name }}"
+                                    readonly>
+                            @else
+                                <select name="client_id" class="form-control" required>
+
+                                    <option value="">
+                                        -- Select Client --
+                                    </option>
+
+                                    @foreach ($clients as $client)
+                                        <option value="{{ $client->id }}">
+                                            {{ $client->client_name }}
+                                        </option>
+                                    @endforeach
+
+                                </select>
+                            @endif
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Barcode Type</label>

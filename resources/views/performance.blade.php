@@ -231,43 +231,45 @@
                 </table>
             </div>
         </div>
-        <div class="modal fade" id="shiftModal">
-            <div class="modal-dialog">
-                <div class="modal-content p-3">
+        @if (auth()->user()->role == 'super_admin')
+            <div class="modal fade" id="shiftModal">
+                <div class="modal-dialog">
+                    <div class="modal-content p-3">
 
-                    <h5>Shift Pending Orders</h5>
+                        <h5>Shift Pending Orders</h5>
 
-                    <form method="POST" action="{{ route('shift.orders') }}">
-                        @csrf
+                        <form method="POST" action="{{ route('shift.orders') }}">
+                            @csrf
 
-                        <input type="hidden" name="from_staff" id="from_staff">
+                            <input type="hidden" name="from_staff" id="from_staff">
 
-                        {{-- NEW STAFF --}}
-                        <div class="mb-2">
-                            <label>Select Staff</label>
-                            <select name="to_staff" class="form-control" required>
-                                <option value="">Select Staff</option>
-                                @foreach ($allStaff as $s)
-                                    <option value="{{ $s->id }}">{{ $s->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                            {{-- NEW STAFF --}}
+                            <div class="mb-2">
+                                <label>Select Staff</label>
+                                <select name="to_staff" class="form-control" required>
+                                    <option value="">Select Staff</option>
+                                    @foreach ($allStaff as $s)
+                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                        {{-- REMARK --}}
-                        <div class="mb-2">
-                            <label>Remark</label>
-                            <textarea name="remark" class="form-control" required></textarea>
-                        </div>
+                            {{-- REMARK --}}
+                            <div class="mb-2">
+                                <label>Remark</label>
+                                <textarea name="remark" class="form-control" required></textarea>
+                            </div>
 
-                        <button class="btn btn-primary w-100 mt-2">
-                            Shift Orders
-                        </button>
+                            <button class="btn btn-primary w-100 mt-2">
+                                Shift Orders
+                            </button>
 
-                    </form>
+                        </form>
 
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
         <script>
             function openShiftModal(staffId) {
                 document.getElementById('from_staff').value = staffId;

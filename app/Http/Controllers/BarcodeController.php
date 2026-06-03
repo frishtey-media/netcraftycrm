@@ -14,17 +14,43 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class BarcodeController extends Controller
 {
+    private function isClient()
+    {
+        return auth()->check() && auth()->user()->role === 'client';
+    }
 
+    private function clientId()
+    {
+        return auth()->user()->client_id;
+    }
     public function index()
     {
-        $clients = Client::orderBy('client_name')->get();
+        if ($this->isClient()) {
 
-        $barcodes = Barcode::with('client')
-            ->orderBy('is_used', 'asc')
-            ->orderBy('created_at', 'desc')
-            ->get();
+            $clients = Client::where(
+                'id',
+                $this->clientId()
+            )->get();
 
-        return view('barcodes.import', compact('clients', 'barcodes'));
+            $barcodes = Barcode::with('client')
+                ->where('client_id', $this->clientId())
+                ->orderBy('is_used', 'asc')
+                ->orderBy('created_at', 'desc')
+                ->get();
+        } else {
+
+            $clients = Client::orderBy('client_name')->get();
+
+            $barcodes = Barcode::with('client')
+                ->orderBy('is_used', 'asc')
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
+
+        return view(
+            'barcodes.import',
+            compact('clients', 'barcodes')
+        );
     }
     public function indexbarcode()
     {
@@ -67,17 +93,28 @@ class BarcodeController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,csv',
-            'client_id' => 'required|exists:clients,id',
+            'file'         => 'required|mimes:xlsx,csv',
+            'client_id'    => 'required|exists:clients,id',
             'barcode_type' => 'required|in:VPP,COD',
         ]);
 
+        // Client Security
+        if (
+            $this->isClient()
+            && $request->client_id != $this->clientId()
+        ) {
+            abort(403);
+        }
+
         $import = new BarcodeImport(
             $request->client_id,
-            $request->input('barcode_type')
+            $request->barcode_type
         );
 
-        Excel::import($import, $request->file('file'));
+        Excel::import(
+            $import,
+            $request->file('file')
+        );
 
         return back()->with(
             'success',

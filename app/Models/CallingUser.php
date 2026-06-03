@@ -14,7 +14,10 @@ class CallingUser extends Authenticatable
     protected $hidden = ['password'];
     public function orders()
     {
-        return $this->hasMany(CallingOrder::class, 'assigned_to');
+        return $this->hasMany(
+            callingorder::class,
+            'assigned_to'
+        );
     }
     public function clients()
     {

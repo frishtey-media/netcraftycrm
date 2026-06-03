@@ -23,7 +23,6 @@ class CallingOrderController extends Controller
         $user = Auth::guard('calling_user')->user();
 
 
-
         $name = strtolower($user->name);
 
         $shortName =
@@ -79,7 +78,6 @@ class CallingOrderController extends Controller
     {
         $userId = Auth::guard('calling_user')->id();
 
-        // 🔥 CLIENT LIST (ONLY WHATSAPP ORDERS)
         $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
             ->where('assigned_to', $userId)
             ->where('order_source', 'whatsapp')
@@ -87,7 +85,7 @@ class CallingOrderController extends Controller
             ->with('client')
             ->get();
 
-        // 🔥 FILTER
+
         $query = CallingOrder::where('assigned_to', $userId)
             ->where('order_source', 'whatsapp');
 

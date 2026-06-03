@@ -50,8 +50,7 @@
         @if (session('success'))
             <div class="alert alert-success">
                 <strong>{{ session('success') }}</strong><br>
-                Imported: {{ session('imported') }}<br>
-                Skipped: {{ session('skipped') }}
+
             </div>
         @endif
 
@@ -113,114 +112,169 @@
 
             <div class="row g-3">
 
-                <div class="col-md-4">
-                    <label class="form-label">Order ID</label>
-                    <input type="text" name="order_id" class="form-control" value="{{ $orderId }}" readonly>
-                </div>
 
+                {{-- Date --}}
                 <div class="col-md-4">
-
                     <label class="form-label">Date</label>
                     <input type="date" name="date" class="form-control" value="{{ date('Y-m-d') }}">
-
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Barcode *</label>
-                    <select name="barcode" class="form-control" required>
-                        <option value="">Select Barcode</option>
-                        @foreach ($barcodes as $barcode)
-                            <option value="{{ $barcode }}">{{ $barcode }}</option>
-                        @endforeach
-                    </select>
                 </div>
 
-
-
+                {{-- Client --}}
                 <div class="col-md-4">
                     <label class="form-label">Client Name</label>
-                    <select name="client_id" id="client_id" class="form-control">
+                    <select name="client_id" id="client_id" class="form-control" required>
+
                         <option value="">Select Client</option>
+
                         @foreach ($clients as $client)
-                            <option value="{{ $client->id }}">{{ $client->client_name }}</option>
+                            <option value="{{ $client->id }}">
+                                {{ $client->client_name }}
+                            </option>
                         @endforeach
+
                     </select>
                 </div>
 
+                {{-- Assign Staff --}}
+                <div class="col-md-4">
+                    <label class="form-label">Assign Staff</label>
+
+                    <select name="assigned_to" id="assigned_to" class="form-control" required>
+
+                        <option value="">Select Staff</option>
+
+                        @foreach ($staffs as $staff)
+                            <option value="{{ $staff->id }}">
+                                {{ $staff->name }}
+                            </option>
+                        @endforeach
+
+                    </select>
+                </div>
+                {{-- Order ID --}}
+                <div class="col-md-4">
+                    <label class="form-label">Order ID</label>
+                    <input type="text" name="order_id" id="order_id" class="form-control" readonly
+                        value="Auto Generate">
+                </div>
+
+
+                {{-- Product --}}
                 <div class="col-md-4">
                     <label class="form-label">Product</label>
-                    <select name="product" id="product" class="form-control">
-                        <option value="">Select Product</option>
+
+                    <select name="product" id="product" class="form-control" required>
+
+                        <option value="">
+                            Select Product
+                        </option>
+
                     </select>
                 </div>
+
+                {{-- Quantity --}}
                 <div class="col-md-4">
                     <label class="form-label">Quantity</label>
-                    <input type="number" name="quantity" id="quantity" class="form-control" value="1">
 
+                    <input type="number" name="quantity" id="quantity" class="form-control" value="1" min="1">
                 </div>
+
+                {{-- Weight --}}
                 <div class="col-md-4">
-                    <label class="form-label">Weight (in GM)</label>
-                    <input type="number" name="weight_in_gm" id="weight_in_gm" class="form-control">
+                    <label class="form-label">Weight (GM)</label>
+
+                    <input type="number" name="weight_in_gm" id="weight_in_gm" class="form-control" readonly>
                 </div>
+
+                {{-- Amount --}}
                 <div class="col-md-4">
                     <label class="form-label">Amount</label>
-                    <input type="number" step="0.01" name="amount" class="form-control">
+
+                    <input type="number" step="0.01" name="amount" class="form-control" required>
                 </div>
+
+                {{-- Payment --}}
                 <div class="col-md-4">
-                    <label class="form-label">Payment Mode *</label>
-                    <select name="payment_mode" class="form-control">
+                    <label class="form-label">Payment Mode</label>
+
+                    <select name="payment_mode" class="form-control" required>
+
                         <option value="">Select</option>
-                        <option>COD</option>
-                        <option>Prepaid</option>
+                        <option value="COD">COD</option>
+                        <option value="Prepaid">Prepaid</option>
+
                     </select>
                 </div>
 
+                {{-- Customer Name --}}
                 <div class="col-md-4">
-                    <label class="form-label">Customer Name *</label>
-                    <input type="text" name="customer_name" class="form-control">
-                </div>
+                    <label class="form-label">Customer Name</label>
 
+                    <input type="text" name="customer_name" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Age</label>
+
+                    <input type="number" name="age" class="form-control" required>
+                </div>
+                {{-- Father Name --}}
                 <div class="col-md-4">
                     <label class="form-label">Father Name</label>
+
                     <input type="text" name="father_name" class="form-control">
                 </div>
 
-                <div class="col-md-4">
-                    <label class="form-label">Customer Phone *</label>
-                    <input type="text" name="customer_phone" class="form-control">
+                {{-- Phone --}}
+                <div class="col-md-3">
+                    <label class="form-label">Customer Phone</label>
+
+                    <input type="text" name="customer_phone" class="form-control" required>
                 </div>
 
-
-                <div class="col-md-4">
+                {{-- City --}}
+                <div class="col-md-3">
                     <label class="form-label">City</label>
+
                     <input type="text" name="city" class="form-control">
                 </div>
 
-                <div class="col-md-4">
+                {{-- State --}}
+                <div class="col-md-3">
                     <label class="form-label">State</label>
+
                     <input type="text" name="state" class="form-control">
                 </div>
 
-                <div class="col-md-4">
-                    <label class="form-label">Shipping Pincode *</label>
-                    <input type="text" name="shipping_pincode" class="form-control">
+                {{-- Pincode --}}
+                <div class="col-md-3">
+                    <label class="form-label">Shipping Pincode</label>
+
+                    <input type="text" name="shipping_pincode" class="form-control" required>
                 </div>
 
-
-
+                {{-- Address 1 --}}
                 <div class="col-md-6">
-                    <label class="form-label">Shipping Address Line 1 *</label>
+                    <label class="form-label">
+                        Shipping Address Line 1
+                    </label>
 
-                    <textarea name="shipping_address_line1" class="form-control">   </textarea>
+                    <textarea name="shipping_address_line1" class="form-control" rows="3" required></textarea>
                 </div>
 
+                {{-- Address 2 --}}
                 <div class="col-md-6">
-                    <label class="form-label">Shipping Address Line 2</label>
+                    <label class="form-label">
+                        Shipping Address Line 2
+                    </label>
 
-                    <textarea name="shipping_address_line2" class="form-control">   </textarea>
+                    <textarea name="shipping_address_line2" class="form-control" rows="3"></textarea>
                 </div>
+
             </div>
 
-            <button class="btn btn-success mt-4">Save Record</button>
+            <button type="submit" class="btn btn-success mt-4">
+                Save Order
+            </button>
         </form>
     </div>
 
@@ -232,46 +286,61 @@
             document.getElementById('importBtn').disabled = true;
         });
     </script>
-
     <script>
-        document.getElementById('client_id').addEventListener('change', function() {
-            let clientId = this.value;
-            let productDropdown = document.getElementById('product');
+        $('#assigned_to').change(function() {
 
-            productDropdown.innerHTML = '<option value="">Loading...</option>';
+            let staffId = $(this).val();
 
-            if (!clientId) {
-                productDropdown.innerHTML = '<option value="">Select Product</option>';
+            if (!staffId) {
+                $('#order_id').val('Auto Generate');
                 return;
             }
 
-            fetch(`/get-client-products/${clientId}`)
-                .then(response => response.json())
-                .then(data => {
-                    productDropdown.innerHTML = '<option value="">Select Product</option>';
+            $.get('/generate-order-id/' + staffId, function(response) {
 
-                    data.forEach(item => {
-                        let option = document.createElement('option');
-                        option.value = item.shopify_product_name;
-                        option.dataset.weight = item.weight_per_unit;
-                        option.text = item.shopify_product_name;
-                        productDropdown.appendChild(option);
-                    });
+                $('#order_id').val(response.order_id);
+
+            });
+
+        });
+    </script>
+    <script>
+        $('#client_id').change(function() {
+
+            let clientId = $(this).val();
+
+            $('#product').html(
+                '<option value="">Loading Products...</option>'
+            );
+
+            $.get('/get-client-products/' + clientId, function(data) {
+
+                let options =
+                    '<option value="">Select Product</option>';
+
+                data.forEach(function(item) {
+
+                    options += `
+                <option
+                    value="${item.shopify_product_name}"
+                    data-weight="${item.weight_per_unit}">
+                    ${item.shopify_product_name}
+                </option>
+            `;
                 });
+
+                $('#product').html(options);
+            });
         });
 
-        document.getElementById('product').addEventListener('change', function() {
-            let weight = this.options[this.selectedIndex].dataset.weight || 0;
-            let qty = document.getElementById('quantity').value || 1;
+        $('#product').change(function() {
 
-            document.getElementById('weight_in_gm').value = weight * qty;
-        });
+            let weight =
+                $(this)
+                .find(':selected')
+                .data('weight');
 
-        document.getElementById('quantity').addEventListener('input', function() {
-            let product = document.getElementById('product');
-            let weight = product.options[product.selectedIndex]?.dataset.weight || 0;
-
-            document.getElementById('weight_in_gm').value = weight * this.value;
+            $('#weight_in_gm').val(weight ?? 0);
         });
     </script>
 

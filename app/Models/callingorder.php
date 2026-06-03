@@ -11,24 +11,34 @@ class CallingOrder extends Model
     protected $table = 'callingorder';
 
     protected $fillable = [
+
         'client_id',
+        'assigned_to',
+
         'order_id',
         'order_date',
+
         'product_name',
+        'shopify_product_name',
+
         'quantity',
+        'weight',
+        'total_weight',
+
         'customer_name',
-        'customer_phone',
-        'shipping_address',
         'father_name',
-        'age',
+        'customer_phone',
+
+        'shipping_address',
+        'city',
         'state',
         'pincode',
+        'age',
         'payment_mode',
-        'city',
         'amount',
+
         'status',
-        'order_source',
-        'assigned_to'
+        'order_source'
     ];
 
     // Client Relation

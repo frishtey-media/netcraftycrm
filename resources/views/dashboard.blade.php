@@ -82,19 +82,6 @@
                 <i class="bi bi-arrow-repeat card-icon"></i>
             </a>
         </div>
-
-        {{-- Clients --}}
-        <div class="col-md-4">
-            <a href="/clients" class="dashboard-card card-green">
-                <div>
-                    <div class="card-title">Clients</div>
-                    <div class="card-count">{{ $totalclients }}</div>
-                </div>
-                <i class="bi bi-people card-icon"></i>
-            </a>
-        </div>
-
-        {{-- Download Barcodes --}}
         <div class="col-md-4">
             <div class="dashboard-card card-green action-card" data-bs-toggle="modal" data-bs-target="#barcodeModal">
                 <div>
@@ -104,28 +91,6 @@
                 <i class="bi bi-download card-icon"></i>
             </div>
         </div>
-
-        {{-- Delete Records --}}
-        <div class="col-md-4">
-            <div class="dashboard-card card-green action-card" data-bs-toggle="modal" data-bs-target="#deleteOrdersModal">
-                <div>
-                    <div class="card-title text-danger">Delete Old Orders</div>
-                    <small class="text-danger">Permanent action</small>
-                </div>
-                <i class="bi bi-trash card-icon text-danger"></i>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="dashboard-card card-green action-card" data-bs-toggle="modal" data-bs-target="#amazonOrdersModal">
-                <div>
-                    <div class="card-title">Amazon To Telly</div>
-                    <small>Format Excel</small>
-                </div>
-                <i class="bi bi-cart-check card-icon"></i>
-            </div>
-        </div>
-
-
         <div class="col-md-4">
             <a href="/delivery" class="dashboard-card card-green">
                 <div>
@@ -135,8 +100,43 @@
                 <i class="bi bi-cart-check card-icon"></i>
             </a>
         </div>
+        @if (auth()->user()->role == 'super_admin')
+            {{-- Clients --}}
+            <div class="col-md-4">
+                <a href="/clients" class="dashboard-card card-green">
+                    <div>
+                        <div class="card-title">Clients</div>
+                        <div class="card-count">{{ $totalclients }}</div>
+                    </div>
+                    <i class="bi bi-people card-icon"></i>
+                </a>
+            </div>
+
+            {{-- Download Barcodes --}}
 
 
+            {{-- Delete Records --}}
+            <div class="col-md-4">
+                <div class="dashboard-card card-green action-card" data-bs-toggle="modal"
+                    data-bs-target="#deleteOrdersModal">
+                    <div>
+                        <div class="card-title text-danger">Delete Old Orders</div>
+                        <small class="text-danger">Permanent action</small>
+                    </div>
+                    <i class="bi bi-trash card-icon text-danger"></i>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="dashboard-card card-green action-card" data-bs-toggle="modal"
+                    data-bs-target="#amazonOrdersModal">
+                    <div>
+                        <div class="card-title">Amazon To Telly</div>
+                        <small>Format Excel</small>
+                    </div>
+                    <i class="bi bi-cart-check card-icon"></i>
+                </div>
+            </div>
+        @endif
 
     </div>
 

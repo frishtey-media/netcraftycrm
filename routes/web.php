@@ -17,7 +17,6 @@ use App\Http\Controllers\RTOController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MoneyorderExportController;
 use App\Http\Controllers\convertAmazonToTally;
-use App\Models\CallingOrder;
 use App\Http\Controllers\CallingUserAuthController;
 use App\Http\Controllers\CallingUserController;
 use App\Http\Controllers\CallingOrderController;
@@ -25,21 +24,43 @@ use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\StaffChatController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\ReportController;
-
-
+use App\Models\CallingOrder;
+use App\Http\Controllers\UserController;
 
 require __DIR__ . '/inventory.php';
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
+
+
 Route::get('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
 Route::post('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
 
 //Route::post('/webhook/shopify/order', [WhatsAppController::class, 'orderCreate']);
 
+
+
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+
+    Route::get('/users', [UserController::class, 'index'])
+        ->name('users.index');
+
+    Route::get('/users/create', [UserController::class, 'create'])
+        ->name('users.create');
+
+    Route::post('/users/store', [UserController::class, 'store'])
+        ->name('users.store');
+
+    Route::get('/users/{id}/edit', [UserController::class, 'edit'])
+        ->name('users.edit');
+
+    Route::put('/users/{id}', [UserController::class, 'update'])
+        ->name('users.update');
+    Route::get('/generate-order-id/{staffId}', [RecordController::class, 'generateOrderId']);
+
     Route::get('/ordersdashboard', [AdminController::class, 'ordersdashboard'])->name('ordersdashboard');
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])->name('labelsenders');
     Route::post('/labelsenders', [AdminController::class, 'storeLabelSenders'])->name('labelsenders.store');
@@ -80,7 +101,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orders/import', [OrderController::class, 'importExcel'])->name('orders.import.post');
     Route::get('/labels', [OrderController::class, 'labelIndex'])->name('labels.index');
     Route::get('/labels/final-export', [OrderController::class, 'finalLabelExport'])->name('labels.final.export');
-    Route::get('/export-post-office', [PostOfficeExportController::class, 'export'])->name('postoffice.export');
+    Route::post(
+        '/export-post-office',
+        [PostOfficeExportController::class, 'export']
+    )->name('postoffice.export');
     Route::post('/whatsapp-excel-import', [ShopifyOrderController::class, 'whatsappExcelImport'])->name('whatsapp.excel.import');
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
     Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
@@ -154,6 +178,20 @@ Route::middleware(['auth'])->group(function () {
         phpinfo();
     });
 });
+
+
+Route::middleware(['auth', 'client'])
+    ->prefix('client')
+    ->group(function () {
+
+        Route::get('/dashboard', function () {
+            return view('client.dashboard');
+        });
+
+        Route::get('/orders', [OrderController::class, 'clientOrders']);
+    });
+
+
 Route::get('/calling/login', [CallingUserAuthController::class, 'showLogin'])->name('calling.login');
 Route::post('/calling/login', [CallingUserAuthController::class, 'login'])->name('calling.login.post');
 Route::middleware('calling_user')->group(function () {

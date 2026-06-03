@@ -14,6 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'calling_user' => \App\Http\Middleware\CallingUserAuth::class,
             'inventory.auth' => \App\Http\Middleware\InventoryAuth::class,
+            'client' => \App\Http\Middleware\ClientMiddleware::class,
+            'role'   => \App\Http\Middleware\RoleMiddleware::class,
         ]);
     })
     ->withSchedule(function ($schedule) {
