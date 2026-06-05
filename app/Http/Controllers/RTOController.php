@@ -24,18 +24,29 @@ class RTOController extends Controller
             'rtobarcodes' => 'required|mimes:xls,xlsx'
         ]);
 
-
         $barcodes = Excel::toArray(new RTOBarcodeImport, $request->file('rtobarcodes'));
-        $barcodeList = $barcodes[0];
 
+        $barcodeList = collect($barcodes[0])
+            ->flatten()
+            ->filter()
+            ->map(fn($barcode) => trim($barcode))
+            ->toArray();
 
+        // Update RTO Received Status
+        Order::whereIn('barcode', $barcodeList)
+            ->update([
+                'rtorecivedsts' => 1
+            ]);
+
+        // Fetch Orders
         $orders = Order::whereIn('barcode', $barcodeList)
             ->orderBy('date', 'desc')
             ->get();
 
         Session::put('rto_export_ids', $orders->pluck('id')->toArray());
 
-        return view('rto.index', compact('orders'));
+        return view('rto.index', compact('orders'))
+            ->with('success', $orders->count() . ' records found and RTO status updated.');
     }
 
     public function export()

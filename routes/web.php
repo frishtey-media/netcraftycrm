@@ -138,6 +138,19 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/delivery/upload', [DeliveryController::class, 'upload'])
         ->name('delivery.upload');
 
+    Route::post('/payment-upload', [DeliveryController::class, 'paymentupload'])
+        ->name('delivery.paymentupload');
+
+    Route::post('/rto-received-upload', [DeliveryController::class, 'rtoReceivedUpload'])
+        ->name('delivery.rtoReceivedUpload');
+
+    Route::get('/delivery/report/{type}', [DeliveryController::class, 'report'])
+        ->name('delivery.report');
+
+    Route::get(
+        '/delivery-export/{type}',
+        [DeliveryController::class, 'export']
+    )->name('delivery.export');
 
     // GET → form open
     Route::get('/client_assign_staff', [ClientController::class, 'clientStaffForm'])

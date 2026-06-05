@@ -27,12 +27,18 @@ class Order extends Model
         'quantity',
         'weight',
         'delivery_status',
+        'recivedpaysts',
+        'rtorecivedsts',
         'delivery_date',
         'delivery_remark',
     ];
 
     public function client()
     {
-        return $this->belongsTo(Client::class, 'client_id');
+        return $this->belongsTo(
+            \App\Models\Client::class,
+            'client_id',
+            'id'
+        );
     }
 }
