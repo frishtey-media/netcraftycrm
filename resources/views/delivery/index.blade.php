@@ -81,37 +81,37 @@
 
                     <!-- RTO Received -->
                     <!--  <div class="col-md-4 mb-4">
-                                                                        <div class="card border">
-                                                                            <div class="card-header bg-warning">
-                                                                                RTO Received Update
-                                                                            </div>
+                                                                            <div class="card border">
+                                                                                <div class="card-header bg-warning">
+                                                                                    RTO Received Update
+                                                                                </div>
 
-                                                                            <div class="card-body">
+                                                                                <div class="card-body">
 
-                                                                                @if (session('rto_success'))
+                                                                                    @if (session('rto_success'))
     <div class="alert alert-success">
-                                                                                        {{ session('rto_success') }}
-                                                                                    </div>
+                                                                                            {{ session('rto_success') }}
+                                                                                        </div>
     @endif
 
-                                                                                <form method="POST" action="{{ route('delivery.rtoReceivedUpload') }}"
-                                                                                    enctype="multipart/form-data">
-                                                                                    @csrf
+                                                                                    <form method="POST" action="{{ route('delivery.rtoReceivedUpload') }}"
+                                                                                        enctype="multipart/form-data">
+                                                                                        @csrf
 
-                                                                                    <div class="mb-3">
-                                                                                        <label>RTO Excel</label>
-                                                                                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv"
-                                                                                            required>
-                                                                                    </div>
+                                                                                        <div class="mb-3">
+                                                                                            <label>RTO Excel</label>
+                                                                                            <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv"
+                                                                                                required>
+                                                                                        </div>
 
-                                                                                    <button class="btn btn-success w-100">
-                                                                                        Upload RTO File
-                                                                                    </button>
-                                                                                </form>
+                                                                                        <button class="btn btn-success w-100">
+                                                                                            Upload RTO File
+                                                                                        </button>
+                                                                                    </form>
 
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                    </div>-->
+                                                                        </div>-->
                     <div class="card-body">
 
                         <form method="GET" action="{{ route('delivery.index') }}">
@@ -198,7 +198,7 @@
                                     <div class="card bg-info text-white">
                                         <div class="card-body text-center">
                                             <h6>Payment Received</h6>
-                                            <h2>{{ $paymentReceived }}</h2>
+                                            <h2>Rs.{{ $paymentReceived }}/-</h2>
                                         </div>
                                     </div>
                                 </a>

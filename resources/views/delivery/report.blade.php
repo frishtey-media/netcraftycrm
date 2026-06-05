@@ -133,7 +133,7 @@
                                     @endif
                                 </td>
 
-                                <td>₹{{ $order->amount }}</td>
+                                <td>₹{{ $order->receivedcodamt }}</td>
 
                                 <td>{{ $order->date }}</td>
                             </tr>

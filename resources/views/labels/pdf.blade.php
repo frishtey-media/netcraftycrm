@@ -118,7 +118,15 @@
             {{ $order->shipping_address }}<br>
             <span class="bold">Pincode:</span> {{ ltrim($order->pincode, "'") }}<br>
 
-            <span class="bold">Mobile No:</span> {{ $order->customer_phone }}
+            @php
+                $mobile = preg_replace('/\D/', '', $order->customer_phone);
+
+                if (strlen($mobile) == 12 && substr($mobile, 0, 2) == '91') {
+                    $mobile = substr($mobile, 2);
+                }
+            @endphp
+
+            <span class="bold">Mobile No:</span> {{ $mobile }}
         </div>
 
 

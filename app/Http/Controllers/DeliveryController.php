@@ -28,9 +28,8 @@ class DeliveryController extends Controller
             ->count();
 
         $paymentReceived = (clone $query)
-            ->where('delivery_status', 'Delivered')
             ->where('recivedpaysts', 1)
-            ->count();
+            ->sum('receivedcodamt');
 
         $paymentPending = (clone $query)
             ->where('delivery_status', 'Delivered')
