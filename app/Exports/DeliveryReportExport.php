@@ -28,7 +28,8 @@ class DeliveryReportExport implements FromCollection, WithHeadings
             'Payment Status',
             'RTO Status',
             'Received COD',
-            'Date',
+            'Bill Date',
+
         ];
     }
 
@@ -47,7 +48,7 @@ class DeliveryReportExport implements FromCollection, WithHeadings
                 $order->recivedpaysts ? 'Received' : 'Pending',
                 $order->rtorecivedsts ? 'Received' : 'Pending',
                 $order->receivedcodamt,
-                $order->date,
+                $order->pay_bill_date,
             ];
         });
     }

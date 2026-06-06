@@ -200,6 +200,7 @@
                     <select name="payment_mode" class="form-control" required>
 
                         <option value="">Select</option>
+                        <option value="VPP">VPP</option>
                         <option value="COD">COD</option>
                         <option value="Prepaid">Prepaid</option>
 

@@ -19,6 +19,7 @@ class PaymentImport implements ToCollection
 
             // COD Value Column
             $codAmount = $row[4] ?? 0;
+            $billdate = $row[10] ?? 0;
 
             if (empty($trackingNo)) {
                 continue;
@@ -27,7 +28,9 @@ class PaymentImport implements ToCollection
             Order::where('barcode', $trackingNo)
                 ->update([
                     'recivedpaysts' => 1,
-                    'receivedcodamt' => $codAmount
+                    'receivedcodamt' => $codAmount,
+                    'pay_bill_date' => $billdate
+
                 ]);
         }
     }
