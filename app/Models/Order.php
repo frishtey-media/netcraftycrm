@@ -41,4 +41,12 @@ class Order extends Model
             'id'
         );
     }
+    public function callingOrder()
+    {
+        return $this->hasOne(
+            \App\Models\CallingOrder::class,
+            'order_id',
+            'order_id'
+        );
+    }
 }

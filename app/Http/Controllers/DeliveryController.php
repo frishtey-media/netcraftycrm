@@ -9,6 +9,8 @@ use Carbon\Carbon;
 use App\Imports\PaymentImport;
 use App\Models\Client;
 
+use App\Exports\DeliveryReportExport;
+
 class DeliveryController extends Controller
 {
     public function index(Request $request)
@@ -282,6 +284,64 @@ class DeliveryController extends Controller
         return back()->with(
             'rto_success',
             $updated . ' RTO records updated successfully.'
+        );
+    }
+    public function export(Request $request, $type)
+    {
+        $query = Order::with('client');
+
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('date', '>=', $request->from_date);
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('date', '<=', $request->to_date);
+        }
+
+        switch ($type) {
+
+            case 'delivered':
+                $query->where('delivery_status', 'Delivered');
+                break;
+
+            case 'payment_received':
+                $query->where('delivery_status', 'Delivered')
+                    ->where('recivedpaysts', 1);
+                break;
+
+            case 'payment_pending':
+                $query->where('delivery_status', 'Delivered')
+                    ->where('recivedpaysts', 0);
+                break;
+
+            case 'rto':
+                $query->where('delivery_status', 'RTO');
+                break;
+
+            case 'rto_received':
+                $query->where('delivery_status', 'RTO')
+                    ->where('rtorecivedsts', 1);
+                break;
+
+            case 'rto_pending':
+                $query->where('delivery_status', 'RTO')
+                    ->where('rtorecivedsts', 0);
+                break;
+
+            case 'in_transit':
+                $query->where('delivery_status', 'In Transit');
+                break;
+        }
+
+        $orders = $query->get();
+
+        return Excel::download(
+            new DeliveryReportExport($orders),
+            $type . '_report.xlsx'
         );
     }
 }

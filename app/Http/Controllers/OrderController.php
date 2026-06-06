@@ -31,24 +31,21 @@ class OrderController extends Controller
     {
         $sortOrder = $request->get('sort_order', 'desc');
 
-        $orders = Order::query()
-
+        $orders = Order::with([
+            'callingOrder.staff'
+        ])
             ->when($this->isClient(), function ($q) {
                 $q->where('client_id', $this->clientId());
             })
-
             ->when($request->client_id && !$this->isClient(), function ($q) use ($request) {
                 $q->where('client_id', $request->client_id);
             })
-
             ->when($request->date_from, function ($q) use ($request) {
                 $q->whereDate('created_at', '>=', $request->date_from);
             })
-
             ->when($request->date_to, function ($q) use ($request) {
                 $q->whereDate('created_at', '<=', $request->date_to);
             })
-
             ->orderBy('created_at', $sortOrder)
             ->get();
 

@@ -82,6 +82,7 @@
                     <th><input type="checkbox" id="selectAll"></th>
                     <th>#</th>
                     <th>Order ID</th>
+
                     <th>Delivery Status</th>
                     <th>Barcode</th>
                     <th>Customer Name</th>
@@ -103,7 +104,13 @@
                             <input type="checkbox" class="order-checkbox" value="{{ $order->id }}">
                         </td>
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $order->order_id }}</td>
+                        <td>
+                            <a href="javascript:void(0)" data-bs-toggle="tooltip" data-bs-placement="top"
+                                title="Assigned To: {{ $order->callingOrder->staff->name ?? 'Not Assigned' }}">
+
+                                {{ $order->order_id }}
+                            </a>
+                        </td>
                         <td>
                             @if (strtolower($order->delivery_status) == 'delivered')
                                 <span class="badge bg-success fs-6">
@@ -153,7 +160,17 @@
             });
         });
     </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var tooltipTriggerList = [].slice.call(
+                document.querySelectorAll('[data-bs-toggle="tooltip"]')
+            );
 
+            tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
     <script>
         $(document).ready(function() {
 

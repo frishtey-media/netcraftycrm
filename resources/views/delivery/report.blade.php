@@ -80,6 +80,8 @@
                             <th>Tracking No</th>
                             <th>Customer</th>
                             <th>Phone</th>
+                            <th>City</th>
+                            <th>State</th>
                             <th>Status</th>
                             <th>Payment Status</th>
                             <th>RTO Status</th>
@@ -106,6 +108,8 @@
                                 <td>{{ $order->customer_name }}</td>
 
                                 <td>{{ $order->customer_phone }}</td>
+                                <td>{{ $order->city }}</td>
+                                <td>{{ $order->state }}</td>
 
                                 <td>{{ $order->delivery_status }}</td>
 
