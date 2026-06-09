@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Conversation;
+use App\Models\conversation;
 use App\Models\Message;
-use GuzzleHttp\Client;
+use App\Models\Client;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use GuzzleHttp\Client as GuzzleClient;
 
 class StaffChatController extends Controller
 {
@@ -15,7 +16,9 @@ class StaffChatController extends Controller
     {
         $staffId = Auth::guard('calling_user')->id();
 
-        $conversations = Conversation::where('assigned_to', $staffId)->get();
+        $conversations = Conversation::where('assigned_to', $staffId)
+            ->latest()
+            ->get();
 
         return view('calling.inbox', compact('conversations'));
     }
@@ -33,44 +36,89 @@ class StaffChatController extends Controller
 
     public function send(Request $request)
     {
+
+        //dd('SEND METHOD HIT');
+
         $request->validate([
             'conversation_id' => 'required',
             'message' => 'required'
         ]);
 
-        $conv = Conversation::findOrFail($request->conversation_id);
+        try {
 
-        // 🔥 SEND TO WHATSAPP
-        $client = new Client();
+            $conv = Conversation::findOrFail($request->conversation_id);
 
-        $client->post("https://graph.facebook.com/v19.0/" . env('WA_PHONE_ID') . "/messages", [
-            'headers' => [
-                'Authorization' => 'Bearer ' . env('WA_TOKEN'),
-                'Content-Type' => 'application/json',
-            ],
-            'json' => [
-                "messaging_product" => "whatsapp",
-                "to" => $conv->customer_phone,
-                "type" => "text",
-                "text" => [
-                    "body" => $request->message
+            $clientData = Client::find($conv->client_id);
+
+            if (!$clientData) {
+                return back()->with('error', 'Client not found');
+            }
+
+            if (empty($clientData->phone_number_id)) {
+                return back()->with('error', 'Phone Number ID missing');
+            }
+
+            if (empty($clientData->access_token)) {
+                return back()->with('error', 'WhatsApp Access Token missing');
+            }
+
+            $phone = preg_replace('/[^0-9]/', '', $conv->customer_phone);
+
+            Log::info('WHATSAPP SEND START', [
+                'client_id' => $clientData->id,
+                'phone_number_id' => $clientData->phone_number_id,
+                'customer_phone' => $phone
+            ]);
+
+            $http = new GuzzleClient();
+
+            $response = $http->post(
+                "https://graph.facebook.com/v23.0/{$clientData->phone_number_id}/messages",
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $clientData->access_token,
+                        'Content-Type'  => 'application/json',
+                    ],
+                    'json' => [
+                        'messaging_product' => 'whatsapp',
+                        'to' => $phone,
+                        'type' => 'text',
+                        'text' => [
+                            'body' => $request->message
+                        ]
+                    ]
                 ]
-            ]
-        ]);
+            );
 
-        // 🔥 SAVE MESSAGE
-        Message::create([
-            'conversation_id' => $conv->id,
-            'sender' => 'staff',
-            'message' => $request->message
-        ]);
+            Log::info('WHATSAPP RESPONSE', [
+                'response' => json_decode(
+                    $response->getBody()->getContents(),
+                    true
+                )
+            ]);
 
-        // 🔥 UPDATE LAST MESSAGE
-        $conv->update([
-            'last_message' => $request->message,
-            'last_message_at' => now()
-        ]);
+            Message::create([
+                'conversation_id' => $conv->id,
+                'sender' => 'staff',
+                'message' => $request->message
+            ]);
 
-        return back()->with('success', 'Message Sent');
+            $conv->update([
+                'last_message' => $request->message,
+                'last_message_at' => now()
+            ]);
+
+            return back()->with('success', 'Message Sent Successfully');
+        } catch (\Exception $e) {
+
+            Log::error('WHATSAPP SEND ERROR', [
+                'message' => $e->getMessage()
+            ]);
+
+            return back()->with(
+                'error',
+                'WhatsApp Error: ' . $e->getMessage()
+            );
+        }
     }
 }
