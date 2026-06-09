@@ -19,4 +19,8 @@ class RtoReport extends Model
         'weight',
         'order_date'
     ];
+    public function callingOrder()
+    {
+        return $this->hasOne(CallingOrder::class, 'order_id', 'order_id');
+    }
 }

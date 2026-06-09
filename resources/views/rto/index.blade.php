@@ -38,11 +38,66 @@
     @endif
 
     <div class="card mb-3" style="    padding: 15px;">
+        <form method="GET" action="{{ route('rto.index') }}">
+            <div class="row">
+
+                <div class="col-md-3">
+                    <label>From Date</label>
+                    <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
+                </div>
+
+                <div class="col-md-3">
+                    <label>To Date</label>
+                    <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
+                </div>
+
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary">
+                        Filter
+                    </button>
+                </div>
+
+            </div>
+        </form>
+        @if (isset($staffCounts) && $staffCounts->count())
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong>Staff Wise RTO Count</strong>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>Date Wise Staff RTO</strong>
+                    </div>
+
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Staff Name</th>
+                                <th>Total RTO</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach ($dateWiseCounts as $row)
+                                <tr>
+                                    <td>{{ $row->rto_date }}</td>
+                                    <td>{{ $row->staff_name }}</td>
+                                    <td>{{ $row->total_rto }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
         <table id="barcodeTable" class="table table-bordered table-striped">
             <thead class="table-dark">
                 <tr>
                     <th>#</th>
                     <th>Order ID</th>
+                    <th>Staff Name</th>
                     <th>Barcode</th>
                     <th>Customer Name</th>
                     <th>Customer Phone</th>
@@ -60,6 +115,9 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $order->order_id }}</td>
+                        <td>
+                            {{ optional(optional($order->callingOrder)->staff)->name ?? 'Not Assigned' }}
+                        </td>
                         <td>{{ $order->barcode }}</td>
                         <td>{{ $order->customer_name }}</td>
                         <td>{{ $order->customer_phone }}</td>
@@ -69,7 +127,8 @@
                         <td>{{ $order->product }}</td>
                         <td>{{ $order->quantity }}</td>
                         <td>{{ $order->weight }}</td>
-                        <td>{{ $order->date }}</td>
+                        <td>{{ $order->order_date }}</td>
+
                     </tr>
                 @endforeach
             </tbody>

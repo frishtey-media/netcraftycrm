@@ -67,17 +67,18 @@ class RecordController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'client_id'      => 'required',
-            'assigned_to'    => 'required',
-            'product'        => 'required',
-            'customer_name'  => 'required',
-            'customer_phone' => 'required',
-            'payment_mode'   => 'required',
-            'age'   => 'required',
-            'amount'         => 'required|numeric',
+            'client_id'                 => 'required',
+            'assigned_to'               => 'required',
+            'products'                  => 'required|array|min:1',
+            'products.*.product'        => 'required',
+            'products.*.quantity'       => 'required|integer|min:1',
+            'customer_name'             => 'required',
+            'customer_phone'            => 'required',
+            'payment_mode'              => 'required',
+            'age'                       => 'required',
+            'amount'                    => 'required|numeric',
         ]);
 
-        // Selected Staff
         $staff = CallingUser::findOrFail($request->assigned_to);
 
         $name = trim($staff->name);
@@ -94,6 +95,23 @@ class RecordController extends Controller
 
         $orderId = $shortName . '-' . $date . '-' . $todayCount;
 
+        $productNames = [];
+        $totalQty = 0;
+        $totalWeight = 0;
+
+        foreach ($request->products as $product) {
+
+            $productNames[] = $product['product'];
+
+            $qty = $product['quantity'];
+
+            $weight = $product['weight'] ?? 0;
+
+            $totalQty += $qty;
+
+            $totalWeight += ($qty * $weight);
+        }
+
         CallingOrder::create([
 
             'client_id' => $request->client_id,
@@ -104,20 +122,20 @@ class RecordController extends Controller
 
             'order_date' => $request->date ?? now(),
 
-            'product_name' => $request->product,
+            'product_name' => implode(', ', $productNames),
 
-            'shopify_product_name' => $request->product,
+            'shopify_product_name' => implode(', ', $productNames),
 
-            'quantity' => $request->quantity ?? 1,
+            'quantity' => $totalQty,
 
-            'weight' => $request->weight_in_gm ?? 0,
+            'weight' => $totalWeight,
 
-            'total_weight' => ($request->quantity ?? 1) *
-                ($request->weight_in_gm ?? 0),
+            'total_weight' => $totalWeight,
 
             'customer_name' => $request->customer_name,
 
             'father_name' => $request->father_name,
+
             'age' => $request->age,
 
             'customer_phone' => $request->customer_phone,

@@ -163,13 +163,34 @@
                 <div class="col-md-4">
                     <label class="form-label">Product</label>
 
-                    <select name="product" id="product" class="form-control" required>
+                    <div id="product-wrapper">
 
-                        <option value="">
-                            Select Product
-                        </option>
+                        <div class="row product-row mb-2">
 
-                    </select>
+                            <div class="col-md-5">
+                                <select name="products[0][product]" class="form-control product-select" required>
+                                    <option value="">Select Product</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <input type="number" name="products[0][quantity]" class="form-control" placeholder="Qty"
+                                    value="1" min="1" required>
+                            </div>
+
+                            <div class="col-md-3">
+                                <input type="number" name="products[0][weight]" class="form-control weight-input" readonly>
+                            </div>
+
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-success add-product">
+                                    +
+                                </button>
+                            </div>
+
+                        </div>
+
+                    </div>
                 </div>
 
                 {{-- Quantity --}}
@@ -306,22 +327,21 @@
         });
     </script>
     <script>
+        let productOptions = '';
+        let rowIndex = 1;
+
         $('#client_id').change(function() {
 
             let clientId = $(this).val();
 
-            $('#product').html(
-                '<option value="">Loading Products...</option>'
-            );
-
             $.get('/get-client-products/' + clientId, function(data) {
 
-                let options =
+                productOptions =
                     '<option value="">Select Product</option>';
 
                 data.forEach(function(item) {
 
-                    options += `
+                    productOptions += `
                 <option
                     value="${item.shopify_product_name}"
                     data-weight="${item.weight_per_unit}">
@@ -330,18 +350,69 @@
             `;
                 });
 
-                $('#product').html(options);
+                $('.product-select').html(productOptions);
             });
         });
 
-        $('#product').change(function() {
 
-            let weight =
-                $(this)
-                .find(':selected')
-                .data('weight');
+        $(document).on('click', '.add-product', function() {
 
-            $('#weight_in_gm').val(weight ?? 0);
+            let html = `
+        <div class="row product-row mb-2">
+
+            <div class="col-md-5">
+                <select name="products[${rowIndex}][product]"
+                    class="form-control product-select"
+                    required>
+                    ${productOptions}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <input type="number"
+                    name="products[${rowIndex}][quantity]"
+                    class="form-control"
+                    value="1"
+                    min="1"
+                    required>
+            </div>
+
+            <div class="col-md-3">
+                <input type="number"
+                    name="products[${rowIndex}][weight]"
+                    class="form-control weight-input"
+                    readonly>
+            </div>
+
+            <div class="col-md-1">
+                <button type="button"
+                    class="btn btn-danger remove-product">
+                    ×
+                </button>
+            </div>
+
+        </div>
+    `;
+
+            $('#product-wrapper').append(html);
+
+            rowIndex++;
+        });
+
+
+        $(document).on('click', '.remove-product', function() {
+            $(this).closest('.product-row').remove();
+        });
+
+
+        $(document).on('change', '.product-select', function() {
+
+            let weight = $(this).find(':selected').data('weight');
+
+            $(this)
+                .closest('.product-row')
+                .find('.weight-input')
+                .val(weight || 0);
         });
     </script>
 

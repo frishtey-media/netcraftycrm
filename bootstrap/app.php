@@ -11,6 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+
+        $middleware->validateCsrfTokens(except: [
+            'whatsapp/webhook/*',
+        ]);
+
         $middleware->alias([
             'calling_user' => \App\Http\Middleware\CallingUserAuth::class,
             'inventory.auth' => \App\Http\Middleware\InventoryAuth::class,

@@ -81,63 +81,78 @@
 
                     <!-- RTO Received -->
                     <!--  <div class="col-md-4 mb-4">
-                                                                            <div class="card border">
-                                                                                <div class="card-header bg-warning">
-                                                                                    RTO Received Update
-                                                                                </div>
+                                                                                                    <div class="card border">
+                                                                                                        <div class="card-header bg-warning">
+                                                                                                            RTO Received Update
+                                                                                                        </div>
 
-                                                                                <div class="card-body">
+                                                                                                        <div class="card-body">
 
-                                                                                    @if (session('rto_success'))
+                                                                                                            @if (session('rto_success'))
     <div class="alert alert-success">
-                                                                                            {{ session('rto_success') }}
-                                                                                        </div>
+                                                                                                                    {{ session('rto_success') }}
+                                                                                                                </div>
     @endif
 
-                                                                                    <form method="POST" action="{{ route('delivery.rtoReceivedUpload') }}"
-                                                                                        enctype="multipart/form-data">
-                                                                                        @csrf
+                                                                                                            <form method="POST" action="{{ route('delivery.rtoReceivedUpload') }}"
+                                                                                                                enctype="multipart/form-data">
+                                                                                                                @csrf
 
-                                                                                        <div class="mb-3">
-                                                                                            <label>RTO Excel</label>
-                                                                                            <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv"
-                                                                                                required>
-                                                                                        </div>
+                                                                                                                <div class="mb-3">
+                                                                                                                    <label>RTO Excel</label>
+                                                                                                                    <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv"
+                                                                                                                        required>
+                                                                                                                </div>
 
-                                                                                        <button class="btn btn-success w-100">
-                                                                                            Upload RTO File
-                                                                                        </button>
-                                                                                    </form>
+                                                                                                                <button class="btn btn-success w-100">
+                                                                                                                    Upload RTO File
+                                                                                                                </button>
+                                                                                                            </form>
 
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>-->
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                </div>-->
                     <div class="card-body">
 
                         <form method="GET" action="{{ route('delivery.index') }}">
                             <div class="row mb-4">
 
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label>Select Client</label>
-
                                     <select name="client_id" class="form-control">
                                         <option value="">All Clients</option>
 
                                         @foreach ($clients as $client)
                                             <option value="{{ $client->id }}"
                                                 {{ request('client_id') == $client->id ? 'selected' : '' }}>
-
                                                 {{ $client->client_name }}
-
                                             </option>
                                         @endforeach
                                     </select>
                                 </div>
 
-                                <div class="col-md-2 mt-4">
-                                    <button class="btn btn-primary">
+                                <div class="col-md-3">
+                                    <label>From Date</label>
+                                    <input type="date" name="from_date" class="form-control"
+                                        value="{{ request('from_date') }}">
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label>To Date</label>
+                                    <input type="date" name="to_date" class="form-control"
+                                        value="{{ request('to_date') }}">
+                                </div>
+
+                                <div class="col-md-1 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary w-100">
                                         Filter
                                     </button>
+                                </div>
+
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <a href="{{ route('delivery.index') }}" class="btn btn-secondary w-100">
+                                        Reset
+                                    </a>
                                 </div>
 
                             </div>

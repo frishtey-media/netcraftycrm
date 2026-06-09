@@ -23,6 +23,14 @@ class DeliveryController extends Controller
             $query->where('client_id', $request->client_id);
         }
 
+        if ($request->filled('from_date')) {
+            $query->whereDate('date', '>=', $request->from_date);
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate('date', '<=', $request->to_date);
+        }
+
         $totalOrders = (clone $query)->count();
 
         $deliveredOrders = (clone $query)
