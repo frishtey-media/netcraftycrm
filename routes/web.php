@@ -34,8 +34,15 @@ Route::get('/', function () {
 });
 
 
-Route::get('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
-Route::post('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
+//Route::get('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
+//Route::post('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
+
+
+Route::match(
+    ['GET', 'POST'],
+    '/whatsapp/webhook/{client}',
+    [WhatsAppController::class, 'webhook']
+);
 
 //Route::post('/webhook/shopify/order', [WhatsAppController::class, 'orderCreate']);
 

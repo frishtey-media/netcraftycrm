@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Conversation;
+use App\Models\conversation;
 use App\Models\Message;
 use App\Models\Client;
-use App\Models\CallingOrder;
+use App\Models\callingorder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
@@ -14,73 +14,83 @@ class WhatsAppController extends Controller
 {
 
 
-    public function webhook(Request $request)
+    public function webhook(Request $request, $clientId)
     {
+        Log::info('========== WHATSAPP WEBHOOK HIT ==========');
+
         // ==========================
-        // WEBHOOK VERIFY
+        // WEBHOOK VERIFY (GET)
         // ==========================
         if ($request->isMethod('get')) {
 
-            if (
-                $request->query('hub_mode') === 'subscribe' &&
-                $request->query('hub_verify_token') === env('WA_VERIFY_TOKEN')
-            ) {
-                return response(
-                    $request->query('hub_challenge'),
-                    200
-                );
+            $mode = $request->query('hub_mode')
+                ?? $request->query('hub.mode');
+
+            $token = $request->query('hub_verify_token')
+                ?? $request->query('hub.verify_token');
+
+            $challenge = $request->query('hub_challenge')
+                ?? $request->query('hub.challenge');
+
+            $client = Client::find($clientId);
+
+            Log::info('WEBHOOK VERIFY', [
+                'client_id' => $clientId,
+                'mode' => $mode,
+                'token' => $token,
+                'challenge' => $challenge,
+                'db_token' => $client?->webhook_secret
+            ]);
+
+            if (!$client) {
+                Log::error('CLIENT NOT FOUND');
+                return response('Client Not Found', 404);
             }
+
+            if (
+                $mode === 'subscribe' &&
+                trim($token) === trim($client->webhook_secret)
+            ) {
+
+                Log::info('WEBHOOK VERIFIED SUCCESSFULLY');
+
+                return response($challenge, 200)
+                    ->header('Content-Type', 'text/plain');
+            }
+
+            Log::error('INVALID VERIFY TOKEN');
 
             return response('Invalid token', 403);
         }
 
         // ==========================
-        // WEBHOOK DATA
+        // INCOMING POST WEBHOOK
         // ==========================
+
+        Log::info('POST PAYLOAD RECEIVED', [
+            'payload' => $request->all()
+        ]);
+
         $data = $request->all();
 
-        // Ignore delivery/read status callbacks
+        // Status update
         if (data_get($data, 'entry.0.changes.0.value.statuses')) {
-            return response()->json(['ok' => true]);
+
+            Log::info('STATUS CALLBACK RECEIVED');
+
+            return response()->json([
+                'success' => true
+            ]);
         }
 
-        $msg = data_get(
-            $data,
-            'entry.0.changes.0.value.messages.0'
-        );
-
-        if (!$msg) {
-            return response()->json(['ok' => true]);
-        }
-
-        // ==========================
-        // MESSAGE DETAILS
-        // ==========================
-        $phone = $msg['from'] ?? null;
-        $waId  = $msg['id'] ?? null;
-        $type  = $msg['type'] ?? 'text';
-
-        // Handle multiple message types
-        $text = match ($type) {
-            'text'     => data_get($msg, 'text.body'),
-            'image'    => '📷 Image',
-            'document' => '📄 Document',
-            'audio'    => '🎤 Audio',
-            'video'    => '🎥 Video',
-            default    => 'New Message'
-        };
-
-        if (!$phone) {
-            return response()->json(['ok' => true]);
-        }
-
-        // ==========================
-        // WHICH CLIENT?
-        // ==========================
         $phoneNumberId = data_get(
             $data,
             'entry.0.changes.0.value.metadata.phone_number_id'
         );
+
+        Log::info('PHONE NUMBER ID RECEIVED', [
+            'phone_number_id' => $phoneNumberId
+        ]);
 
         $client = Client::where(
             'phone_number_id',
@@ -89,49 +99,77 @@ class WhatsAppController extends Controller
 
         if (!$client) {
 
-            Log::warning(
-                'WhatsApp Client Mapping Missing',
-                [
-                    'phone_number_id' => $phoneNumberId
-                ]
-            );
+            Log::error('CLIENT MAPPING FAILED', [
+                'phone_number_id' => $phoneNumberId
+            ]);
 
             return response()->json([
                 'error' => 'Client not mapped'
             ]);
         }
 
-        // ==========================
-        // STAFF ASSIGNMENT
-        // ==========================
+        Log::info('CLIENT FOUND', [
+            'client_id' => $client->id,
+            'client_name' => $client->client_name
+        ]);
+
+        $msg = data_get(
+            $data,
+            'entry.0.changes.0.value.messages.0'
+        );
+
+        if (!$msg) {
+
+            Log::warning('MESSAGE OBJECT NOT FOUND');
+
+            return response()->json([
+                'success' => true
+            ]);
+        }
+
+        $phone = $msg['from'] ?? null;
+        $waId = $msg['id'] ?? null;
+        $type = $msg['type'] ?? 'text';
+
+        $text = match ($type) {
+            'text' => data_get($msg, 'text.body'),
+            'image' => '📷 Image',
+            'document' => '📄 Document',
+            'audio' => '🎤 Audio',
+            'video' => '🎥 Video',
+            default => 'New Message'
+        };
+
+        Log::info('MESSAGE RECEIVED', [
+            'phone' => $phone,
+            'wa_id' => $waId,
+            'type' => $type,
+            'message' => $text
+        ]);
+
         $staffId = $this->assignStaff($client->id);
 
-        // ==========================
-        // CREATE/FIND CONVERSATION
-        // ==========================
+        Log::info('STAFF ASSIGNED', [
+            'staff_id' => $staffId
+        ]);
+
         $conversation = Conversation::firstOrCreate(
             [
                 'customer_phone' => $phone,
-                'client_id'      => $client->id
+                'client_id' => $client->id
             ],
             [
-                'assigned_to'    => $staffId,
-                'status'         => 'open',
-                'last_message'   => $text,
+                'assigned_to' => $staffId,
+                'status' => 'open',
+                'last_message' => $text,
                 'last_message_at' => now()
             ]
         );
 
-        // If conversation exists but no staff assigned
-        if (!$conversation->assigned_to && $staffId) {
+        Log::info('CONVERSATION CREATED/FOUND', [
+            'conversation_id' => $conversation->id
+        ]);
 
-            $conversation->assigned_to = $staffId;
-            $conversation->save();
-        }
-
-        // ==========================
-        // DUPLICATE CHECK
-        // ==========================
         if (
             $waId &&
             !Message::where('wa_message_id', $waId)->exists()
@@ -139,15 +177,17 @@ class WhatsAppController extends Controller
 
             Message::create([
                 'conversation_id' => $conversation->id,
-                'sender'          => 'user',
-                'message'         => $text,
-                'wa_message_id'   => $waId
+                'sender' => 'user',
+                'message' => $text,
+                'wa_message_id' => $waId
             ]);
 
+            Log::info('MESSAGE SAVED');
+
             $conversation->update([
-                'last_message'     => $text,
-                'last_message_at'  => now(),
-                'status'           => 'open'
+                'last_message' => $text,
+                'last_message_at' => now(),
+                'status' => 'open'
             ]);
         }
 
