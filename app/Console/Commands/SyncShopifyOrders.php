@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Client;
-use App\Models\CallingOrder;
+use App\Models\callingorder;
 use GuzzleHttp\Client as GuzzleClient;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -35,7 +35,19 @@ class SyncShopifyOrders extends Command
             $start = $startIST->copy()->utc()->toIso8601String();
             $end   = $endIST->copy()->utc()->toIso8601String();
 
-            $url = "https://{$client->shopify_store_url}/admin/api/2024-04/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
+            //$url = "https://{$client->shopify_store_url}/admin/api/2024-04/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
+
+
+            if ($client->id == 11) {
+
+                $url = "https://{$client->shopify_store_url}/admin/api/2026-04/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
+            } elseif ($client->id == 13) {
+
+                $url = "https://{$client->shopify_store_url}/admin/api/2026-01/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
+            } else {
+
+                $url = "https://{$client->shopify_store_url}/admin/api/2024-04/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
+            }
 
             try {
 
@@ -99,59 +111,80 @@ class SyncShopifyOrders extends Command
                         implode(', ', $noteAddress),
                     ]));
 
+                    $orderId = isset($order['name'])
+                        ? str_replace('#', '', $order['name'])
+                        : $order['id'];
+
+                    $exists = CallingOrder::where('order_id', $orderId)
+                        ->where('client_id', $client->id)
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
+                    }
+
+                    /*
+|--------------------------------------------------------------------------
+| Collect All Products
+|--------------------------------------------------------------------------
+*/
+                    $productNames = [];
+                    $totalQty = 0;
+
                     foreach ($order['line_items'] as $item) {
 
-                        $orderId = isset($order['name'])
-                            ? str_replace('#', '', $order['name'])
-                            : $order['id'];
+                        $productNames[] =
+                            ($item['title'] ?? 'Product')
+                            . ' (Qty: ' . ($item['quantity'] ?? 1) . ')';
 
-                        $exists = CallingOrder::where('order_id', $orderId)
-                            ->where('client_id', $client->id)
-                            ->exists();
-
-                        if ($exists) {
-                            continue;
-                        }
-
-                        CallingOrder::create([
-
-                            'client_id' => $client->id,
-
-                            'order_id' => $orderId,
-
-                            'order_date' => isset($order['created_at'])
-                                ? Carbon::parse($order['created_at'])
-                                : now(),
-
-                            'product_name' => $item['title'] ?? 'Product',
-
-                            'quantity' => $item['quantity'] ?? 1,
-
-                            'customer_name' => $fullName
-                                ?: ($order['shipping_address']['name']
-                                    ?? ($order['customer']['first_name'] ?? 'Guest')),
-
-                            'father_name' => $order['shipping_address']['company'] ?? '',
-
-                            'customer_phone' => $mobile
-                                ?: ($order['phone']
-                                    ?? ($order['shipping_address']['phone'] ?? '')),
-
-                            'shipping_address' => $fullAddress,
-
-                            'city' => $order['shipping_address']['city'] ?? '',
-
-                            'state' => $order['shipping_address']['province'] ?? '',
-
-                            'pincode' => $order['shipping_address']['zip'] ?? '',
-
-                            'payment_mode' => $order['financial_status'] ?? '',
-
-                            'amount' => $order['total_price'] ?? 0,
-
-                            'status' => 'pending',
-                        ]);
+                        $totalQty += ($item['quantity'] ?? 1);
                     }
+
+                    $productNames = implode(', ', $productNames);
+
+                    /*
+|--------------------------------------------------------------------------
+| Save Single Record Per Order
+|--------------------------------------------------------------------------
+*/
+                    CallingOrder::create([
+
+                        'client_id' => $client->id,
+
+                        'order_id' => $orderId,
+
+                        'order_date' => isset($order['created_at'])
+                            ? Carbon::parse($order['created_at'])
+                            : now(),
+
+                        'product_name' => $productNames,
+
+                        'quantity' => $totalQty,
+
+                        'customer_name' => $fullName
+                            ?: ($order['shipping_address']['name']
+                                ?? ($order['customer']['first_name'] ?? 'Guest')),
+
+                        'father_name' => $order['shipping_address']['company'] ?? '',
+
+                        'customer_phone' => $mobile
+                            ?: ($order['phone']
+                                ?? ($order['shipping_address']['phone'] ?? '')),
+
+                        'shipping_address' => $fullAddress,
+
+                        'city' => $order['shipping_address']['city'] ?? '',
+
+                        'state' => $order['shipping_address']['province'] ?? '',
+
+                        'pincode' => $order['shipping_address']['zip'] ?? '',
+
+                        'payment_mode' => $order['financial_status'] ?? '',
+
+                        'amount' => $order['total_price'] ?? 0,
+
+                        'status' => 'pending',
+                    ]);
                 }
             } catch (\Exception $e) {
 

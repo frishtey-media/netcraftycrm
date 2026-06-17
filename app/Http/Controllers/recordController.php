@@ -159,10 +159,11 @@ class RecordController extends Controller
 
             'order_source' => 'whatsapp',
         ]);
+        $productCount = count($request->products);
 
         return back()->with(
             'success',
-            'Order Saved Successfully'
+            "Order Saved Successfully. {$productCount} products added with total quantity {$totalQty}."
         );
     }
 

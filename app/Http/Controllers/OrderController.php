@@ -14,6 +14,8 @@ use App\Models\ShopifyOrder;
 use App\Models\LabelSender;
 use App\Models\Client;
 use App\Exports\PostOfficeExport;
+use App\Models\CallingUser;
+use App\Exports\SelectedOrdersExport;
 
 
 class OrderController extends Controller
@@ -31,25 +33,17 @@ class OrderController extends Controller
     {
         $sortOrder = $request->get('sort_order', 'desc');
 
-        $orders = Order::with([
+        $query = Order::with([
             'callingOrder.staff'
-        ])
-            ->when($this->isClient(), function ($q) {
-                $q->where('client_id', $this->clientId());
-            })
-            ->when($request->client_id && !$this->isClient(), function ($q) use ($request) {
-                $q->where('client_id', $request->client_id);
-            })
-            ->when($request->date_from, function ($q) use ($request) {
-                $q->whereDate('created_at', '>=', $request->date_from);
-            })
-            ->when($request->date_to, function ($q) use ($request) {
-                $q->whereDate('created_at', '<=', $request->date_to);
-            })
-            ->orderBy('created_at', $sortOrder)
-            ->get();
+        ]);
 
+        // Client Login
         if ($this->isClient()) {
+
+            $query->where(
+                'client_id',
+                $this->clientId()
+            );
 
             $clients = Client::where(
                 'id',
@@ -59,26 +53,391 @@ class OrderController extends Controller
             $senders = LabelSender::where(
                 'client_id',
                 $this->clientId()
-            )
-                ->orderBy('customer_name')
-                ->get();
+            )->orderBy('customer_name')->get();
         } else {
 
             $clients = Client::orderBy('client_name')->get();
 
             $senders = LabelSender::orderBy('customer_name')->get();
+
+            if ($request->filled('client_id')) {
+                $query->where(
+                    'client_id',
+                    $request->client_id
+                );
+            }
         }
+
+        // Staff Filter
+        if ($request->filled('staff_id')) {
+
+            $query->whereHas('callingOrder', function ($q) use ($request) {
+
+                $q->where(
+                    'assigned_to',
+                    $request->staff_id
+                );
+            });
+        }
+        $searchTerms = [];
+        $notFound = [];
+
+        if ($request->filled('search')) {
+
+            $searchTerms = preg_split(
+                '/[\r\n,]+/',
+                trim($request->search)
+            );
+
+            $searchTerms = array_filter(
+                array_map('trim', $searchTerms)
+            );
+
+            $query->where(function ($q) use ($searchTerms) {
+
+                $q->whereIn('order_id', $searchTerms)
+                    ->orWhereIn('barcode', $searchTerms)
+                    ->orWhereIn('customer_phone', $searchTerms);
+
+                foreach ($searchTerms as $term) {
+
+                    $q->orWhere(
+                        'customer_name',
+                        'like',
+                        "%{$term}%"
+                    );
+                }
+            });
+        }
+        // Status Filter
+        if ($request->filled('delivery_status')) {
+
+            if ($request->delivery_status == 'null') {
+
+                $query->where(function ($q) {
+
+                    $q->whereNull('delivery_status')
+                        ->orWhere('delivery_status', '');
+                });
+            } else {
+
+                $query->where(
+                    'delivery_status',
+                    $request->delivery_status
+                );
+            }
+        }
+
+        // Date Filter
+        if ($request->filled('date_from')) {
+
+            $query->whereDate(
+                'created_at',
+                '>=',
+                $request->date_from
+            );
+        }
+
+        if ($request->filled('date_to')) {
+
+            $query->whereDate(
+                'created_at',
+                '<=',
+                $request->date_to
+            );
+        }
+        // $summaryQuery = clone $query;
+
+        // ORDERS
+        $totalOrders = (clone $query)->count();
+
+        $webOrders = (clone $query)
+            ->where(function ($main) {
+                $main->whereDoesntHave('callingOrder')
+                    ->orWhereHas('callingOrder', function ($q) {
+                        $q->whereNull('order_source')
+                            ->orWhere('order_source', '');
+                    });
+            })
+            ->count();
+
+        $whatsappOrders = $totalOrders - $webOrders;
+
+
+        // DELIVERED
+        $totalDelivered = (clone $query)
+            ->where('delivery_status', 'Delivered')
+            ->count();
+
+        $webDelivered = (clone $query)
+            ->where('delivery_status', 'Delivered')
+            ->where(function ($main) {
+                $main->whereDoesntHave('callingOrder')
+                    ->orWhereHas('callingOrder', function ($q) {
+                        $q->whereNull('order_source')
+                            ->orWhere('order_source', '');
+                    });
+            })
+            ->count();
+
+        $whatsappDelivered = $totalDelivered - $webDelivered;
+
+
+        // PAYMENTS (Based on pay_bill_date)
+
+        // PAYMENTS (Based on pay_bill_date)
+
+        $paymentQuery = Order::query();
+
+        // Client Filter
+        if ($this->isClient()) {
+            $paymentQuery->where('client_id', $this->clientId());
+        } elseif ($request->filled('client_id')) {
+            $paymentQuery->where('client_id', $request->client_id);
+        }
+
+        // Staff Filter
+        if ($request->filled('staff_id')) {
+            $paymentQuery->whereHas('callingOrder', function ($q) use ($request) {
+                $q->where('assigned_to', $request->staff_id);
+            });
+        }
+
+        // Payment Date Filter
+        if ($request->filled('date_from')) {
+            $paymentQuery->whereRaw(
+                "STR_TO_DATE(pay_bill_date,'%d-%m-%Y') >= ?",
+                [$request->date_from]
+            );
+        }
+
+        if ($request->filled('date_to')) {
+            $paymentQuery->whereRaw(
+                "STR_TO_DATE(pay_bill_date,'%d-%m-%Y') <= ?",
+                [$request->date_to]
+            );
+        }
+
+        // Received
+        $paymentReceivedOrders = (clone $paymentQuery)
+            ->whereNotNull('pay_bill_date')
+            ->where('pay_bill_date', '!=', '')
+            ->count();
+
+        $paymentReceivedAmount = (clone $paymentQuery)
+            ->whereNotNull('pay_bill_date')
+            ->where('pay_bill_date', '!=', '')
+            ->sum('receivedcodamt');
+
+        // Pending
+        $paymentPendingOrders = (clone $paymentQuery)
+            ->where(function ($q) {
+                $q->whereNull('pay_bill_date')
+                    ->orWhere('pay_bill_date', '');
+            })
+            ->count();
+
+        $paymentPendingAmount = (clone $paymentQuery)
+            ->where(function ($q) {
+                $q->whereNull('pay_bill_date')
+                    ->orWhere('pay_bill_date', '');
+            })
+            ->sum('amount');
+
+
+        // RTO
+        $totalRto = (clone $query)
+            ->where('delivery_status', 'RTO')
+            ->count();
+
+        $webRto = (clone $query)
+            ->where('delivery_status', 'RTO')
+            ->where(function ($main) {
+                $main->whereDoesntHave('callingOrder')
+                    ->orWhereHas('callingOrder', function ($q) {
+                        $q->whereNull('order_source')
+                            ->orWhere('order_source', '');
+                    });
+            })
+            ->count();
+
+        $whatsappRto = $totalRto - $webRto;
+
+        $rtoReceived = (clone $query)
+            ->where('rtorecivedsts', 1)
+            ->count();
+
+
+        // IN TRANSIT
+        $totalTransit = (clone $query)
+            ->whereIn('delivery_status', [
+                'In Transit',
+                'Out For Delivery'
+            ])
+            ->count();
+
+        $webTransit = (clone $query)
+            ->whereIn('delivery_status', [
+                'In Transit',
+                'Out For Delivery'
+            ])
+            ->where(function ($main) {
+                $main->whereDoesntHave('callingOrder')
+                    ->orWhereHas('callingOrder', function ($q) {
+                        $q->whereNull('order_source')
+                            ->orWhere('order_source', '');
+                    });
+            })
+            ->count();
+
+        $whatsappTransit = $totalTransit - $webTransit;
+
+
+        // NO STATUS
+        $totalNoStatus = (clone $query)
+            ->where(function ($q) {
+                $q->whereNull('delivery_status')
+                    ->orWhere('delivery_status', '');
+            })
+            ->count();
+
+        $webNoStatus = (clone $query)
+            ->where(function ($q) {
+                $q->whereNull('delivery_status')
+                    ->orWhere('delivery_status', '');
+            })
+            ->where(function ($main) {
+                $main->whereDoesntHave('callingOrder')
+                    ->orWhereHas('callingOrder', function ($q) {
+                        $q->whereNull('order_source')
+                            ->orWhere('order_source', '');
+                    });
+            })
+            ->count();
+
+        $whatsappNoStatus = $totalNoStatus - $webNoStatus;
+        $perPage = $request->get('per_page', 100);
+
+        $orders = $query
+            ->orderBy('created_at', $sortOrder)
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $searchTerms = [];
+        $notFound = [];
+
+        if ($request->filled('search')) {
+
+            $searchTerms = preg_split(
+                '/[\r\n,]+/',
+                trim($request->search)
+            );
+
+            $searchTerms = array_filter(
+                array_map('trim', $searchTerms)
+            );
+
+            $query->where(function ($q) use ($searchTerms) {
+
+                $q->whereIn('order_id', $searchTerms)
+                    ->orWhereIn('barcode', $searchTerms)
+                    ->orWhereIn('customer_phone', $searchTerms);
+
+                foreach ($searchTerms as $term) {
+
+                    $q->orWhere(
+                        'customer_name',
+                        'like',
+                        "%{$term}%"
+                    );
+                }
+            });
+
+            // Find matched values from DB directly
+            $foundBarcodes = Order::whereIn(
+                'barcode',
+                $searchTerms
+            )->pluck('barcode')->toArray();
+
+            $foundOrderIds = Order::whereIn(
+                'order_id',
+                $searchTerms
+            )->pluck('order_id')->toArray();
+
+            $foundPhones = Order::whereIn(
+                'customer_phone',
+                $searchTerms
+            )->pluck('customer_phone')->toArray();
+
+            $foundValues = collect(
+                array_merge(
+                    $foundBarcodes,
+                    $foundOrderIds,
+                    $foundPhones
+                )
+            )
+                ->map(fn($v) => strtoupper(trim($v)))
+                ->unique()
+                ->toArray();
+
+            $notFound = collect($searchTerms)
+                ->map(fn($v) => strtoupper(trim($v)))
+                ->reject(function ($item) use ($foundValues) {
+                    return in_array($item, $foundValues);
+                })
+                ->values()
+                ->toArray();
+        }
+        $staffs = CallingUser::orderBy('name')->get();
 
         return view(
             'orders.index',
             compact(
                 'orders',
                 'clients',
-                'senders'
+                'senders',
+                'staffs',
+
+                'totalOrders',
+                'webOrders',
+                'whatsappOrders',
+
+                'totalDelivered',
+                'webDelivered',
+                'whatsappDelivered',
+
+                'paymentReceivedOrders',
+                'paymentReceivedAmount',
+
+                'paymentPendingOrders',
+                'paymentPendingAmount',
+
+                'totalRto',
+                'webRto',
+                'whatsappRto',
+                'rtoReceived',
+
+                'totalTransit',
+                'webTransit',
+                'whatsappTransit',
+
+                'totalNoStatus',
+                'webNoStatus',
+                'whatsappNoStatus',
+                'searchTerms',
+                'notFound'
             )
         );
     }
+    public function exportSelected(Request $request)
+    {
+        $ids = explode(',', $request->ids);
 
+        return Excel::download(
+            new SelectedOrdersExport($ids),
+            'Selected_Orders_' . now()->format('d-m-Y_H-i-s') . '.xlsx'
+        );
+    }
     public function downloadBarcodes(Request $request)
     {
         $request->validate([

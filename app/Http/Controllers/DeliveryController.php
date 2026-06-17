@@ -69,7 +69,11 @@ class DeliveryController extends Controller
         $inTransit = (clone $query)
             ->where('delivery_status', 'In Transit')
             ->count();
+        $lastDeliveryUpdate = Order::whereNotNull('delivery_status')
+            ->max('updated_at');
 
+        $lastPaymentUpdate = Order::where('recivedpaysts', 1)
+            ->max('updated_at');
         return view('delivery.index', compact(
             'clients',
             'totalOrders',
@@ -79,7 +83,9 @@ class DeliveryController extends Controller
             'totalRTO',
             'rtoReceived',
             'rtoPending',
-            'inTransit'
+            'inTransit',
+            'lastDeliveryUpdate',
+            'lastPaymentUpdate'
         ));
     }
     public function report(Request $request, $type)

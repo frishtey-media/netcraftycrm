@@ -136,6 +136,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
     Route::get('/performance', [AdminController::class, 'performance'])
         ->name('performance.dashboard');
+
+    Route::get(
+        '/performance/orders',
+        [AdminController::class, 'orderDetails']
+    )->name('performance.orders');
+
+
     Route::get('/staff-report/{staff_id}', [ReportController::class, 'staffReport'])
         ->name('staff.report');
 
@@ -147,6 +154,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/payment-upload', [DeliveryController::class, 'paymentupload'])
         ->name('delivery.paymentupload');
+
+    Route::post('/orders/export-selected', [OrderController::class, 'exportSelected'])
+        ->name('orders.export.selected');
 
     Route::post('/rto-received-upload', [DeliveryController::class, 'rtoReceivedUpload'])
         ->name('delivery.rtoReceivedUpload');

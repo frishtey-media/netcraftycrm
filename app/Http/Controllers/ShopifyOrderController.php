@@ -20,9 +20,7 @@ class ShopifyOrderController extends Controller
         Excel::import($import, $request->file('file'));
 
         return back()->with([
-            'success'  => 'Import completed',
-            'imported' => $import->imported,
-            'skipped' => $import->skipped,
+            'success' => "Import completed. Imported: {$import->imported}, Skipped: {$import->skipped}",
             'errors'  => $import->errors,
         ]);
     }

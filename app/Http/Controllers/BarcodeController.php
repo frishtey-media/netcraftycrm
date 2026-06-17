@@ -95,7 +95,7 @@ class BarcodeController extends Controller
         $request->validate([
             'file'         => 'required|mimes:xlsx,csv',
             'client_id'    => 'required|exists:clients,id',
-            'barcode_type' => 'required|in:VPP,COD',
+            'barcode_type' => 'required|in:VPP,COD,prepaid',
         ]);
 
         // Client Security

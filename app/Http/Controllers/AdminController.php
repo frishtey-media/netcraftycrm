@@ -159,6 +159,62 @@ class AdminController extends Controller
             'staff_verified_' . now()->format('d_m_Y_H_i') . '.xlsx'
         );
     }
+    public function orderDetails(Request $request)
+    {
+        $from = Carbon::parse($request->from)->startOfDay();
+        $to   = Carbon::parse($request->to)->endOfDay();
+
+
+        $staff = CallingUser::findOrFail($request->staff_id);
+
+        $query = CallingOrder::where(
+            'assigned_to',
+            $request->staff_id
+        )
+            ->whereBetween('updated_at', [$from, $to]);
+
+        // Summary Counts (ALL RECORDS)
+
+        $totalOrders = (clone $query)->count();
+
+        $verifiedOrders = (clone $query)
+            ->where('status', 'verified')
+            ->count();
+
+        $cancelOrders = (clone $query)
+            ->where('status', 'cancel')
+            ->count();
+
+        $notReachableOrders = (clone $query)
+            ->where('status', 'not_reachable')
+            ->count();
+
+        $sameOrderOrders = (clone $query)
+            ->where('status', 'same_order')
+            ->count();
+
+        $pendingOrders = (clone $query)
+            ->where('status', 'pending')
+            ->count();
+
+        // Table Data
+
+        $orders = (clone $query)
+            ->with('client')
+            ->latest()
+            ->paginate(100);
+
+        return view('performance-orders', compact(
+            'orders',
+            'staff',
+            'totalOrders',
+            'verifiedOrders',
+            'cancelOrders',
+            'notReachableOrders',
+            'sameOrderOrders',
+            'pendingOrders'
+        ));
+    }
 
 
     public function shiftOrders(Request $request)
@@ -298,19 +354,24 @@ class AdminController extends Controller
 
     public function performance(Request $request)
     {
-        $from = Carbon::parse($request->from ?? now())->startOfDay();
-        $to   = Carbon::parse($request->to ?? now())->endOfDay();
+        $from = $request->filled('from')
+            ? Carbon::parse($request->from)->startOfDay()
+            : now()->startOfDay();
 
-        // Client login => filter by client_id
+        $to = $request->filled('to')
+            ? Carbon::parse($request->to)->endOfDay()
+            : now()->endOfDay();
+
         $clientId = $this->isClient()
             ? $this->clientId()
             : null;
 
-        // ================= STAFF PERFORMANCE =================
+        // =========================
+        // STAFF PERFORMANCE
+        // =========================
 
         $staffs = CallingUser::withCount([
 
-            // TOTAL ORDERS
             'orders as total_orders' => function ($q) use ($from, $to, $clientId) {
 
                 if ($clientId) {
@@ -320,7 +381,6 @@ class AdminController extends Controller
                 $q->whereBetween('updated_at', [$from, $to]);
             },
 
-            // WEB VERIFIED
             'orders as web_verified_orders' => function ($q) use ($from, $to, $clientId) {
 
                 if ($clientId) {
@@ -332,7 +392,6 @@ class AdminController extends Controller
                     ->whereBetween('updated_at', [$from, $to]);
             },
 
-            // WHATSAPP VERIFIED
             'orders as whatsapp_verified_orders' => function ($q) use ($from, $to, $clientId) {
 
                 if ($clientId) {
@@ -344,7 +403,6 @@ class AdminController extends Controller
                     ->whereBetween('updated_at', [$from, $to]);
             },
 
-            // PENDING
             'orders as pending_orders' => function ($q) use ($from, $to, $clientId) {
 
                 if ($clientId) {
@@ -355,7 +413,6 @@ class AdminController extends Controller
                     ->whereBetween('updated_at', [$from, $to]);
             },
 
-            // NOT REACHABLE
             'orders as not_reachable_orders' => function ($q) use ($from, $to, $clientId) {
 
                 if ($clientId) {
@@ -366,22 +423,45 @@ class AdminController extends Controller
                     ->whereBetween('updated_at', [$from, $to]);
             },
 
+            'orders as same_order' => function ($q) use ($from, $to, $clientId) {
+
+                if ($clientId) {
+                    $q->where('client_id', $clientId);
+                }
+
+                $q->where('status', 'same_order')
+                    ->whereBetween('updated_at', [$from, $to]);
+            },
+
+            'orders as cancel' => function ($q) use ($from, $to, $clientId) {
+
+                if ($clientId) {
+                    $q->where('client_id', $clientId);
+                }
+
+                $q->where('status', 'cancel')
+                    ->whereBetween('updated_at', [$from, $to]);
+            },
+
         ])->get();
 
-        // ================= WHATSAPP PERFORMANCE =================
+        // =========================
+        // WHATSAPP PERFORMANCE
+        // =========================
 
         $waData = Conversation::select(
             'assigned_to',
             DB::raw('COUNT(*) as wa_total'),
-            DB::raw("SUM(CASE WHEN status = 'verified' THEN 1 ELSE 0 END) as wa_verified"),
-            DB::raw("SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) as wa_pending")
+            DB::raw("SUM(CASE WHEN status='verified' THEN 1 ELSE 0 END) as wa_verified"),
+            DB::raw("SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) as wa_pending")
         )
 
             ->when($clientId, function ($q) use ($clientId) {
                 $q->where('client_id', $clientId);
             })
 
-            ->whereBetween('updated_at', [$from, $to])
+            ->whereBetween('created_at', [$from, $to])
+
             ->groupBy('assigned_to')
             ->get()
             ->keyBy('assigned_to');
@@ -390,12 +470,14 @@ class AdminController extends Controller
 
             $wa = $waData[$staff->id] ?? null;
 
-            $staff->wa_total    = $wa->wa_total ?? 0;
+            $staff->wa_total = $wa->wa_total ?? 0;
             $staff->wa_verified = $wa->wa_verified ?? 0;
-            $staff->wa_pending  = $wa->wa_pending ?? 0;
+            $staff->wa_pending = $wa->wa_pending ?? 0;
         }
 
-        // ================= CLIENT WISE BREAKUP =================
+        // =========================
+        // CLIENT WISE BREAKUP
+        // =========================
 
         $clientData = CallingOrder::with('client')
 
@@ -418,12 +500,60 @@ class AdminController extends Controller
             $clientWise[$row->assigned_to][] = [
 
                 'client' => $row->client->client_name ?? 'N/A',
-
                 'total' => $row->total
+
             ];
         }
 
-        // ================= STAFF LIST =================
+        // =========================
+        // DASHBOARD TOTALS
+        // =========================
+
+        $totalOrders = CallingOrder::when($clientId, function ($q) use ($clientId) {
+            $q->where('client_id', $clientId);
+        })
+            ->whereBetween('updated_at', [$from, $to])
+            ->count();
+
+        $totalWebVerified = CallingOrder::when($clientId, function ($q) use ($clientId) {
+            $q->where('client_id', $clientId);
+        })
+            ->where('status', 'verified')
+            ->whereNull('order_source')
+            ->whereBetween('updated_at', [$from, $to])
+            ->count();
+
+        $totalWhatsappVerified = CallingOrder::when($clientId, function ($q) use ($clientId) {
+            $q->where('client_id', $clientId);
+        })
+            ->where('status', 'verified')
+            ->where('order_source', 'whatsapp')
+            ->whereBetween('updated_at', [$from, $to])
+            ->count();
+
+        $totalPending = CallingOrder::when($clientId, function ($q) use ($clientId) {
+            $q->where('client_id', $clientId);
+        })
+            ->where('status', 'pending')
+            ->whereBetween('updated_at', [$from, $to])
+            ->count();
+
+        $totalWA = Conversation::when($clientId, function ($q) use ($clientId) {
+            $q->where('client_id', $clientId);
+        })
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
+
+        $verifiedWA = Conversation::when($clientId, function ($q) use ($clientId) {
+            $q->where('client_id', $clientId);
+        })
+            ->where('status', 'verified')
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
+
+        // =========================
+        // STAFF LIST
+        // =========================
 
         $allStaff = $this->isClient()
             ? collect()
@@ -434,7 +564,13 @@ class AdminController extends Controller
             'from',
             'to',
             'clientWise',
-            'allStaff'
+            'allStaff',
+            'totalOrders',
+            'totalWebVerified',
+            'totalWhatsappVerified',
+            'totalPending',
+            'totalWA',
+            'verifiedWA'
         ));
     }
     public function assignOrders(Request $request)

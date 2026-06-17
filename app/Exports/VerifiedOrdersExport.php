@@ -57,7 +57,7 @@ class VerifiedOrdersExport implements FromCollection, WithHeadings
                 $o->pincode,
                 $o->product_name,
                 $o->quantity,
-                '',
+                $o->total_weight,
                 $o->age,
                 optional($o->client)->client_name,
 

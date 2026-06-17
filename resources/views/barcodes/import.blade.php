@@ -64,6 +64,7 @@
                                 <option value="">-- Select Type --</option>
                                 <option value="VPP">VPP</option>
                                 <option value="COD">COD</option>
+                                <option value="prepaid">Prepaid</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -83,6 +84,7 @@
                                         <th>Client</th>
                                         <th>VPP</th>
                                         <th>COD</th>
+                                        <th>Prepaid</th>
                                     </tr>
                                 </thead>
 
@@ -100,6 +102,11 @@
                                             $codCount = $barcodes
                                                 ->where('client_id', $client->id)
                                                 ->where('barcode_type', 'COD')
+                                                ->where('is_used', 0)
+                                                ->count();
+                                            $prepaidCount = $barcodes
+                                                ->where('client_id', $client->id)
+                                                ->where('barcode_type', 'prepaid')
                                                 ->where('is_used', 0)
                                                 ->count();
 
@@ -133,6 +140,20 @@
                                                         {{ $codCount }}
                                                     </span>
                                                 @endif
+
+                                            </td>
+
+                                            <td>
+                                                @if ($prepaidCount == 0)
+                                                    <span class="badge bg-danger">
+                                                        {{ $prepaidCount }}
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-warning text-dark">
+                                                        {{ $prepaidCount }}
+                                                    </span>
+                                                @endif
+
                                             </td>
 
                                         </tr>
@@ -167,6 +188,8 @@
                             <td>
                                 @if ($product->barcode_type == 'VPP')
                                     <span class="badge bg-primary">VPP</span>
+                                @elseif ($product->barcode_type == 'prepaid')
+                                    <span class="badge bg-primary">Prepaid</span>
                                 @else
                                     <span class="badge bg-warning text-dark">COD</span>
                                 @endif

@@ -10,53 +10,21 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Session;
 use App\Models\RtoReport;
 use Illuminate\Support\Facades\DB;
+use App\Models\CallingUser;
+use App\Models\Client;
 
 class RTOController extends Controller
 {
     public function index(Request $request)
     {
-        $ordersQuery = RtoReport::with([
-            'callingOrder.staff'
-        ]);
+        $clients = Client::orderBy('client_name')->get();
+        $staffs = CallingUser::orderBy('name')->get();
 
-        // Date Filter
-        if ($request->filled('from_date')) {
-            $ordersQuery->whereDate('created_at', '>=', $request->from_date);
-        }
-
-        if ($request->filled('to_date')) {
-            $ordersQuery->whereDate('created_at', '<=', $request->to_date);
-        }
-
-        $orders = $ordersQuery->orderBy('created_at', 'desc')->get();
-        $dateWiseCounts = DB::table('rto_reports')
-            ->join('callingorder', 'rto_reports.order_id', '=', 'callingorder.order_id')
-            ->join('calling_users', 'callingorder.assigned_to', '=', 'calling_users.id')
-
-            ->when($request->filled('from_date'), function ($q) use ($request) {
-                $q->whereDate('rto_reports.created_at', '>=', $request->from_date);
-            })
-
-            ->when($request->filled('to_date'), function ($q) use ($request) {
-                $q->whereDate('rto_reports.created_at', '<=', $request->to_date);
-            })
-
-            ->selectRaw('
-        DATE(rto_reports.created_at) as rto_date,
-        calling_users.name as staff_name,
-        COUNT(*) as total_rto
-    ')
-            ->groupBy(
-                DB::raw('DATE(rto_reports.created_at)'),
-                'calling_users.id',
-                'calling_users.name'
-            )
-            ->orderByDesc('rto_date')
-            ->get();
-        // Staff Wise RTO Count
         $staffCounts = DB::table('rto_reports')
-            ->join('callingorder', 'rto_reports.order_id', '=', 'callingorder.order_id')
-            ->join('calling_users', 'callingorder.assigned_to', '=', 'calling_users.id')
+
+            ->leftJoin('callingorder', 'rto_reports.order_id', '=', 'callingorder.order_id')
+            ->leftJoin('calling_users', 'callingorder.assigned_to', '=', 'calling_users.id')
+            ->leftJoin('clients', 'callingorder.client_id', '=', 'clients.id')
 
             ->when($request->filled('from_date'), function ($q) use ($request) {
                 $q->whereDate('rto_reports.created_at', '>=', $request->from_date);
@@ -66,19 +34,45 @@ class RTOController extends Controller
                 $q->whereDate('rto_reports.created_at', '<=', $request->to_date);
             })
 
-            ->select(
-                'calling_users.id',
-                'calling_users.name as staff_name',
-                DB::raw('COUNT(rto_reports.id) as total_rto')
-            )
-            ->groupBy('calling_users.id', 'calling_users.name')
+            ->when($request->filled('client_id'), function ($q) use ($request) {
+                $q->where('callingorder.client_id', $request->client_id);
+            })
+
+            ->when($request->filled('staff_id'), function ($q) use ($request) {
+
+                if ($request->staff_id == 'other') {
+
+                    $q->whereNull('callingorder.assigned_to');
+                } else {
+
+                    $q->where('callingorder.assigned_to', $request->staff_id);
+                }
+            })
+
+            ->selectRaw("
+        COALESCE(calling_users.name, 'Other') as staff_name,
+        COALESCE(clients.client_name, 'Client Mapping Missing') as client_name,
+        COUNT(*) as total_rto
+    ")
+
+            ->groupByRaw("
+        COALESCE(calling_users.name, 'Other'),
+        COALESCE(clients.client_name, 'Client Mapping Missing')
+    ")
+
             ->orderByDesc('total_rto')
             ->get();
 
+        $grandTotal = $staffCounts->sum('total_rto');
+
+        $orders = [];
+
         return view('rto.index', compact(
-            'orders',
             'staffCounts',
-            'dateWiseCounts'
+            'grandTotal',
+            'clients',
+            'staffs',
+            'orders'
         ));
     }
 
@@ -88,29 +82,98 @@ class RTOController extends Controller
             'rtobarcodes' => 'required|mimes:xls,xlsx'
         ]);
 
-        $barcodes = Excel::toArray(new RTOBarcodeImport, $request->file('rtobarcodes'));
+        $barcodes = Excel::toArray(
+            new RTOBarcodeImport,
+            $request->file('rtobarcodes')
+        );
 
         $barcodeList = collect($barcodes[0])
             ->flatten()
             ->filter()
             ->map(fn($barcode) => trim($barcode))
+            ->unique()
+            ->values()
             ->toArray();
 
-        // Update RTO Received Status
-        Order::whereIn('barcode', $barcodeList)
+        $totalUploaded = count($barcodeList);
+
+        // Already scanned barcodes
+        $existingBarcodes = RtoReport::whereIn(
+            'tracking_no',
+            $barcodeList
+        )->pluck('tracking_no')->toArray();
+
+        $skippedBarcodes = $existingBarcodes;
+
+        // New barcodes only
+        $newBarcodes = array_diff(
+            $barcodeList,
+            $existingBarcodes
+        );
+
+        $skippedCount = count($existingBarcodes);
+
+        // Update RTO Status
+        Order::whereIn('barcode', $newBarcodes)
             ->update([
                 'rtorecivedsts' => 1
             ]);
 
-        // Fetch Orders
-        $orders = Order::whereIn('barcode', $barcodeList)
+        // Orders found
+        $orders = Order::whereIn('barcode', $newBarcodes)
             ->orderBy('date', 'desc')
             ->get();
+        // Found barcodes in orders table
+        $foundBarcodes = $orders->pluck('barcode')->toArray();
 
-        Session::put('rto_export_ids', $orders->pluck('id')->toArray());
+        // Not Found barcodes
+        $notFoundBarcodes = array_diff(
+            $newBarcodes,
+            $foundBarcodes
+        );
 
-        return view('rto.index', compact('orders'))
-            ->with('success', $orders->count() . ' records found and RTO status updated.');
+        $notFoundCount = count($notFoundBarcodes);
+        $foundCount = $orders->count();
+
+        Session::put(
+            'rto_export_ids',
+            $orders->pluck('id')->toArray()
+        );
+
+        // Filters data
+        $clients = Client::orderBy('client_name')->get();
+        $staffs = CallingUser::orderBy('name')->get();
+
+        $staffCounts = collect();
+        $grandTotal = 0;
+
+        // Success Message
+        $message = "
+<strong>Total Uploaded:</strong> {$totalUploaded}<br>
+<strong>New RTO Found:</strong> {$foundCount}<br>
+<strong>Already Scanned / Skipped:</strong> {$skippedCount}<br>
+<strong>Not Found:</strong> {$notFoundCount}
+";
+        if ($skippedCount > 0) {
+
+            $message .= "<strong>Skipped Barcodes:</strong><br>";
+
+            foreach ($skippedBarcodes as $barcode) {
+                $message .= $barcode . "<br>";
+            }
+        }
+        //dd($message);
+        session()->flash('success', $message);
+
+        return view('rto.index', compact(
+            'orders',
+            'clients',
+            'staffs',
+            'staffCounts',
+            'grandTotal',
+            'skippedBarcodes',
+            'notFoundBarcodes'
+        ));
     }
 
     public function export()
@@ -125,9 +188,14 @@ class RTOController extends Controller
 
         foreach ($orders as $order) {
 
-            RtoReport::updateOrCreate(
-                ['tracking_no' => $order->barcode],
-                [
+            if (
+                !RtoReport::where(
+                    'tracking_no',
+                    $order->barcode
+                )->exists()
+            ) {
+
+                RtoReport::create([
                     'order_id' => $order->order_id,
                     'tracking_no' => $order->barcode,
                     'customer_name' => $order->customer_name,
@@ -138,9 +206,9 @@ class RTOController extends Controller
                     'product' => $order->product,
                     'quantity' => $order->quantity,
                     'weight' => $order->weight,
-                    'order_date' => $order->date
-                ]
-            );
+                    'order_date' => $order->date,
+                ]);
+            }
         }
 
         return Excel::download(

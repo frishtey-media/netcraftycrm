@@ -119,11 +119,22 @@
             <span class="bold">Pincode:</span> {{ ltrim($order->pincode, "'") }}<br>
 
             @php
-                $mobile = preg_replace('/\D/', '', $order->customer_phone);
+                $mobile = trim($order->customer_phone);
 
-                if (strlen($mobile) == 12 && substr($mobile, 0, 2) == '91') {
-                    $mobile = substr($mobile, 2);
-                }
+                $numbers = preg_split('/[\/,]+/', $mobile);
+
+                $numbers = array_map(function ($num) {
+                    $num = preg_replace('/[^0-9]/', '', trim($num));
+
+                    // Remove country code 91 only
+                    if (strlen($num) == 12 && substr($num, 0, 2) == '91') {
+                        $num = substr($num, 2);
+                    }
+
+                    return $num;
+                }, $numbers);
+
+                $mobile = implode(' / ', array_filter($numbers));
             @endphp
 
             <span class="bold">Mobile No:</span> {{ $mobile }}

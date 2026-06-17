@@ -6,8 +6,9 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\CallingOrder;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
+use Illuminate\Support\Facades\Auth;
+
 
 class CallingOrderController extends Controller
 {

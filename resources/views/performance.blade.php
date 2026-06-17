@@ -25,12 +25,14 @@
 
                     <div class="col-md-3 col-6">
                         <label>From</label>
-                        <input type="date" name="from" value="{{ $from }}" class="form-control">
+                        <input type="date" name="from" value="{{ \Carbon\Carbon::parse($from)->format('Y-m-d') }}"
+                            class="form-control">
                     </div>
 
                     <div class="col-md-3 col-6">
                         <label>To</label>
-                        <input type="date" name="to" value="{{ $to }}" class="form-control">
+                        <input type="date" name="to" value="{{ \Carbon\Carbon::parse($to)->format('Y-m-d') }}"
+                            class="form-control">
                     </div>
 
                     <div class="col-md-2 col-12">
@@ -41,65 +43,49 @@
             </div>
         </div>
 
-        <!-- SUMMARY -->
-        @php
-            $totalOrders = $staffs->sum('total_orders');
-            // WEB VERIFIED
-            $totalWebVerified = \App\Models\CallingOrder::where('status', 'verified')
-                ->whereNull('order_source')
-                ->count();
 
-            // WHATSAPP VERIFIED
-            $totalWhatsappVerified = \App\Models\CallingOrder::where('status', 'verified')
-                ->where('order_source', 'whatsapp')
-                ->count();
-
-            // $totalVerified = $staffs->sum('verified_orders');
-            $totalPending = $staffs->sum('pending_orders');
-
-            $totalWA = $staffs->sum('wa_total');
-            $verifiedWA = $staffs->sum('wa_verified');
-        @endphp
 
         <div class="row mb-4">
 
-            <div class="col-md-3 col-6">
+            <div class="col-md-2 col-6 mb-3">
                 <div class="card bg-primary text-white p-3">
                     <h6>Total Orders</h6>
                     <h3>{{ $totalOrders }}</h3>
                 </div>
             </div>
 
-            <!-- WEB VERIFIED -->
-            <div class="col-md-2 col-6 mb-4">
+            <div class="col-md-2 col-6 mb-3">
                 <div class="card bg-success text-white p-3">
                     <h6>Web Verified</h6>
                     <h3>{{ $totalWebVerified }}</h3>
-
                 </div>
             </div>
 
-
-            <div class="col-md-2 col-6 mb-4">
+            <div class="col-md-2 col-6 mb-3">
                 <div class="card bg-success text-white p-3">
-
-                    <h6>WhatsApp Verified</h6>
+                    <h6>WA Verified</h6>
                     <h3>{{ $totalWhatsappVerified }}</h3>
                 </div>
             </div>
 
-
-            <div class="col-md-2 col-6">
+            <div class="col-md-2 col-6 mb-3">
                 <div class="card bg-warning text-dark p-3">
                     <h6>Pending</h6>
                     <h3>{{ $totalPending }}</h3>
                 </div>
             </div>
 
-            <div class="col-md-3 col-6">
+            <div class="col-md-2 col-6 mb-3">
                 <div class="card bg-dark text-white p-3">
                     <h6>WA Leads</h6>
                     <h3>{{ $totalWA }}</h3>
+                </div>
+            </div>
+
+            <div class="col-md-2 col-6 mb-3">
+                <div class="card bg-info text-white p-3">
+                    <h6>WA Verified</h6>
+                    <h3>{{ $verifiedWA }}</h3>
                 </div>
             </div>
 
@@ -121,6 +107,8 @@
                             <th>WA Verified</th>
                             <th>Pending</th>
                             <th>Not Reachable</th>
+                            <th>Cancel</th>
+                            <th>Same Order</th>
                             <th>WA Total</th>
                             <!--  <th>WA Verified</th>-->
                             <th>WA Pending</th>
@@ -144,7 +132,10 @@
                                         : 0;
 
                                 $combinedTotal = $staff->total_orders + $staff->wa_total;
-                                $combinedVerified = $staff->web_verified_orders + $staff->whatsapp_verified_orders;
+                                $combinedVerified =
+                                    $staff->web_verified_orders +
+                                    $staff->whatsapp_verified_orders +
+                                    ($staff->wa_verified ?? 0);
 
                                 $combinedRate =
                                     $combinedTotal > 0 ? round(($combinedVerified / $combinedTotal) * 100, 1) : 0;
@@ -152,12 +143,16 @@
 
                             <tr>
 
+                                <!-- <td>
+                                                                                        <a href="{{ route('staff.report', $staff->id) }}">
+                                                                                            {{ $staff->name }}
+                                                                                        </a>
+                                                                                    </td>-->
                                 <td>
-                                    <a href="{{ route('staff.report', $staff->id) }}">
-                                        {{ $staff->name }}
-                                    </a>
-                                </td>
 
+                                    {{ $staff->name }}
+
+                                </td>
                                 <td>
                                     @if (isset($clientWise[$staff->id]))
                                         @foreach ($clientWise[$staff->id] as $c)
@@ -168,7 +163,16 @@
                                     @endif
                                 </td>
 
-                                <td><span class="badge bg-secondary">{{ $staff->total_orders }}</span></td>
+                                <td>
+                                    <a href="{{ route('performance.orders', [
+                                        'staff_id' => $staff->id,
+                                        'from' => request('from'),
+                                        'to' => request('to'),
+                                    ]) }}"
+                                        class="badge bg-secondary text-decoration-none">
+                                        {{ $staff->total_orders }}
+                                    </a>
+                                </td>
 
                                 <!-- WEB VERIFIED -->
                                 <td>
@@ -212,6 +216,8 @@
                                 </td>
 
                                 <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
+                                <td><span class="badge bg-danger">{{ $staff->cancel }}</span></td>
+                                <td><span class="badge bg-danger">{{ $staff->same_order }}</span></td>
 
                                 <td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
 
