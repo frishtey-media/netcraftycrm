@@ -52,8 +52,17 @@ class CallingOrder extends Model
     {
         return $this->belongsTo(CallingUser::class, 'assigned_to', 'id');
     }
+    //public function order()
+    //{
+    // return $this->belongsTo(Order::class, 'order_id', 'id');
+    //}
+
     public function order()
     {
-        return $this->belongsTo(Order::class, 'order_id', 'id');
+        return $this->belongsTo(
+            Order::class,
+            'order_id',
+            'order_id'
+        );
     }
 }

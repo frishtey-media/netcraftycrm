@@ -10,13 +10,14 @@ use App\Models\Client;
 //use Illuminate\Support\Facades\Http;
 //use GuzzleHttp\Client as GuzzleClient;
 use Carbon\Carbon;
-use App\Models\CallingOrder;
+use App\Models\callingorder;
 use App\Models\User;
 use App\Models\CallingUser;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\VerifiedOrdersExport;
 use Illuminate\Support\Facades\DB;
-use App\Models\Conversation;
+use App\Models\conversation;
+use App\Models\Payment;
 
 class AdminController extends Controller
 {
@@ -34,14 +35,12 @@ class AdminController extends Controller
 
     public function dashboard()
     {
-        $user = auth()->user();
+        $dashboardQuery = Order::query();
 
+        // Client Login
         if ($this->isClient()) {
 
-            $totalOrders = Order::where(
-                'client_id',
-                $this->clientId()
-            )->count();
+            $dashboardQuery->where('client_id', $this->clientId());
 
             $totalclients = 1;
 
@@ -51,22 +50,138 @@ class AdminController extends Controller
                 ->get();
         } else {
 
-            $totalOrders = Order::count();
-
             $totalclients = Client::count();
 
             $barcodes = Barcode::orderBy('is_used')
                 ->orderByDesc('created_at')
                 ->get();
         }
+        $dashboardQuery1 = Order::query();
 
+        // Last 30 Days Dashboard
+        $dashboardQuery->whereDate(
+            'created_at',
+            '>=',
+            Carbon::now()->subDays(30)
+        );
+
+        $totalOrders = (clone $dashboardQuery1)->count();
+
+        $ourSidePending = (clone $dashboardQuery)
+            ->where(function ($q) {
+                $q->whereNull('delivery_status')
+                    ->orWhere('delivery_status', '');
+            })
+            ->count();
+
+        $transit7 = (clone $dashboardQuery)
+            ->whereIn('delivery_status', [
+                'In Transit',
+                'Out For Delivery'
+            ])
+            ->whereDate('intransitdate', '<=', now()->subDays(7))
+            ->count();
+
+        $rto5 = (clone $dashboardQuery)
+            ->where('delivery_status', 'RTO')
+            ->where('rtorecivedsts', 0)
+            ->whereDate('rtodate', '<=', now()->subDays(5))
+            ->count();
+        // $paymentCount = Payment::count();
+
+        // $paymentAmount = Payment::sum('cod_value');
+
+        $paymentQuery = Payment::whereDate(
+            'bill_date',
+            '>=',
+            now()->subDays(30)
+        );
+
+        $paymentCount = (clone $paymentQuery)->count();
+
+        $paymentAmount = (clone $paymentQuery)->sum('cod_value');
         return view('dashboard', compact(
+            'barcodes',
             'totalOrders',
             'totalclients',
-            'barcodes'
+            'ourSidePending',
+            'transit7',
+            'paymentCount',
+            'paymentAmount',
+            'rto5'
         ));
     }
+    public function dashboardOrders(Request $request)
+    {
+        $query = Order::query();
 
+        // Client Login
+        if ($this->isClient()) {
+            $query->where('client_id', $this->clientId());
+        }
+
+        // Last 30 Days
+        $query->whereDate(
+            'created_at',
+            '>=',
+            now()->subDays(30)
+        );
+
+        switch ($request->type) {
+
+            case 'not_booked':
+
+                $query->where(function ($q) {
+
+                    $q->whereNull('delivery_status')
+                        ->orWhere('delivery_status', '');
+                });
+
+                break;
+
+            case 'transit7':
+
+                $query->whereIn('delivery_status', [
+                    'In Transit',
+                    'Out For Delivery'
+                ])
+                    ->whereDate(
+                        'created_at',
+                        '<=',
+                        now()->subDays(7)
+                    );
+
+                break;
+
+            case 'rto5':
+
+                $query->where('delivery_status', 'RTO')
+                    ->where('rtorecivedsts', 0)
+                    ->whereDate(
+                        'created_at',
+                        '<=',
+                        now()->subDays(5)
+                    );
+
+                break;
+        }
+
+        return response()->json(
+
+            $query->select(
+                'order_id',
+                'barcode',
+                'customer_name',
+                'customer_phone',
+                'delivery_status',
+                'amount',
+                'created_at'
+            )
+                ->latest()
+                ->get()
+
+        );
+    }
     public function staffVerified(Request $request)
     {
         $staffId = $request->staff_id;
@@ -113,45 +228,33 @@ class AdminController extends Controller
 
         // Client Login
         if ($this->isClient()) {
-
-            $query->where(
-                'client_id',
-                $this->clientId()
-            );
+            $query->where('client_id', $this->clientId());
         } else {
-
-            // Super Admin Client Filter
             if ($request->filled('client_id')) {
-                $query->where(
-                    'client_id',
-                    $request->client_id
-                );
+                $query->where('client_id', $request->client_id);
             }
         }
 
         // Date Filter
         if ($request->filled('from') && $request->filled('to')) {
-
             $from = Carbon::parse($request->from)->startOfDay();
             $to   = Carbon::parse($request->to)->endOfDay();
 
-            $query->whereBetween(
-                'updated_at',
-                [$from, $to]
-            );
+            $query->whereBetween('updated_at', [$from, $to]);
         }
 
-        $orders = $query->get();
+        // Product Wise Sort
+        $orders = $query
+            ->orderBy('product_name', 'ASC') // Same product ek sath
+            ->orderBy('id', 'ASC')           // Same product ke andar sequence
+            ->get();
 
         // Mark Exported
         if ($orders->isNotEmpty()) {
-
-            CallingOrder::whereIn(
-                'id',
-                $orders->pluck('id')
-            )->update([
-                'is_exported' => 1
-            ]);
+            CallingOrder::whereIn('id', $orders->pluck('id'))
+                ->update([
+                    'is_exported' => 1
+                ]);
         }
 
         return Excel::download(
@@ -159,6 +262,7 @@ class AdminController extends Controller
             'staff_verified_' . now()->format('d_m_Y_H_i') . '.xlsx'
         );
     }
+
     public function orderDetails(Request $request)
     {
         $from = Carbon::parse($request->from)->startOfDay();
@@ -180,7 +284,9 @@ class AdminController extends Controller
         $verifiedOrders = (clone $query)
             ->where('status', 'verified')
             ->count();
-
+        $pendingOrders = (clone $query)
+            ->where('status', 'pending')
+            ->count();
         $cancelOrders = (clone $query)
             ->where('status', 'cancel')
             ->count();
@@ -215,8 +321,6 @@ class AdminController extends Controller
             'pendingOrders'
         ));
     }
-
-
     public function shiftOrders(Request $request)
     {
         // Client Block

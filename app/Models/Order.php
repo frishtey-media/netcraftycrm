@@ -31,6 +31,11 @@ class Order extends Model
         'rtorecivedsts',
         'delivery_date',
         'delivery_remark',
+        'manual_delivery',
+
+        'manual_delivery_by',
+
+        'manual_delivery_date',
     ];
 
     public function client()
@@ -44,7 +49,7 @@ class Order extends Model
     public function callingOrder()
     {
         return $this->hasOne(
-            \App\Models\CallingOrder::class,
+            \App\Models\callingorder::class,
             'order_id',
             'order_id'
         );

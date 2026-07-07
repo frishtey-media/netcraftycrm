@@ -37,22 +37,21 @@ class PostOfficeExportController extends Controller
 
     public function export()
     {
-        // dd('route hit');
-        $duplicates = $this->copyShopifyOrdersToOrders();
-        $duplicates = [];
+        $duplicates =
+            $this->copyShopifyOrdersToOrders();
+
         if (
-            !empty($duplicates['duplicate_orders'])
-            ||
+            !empty($duplicates['duplicate_orders']) ||
             !empty($duplicates['duplicate_barcodes'])
         ) {
 
-            return redirect()->back()->with([
+            return back()->with([
 
                 'duplicate_orders' =>
-                $duplicates['duplicate_orders'] ?? [],
+                $duplicates['duplicate_orders'],
 
                 'duplicate_barcodes' =>
-                $duplicates['duplicate_barcodes'] ?? [],
+                $duplicates['duplicate_barcodes']
             ]);
         }
 
@@ -66,9 +65,7 @@ class PostOfficeExportController extends Controller
             );
         }
 
-        $orders = $query
-            ->latest()
-            ->get();
+        $orders = $query->latest()->get();
 
         if ($orders->isEmpty()) {
 
@@ -77,15 +74,15 @@ class PostOfficeExportController extends Controller
                 'No Shopify orders found.'
             );
         }
-
-        $fileName =
-            'india_post_' .
-            Carbon::now()->format('Y-m-d_H-i-s') .
-            '.xlsx';
+        session([
+            'show_label' => true
+        ]);
 
         return Excel::download(
             new PostOfficeMultiSheetExport($orders),
-            $fileName
+            'india_post_' .
+                now()->format('YmdHis') .
+                '.xlsx'
         );
     }
 
@@ -114,96 +111,63 @@ class PostOfficeExportController extends Controller
             return [];
         }
 
-        // Existing DB Data
-        $existingOrderIds = Order::pluck(
-            'order_id'
-        )->toArray();
+        $existingOrderIds =
+            Order::pluck('order_id')->toArray();
 
-        $existingBarcodes = Order::whereNotNull('barcode')
+        $existingBarcodes =
+            Order::whereNotNull('barcode')
             ->pluck('barcode')
             ->toArray();
-
-        // Current Batch Duplicate Check
-        $batchOrderIds = [];
-        $batchBarcodes = [];
 
         $duplicateOrderIds = [];
         $duplicateBarcodes = [];
 
         foreach ($shopifyOrders as $order) {
 
-            // ================= ORDER ID =================
-
             if (
                 in_array(
                     $order->order_id,
                     $existingOrderIds
                 )
-                ||
-                in_array(
-                    $order->order_id,
-                    $batchOrderIds
-                )
             ) {
 
                 $duplicateOrderIds[] =
-                    (string) $order->order_id;
+                    $order->order_id;
             }
-
-            // ================= BARCODE =================
 
             if (
                 !empty($order->barcode)
                 &&
-                (
-                    in_array(
-                        $order->barcode,
-                        $existingBarcodes
-                    )
-                    ||
-                    in_array(
-                        $order->barcode,
-                        $batchBarcodes
-                    )
+                in_array(
+                    $order->barcode,
+                    $existingBarcodes
                 )
             ) {
 
                 $duplicateBarcodes[] =
-                    (string) $order->barcode;
-            }
-
-            // Store current batch data
-            $batchOrderIds[] = $order->order_id;
-
-            if (!empty($order->barcode)) {
-
-                $batchBarcodes[] = $order->barcode;
+                    $order->barcode;
             }
         }
 
-        // ================= STOP INSERT =================
-
         if (
-            !empty($duplicateOrderIds)
+            count($duplicateOrderIds)
             ||
-            !empty($duplicateBarcodes)
+            count($duplicateBarcodes)
         ) {
 
             return [
 
                 'duplicate_orders' =>
-                array_values(
-                    array_unique($duplicateOrderIds)
+                array_unique(
+                    $duplicateOrderIds
                 ),
 
                 'duplicate_barcodes' =>
-                array_values(
-                    array_unique($duplicateBarcodes)
-                ),
+                array_unique(
+                    $duplicateBarcodes
+                )
             ];
         }
-
-        // ================= INSERT =================
 
         DB::beginTransaction();
 
@@ -220,7 +184,7 @@ class PostOfficeExportController extends Controller
                     $order->client_id,
 
                     'date' =>
-                    $order->order_date ?? now(),
+                    $order->order_date,
 
                     'barcode' =>
                     $order->barcode,
@@ -231,14 +195,11 @@ class PostOfficeExportController extends Controller
                     'amount' =>
                     $order->amount,
 
-                    'age' =>
-                    $order->age,
-
                     'customer_name' =>
-                    trim($order->customer_name),
+                    $order->customer_name,
 
                     'father_name' =>
-                    trim($order->father_name),
+                    $order->father_name,
 
                     'customer_phone' =>
                     $order->customer_phone,
@@ -253,7 +214,10 @@ class PostOfficeExportController extends Controller
                     $order->state,
 
                     'pincode' =>
-                    ltrim($order->pincode, "'"),
+                    ltrim(
+                        $order->pincode,
+                        "'"
+                    ),
 
                     'product' =>
                     $order->shopify_product_name,
@@ -263,7 +227,7 @@ class PostOfficeExportController extends Controller
 
                     'weight' =>
                     $order->total_weight
-                        ?? $order->weight,
+                        ?? $order->weight
                 ]);
             }
 
@@ -277,7 +241,8 @@ class PostOfficeExportController extends Controller
                 'duplicate_orders' => [],
 
                 'duplicate_barcodes' => [
-                    'Insert Failed : ' . $e->getMessage()
+
+                    $e->getMessage()
                 ]
             ];
         }

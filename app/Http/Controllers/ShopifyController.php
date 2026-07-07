@@ -8,6 +8,8 @@ use App\Models\ShopifyOrder;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ShopifyOrdersImport;
+use App\Models\LabelSender;
+use App\Models\Order;
 
 class ShopifyController extends Controller
 {
@@ -23,6 +25,9 @@ class ShopifyController extends Controller
     }
     public function importPage()
     {
+
+        session()->forget('duplicate_orders');
+        session()->forget('duplicate_barcodes');
         if ($this->isClient()) {
 
             $clients = Client::where(
@@ -33,23 +38,41 @@ class ShopifyController extends Controller
             $orders = ShopifyOrder::where(
                 'client_id',
                 $this->clientId()
-            )
-                ->latest()
+            )->latest()->get();
+
+            $senders = LabelSender::where(
+                'client_id',
+                $this->clientId()
+            )->orderBy('customer_name')
                 ->get();
         } else {
 
-            $clients = Client::all();
+            $clients = Client::orderBy(
+                'client_name'
+            )->get();
 
-            $orders = ShopifyOrder::latest()
-                ->get();
+            $orders = ShopifyOrder::latest()->get();
+
+            $senders = LabelSender::orderBy(
+                'customer_name'
+            )->get();
         }
+
+        $showPostOffice = ShopifyOrder::when(
+            $this->isClient(),
+            fn($q) => $q->where('client_id', $this->clientId())
+        )->exists();
+
+        $showLabel = session('show_label', false);
 
         return view('shopify.import', compact(
             'clients',
-            'orders'
+            'orders',
+            'senders',
+            'showPostOffice',
+            'showLabel'
         ));
     }
-
 
 
     public function importExcel(Request $request)

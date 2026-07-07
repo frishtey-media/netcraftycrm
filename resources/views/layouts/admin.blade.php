@@ -226,12 +226,12 @@
 
 
             <a href="{{ route('shopify.import.page') }}">
-                <i class="bi bi-shop"></i> Shopify Orders
+                <i class="bi bi-shop"></i> Bulk label import
             </a>
 
-            <a href="{{ route('labels.index') }}">
+            <!--<a href="{{ route('labels.index') }}">
                 <i class="bi bi-printer"></i> Print Labels
-            </a>
+            </a>-->
 
 
 

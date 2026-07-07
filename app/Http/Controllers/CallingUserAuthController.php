@@ -17,13 +17,32 @@ class CallingUserAuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->only('email', 'password');
+        $credentials = [
+            'email'    => $request->email,
+            'password' => $request->password,
+            'status'   => 1
+        ];
 
         if (Auth::guard('calling_user')->attempt($credentials)) {
+
+            $user = Auth::guard('calling_user')->user();
+
+            if ($user->status != 1) {
+                Auth::guard('calling_user')->logout();
+
+                return back()->with(
+                    'error',
+                    'Your account is inactive.'
+                );
+            }
+
             return redirect('/calling/dashboard');
         }
 
-        return back()->with('error', 'Invalid Credentials');
+        return back()->with(
+            'error',
+            'Invalid Credentials or Account Disabled'
+        );
     }
 
     public function dashboard()
@@ -276,6 +295,7 @@ class CallingUserAuthController extends Controller
             'state'           => $request->state,
             'quantity'           => $request->quantity,
             'age'           => $request->age,
+            'amount'           => $request->amount,
             'pincode'         => $request->pincode,
             'shipping_address' => $request->shipping_address,
             'status'          => $request->status ?? $order->status,

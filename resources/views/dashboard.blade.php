@@ -101,6 +101,107 @@
             </a>
         </div>
         @if (auth()->user()->role == 'super_admin')
+            <div class="col-lg-4 mb-3">
+                <a href="{{ route('reports.index', 'transit7') }}" class="text-decoration-none">
+                    <div class="card shadow border-0 alert-card" style="background: #f14444;cursor:pointer">
+
+                        <div class="card-body d-flex justify-content-between align-items-center">
+
+                            <div>
+                                <h5 style="color: white;">7 days intrasit</h5>
+
+                                <h2 style="color: white;">{{ $transit7 }}</h2>
+                            </div>
+
+                            <i class="fas fa-barcode fa-3x text-dark"></i>
+
+                        </div>
+
+                    </div>
+                </a>
+            </div>
+
+
+            <div class="col-lg-4 mb-3">
+                <a href="{{ route('reports.index', 'rto5') }}" class="text-decoration-none">
+                    <div class="card shadow border-0 alert-card" style="background: #f14444;cursor:pointer">
+
+                        <div class="card-body d-flex justify-content-between align-items-center">
+
+                            <div>
+                                <h5 style="color: white;">5 days Not Received RTO</h5>
+
+                                <h2 style="color: white;">{{ $rto5 }}</h2>
+                            </div>
+
+                            <i class="fas fa-barcode fa-3x text-dark"></i>
+
+                        </div>
+
+                    </div>
+                </a>
+            </div>
+
+
+
+
+
+            <div class="col-lg-4 mb-3">
+                <a href="{{ route('reports.index', 'not_booked') }}" class="text-decoration-none">
+                    <div class="card shadow border-0 alert-card" style="background: #f14444;cursor:pointer">
+
+                        <div class="card-body d-flex justify-content-between align-items-center">
+
+                            <div>
+                                <h5 style="color: white;">Not Book India Post</h5>
+
+                                <h2 style="color: white;">{{ $ourSidePending }}</h2>
+                            </div>
+
+                            <i class="fas fa-barcode fa-3x text-dark"></i>
+
+                        </div>
+
+                    </div>
+                </a>
+            </div>
+
+
+            <div class="col-lg-4 mb-3">
+
+                <div class="card shadow border-0 alert-card" style="background:#ffd8d8;">
+
+                    <div class="card-body d-flex justify-content-between align-items-center">
+
+                        <div>
+
+                            <h4 class="mb-2">
+
+                                Payments
+
+                            </h4>
+
+                            <h2 class="mb-0 text-success">
+
+                                ₹{{ number_format($paymentAmount, 2) }}
+
+                            </h2>
+
+                            <small class="text-dark">
+
+                                {{ number_format($paymentCount) }} Articles Paid
+
+                            </small>
+
+                        </div>
+
+                        <i class="fas fa-money-bill-wave fa-3x text-dark"></i>
+
+                    </div>
+
+                </div>
+
+            </div>
             {{-- Clients --}}
             <div class="col-md-4">
                 <a href="/clients" class="dashboard-card card-green">
@@ -198,7 +299,7 @@
                         </div>
 
                         <div class="alert alert-danger">
-                            ⚠️ All Barcodes will be permanently deleted.
+                            All Barcodes will be permanently deleted.
                         </div>
                     </div>
 

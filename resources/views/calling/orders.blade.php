@@ -314,7 +314,11 @@
                             <input type="text" name="quantity" value="{{ $order->quantity }}" class="form-control"
                                 placeholder="Enter quantity">
                         </div>
-
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Price</label>
+                            <input type="text" name="amount" value="{{ $order->amount }}" class="form-control"
+                                placeholder="Enter amount">
+                        </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Age</label>
                             <input type="number" name="age" value="{{ $order->age }}" class="form-control"

@@ -196,6 +196,7 @@
                                     <th>Order ID</th>
                                     <th>Barcode</th>
                                     <th>Customer Name</th>
+                                    <th>Father Name</th>
                                     <th>Phone</th>
                                     <th>Product</th>
                                     <th>Amount</th>
@@ -211,6 +212,7 @@
                                         <td>{{ $order->order_id }}</td>
                                         <td>{{ $order->barcode }}</td>
                                         <td>{{ $order->customer_name }}</td>
+                                        <td>{{ $order->father_name }}</td>
                                         <td>{{ $order->customer_phone }}</td>
                                         <td>{{ $order->product }}</td>
                                         <td>{{ $order->amount }}</td>

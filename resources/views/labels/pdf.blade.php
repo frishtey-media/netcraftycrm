@@ -59,6 +59,16 @@
         top: 105px;
         text-align: right;
     }
+
+    .info-table td {
+        vertical-align: top;
+        line-height: 1.1;
+        padding: 0;
+    }
+
+    .info-table .right {
+        text-align: right;
+    }
 </style>
 
 
@@ -85,28 +95,39 @@
             </div>
 @endif-->
 
-        <div class="section">
-            <div class="bold">Tracking No: {{ $order->barcode }}</div>
+        <table width="100%" style="margin-top:10px;">
+            <tr>
+                <td width="50%" valign="top" style="font-size:12px;">
+                    <strong>Tracking No:</strong><br>
+                    {{ $order->barcode }}<br>
 
-            <span class="bold">Payment Mode:</span> {{ $order->payment_mode }}<br>
-            @if (strtolower($order->payment_mode) !== 'prepaid')
-                <span class="bold">Amount:</span> Rs. {{ $order->amount }}
-            @endif
-        </div>
+                    <strong>Payment Mode:</strong> {{ $order->payment_mode }}<br>
+
+                    @if (strtolower($order->payment_mode) !== 'prepaid')
+                        <strong>Amount:</strong> Rs. {{ number_format($order->amount, 2) }}
+                    @endif
+                </td>
+
+                <td width="50%" valign="top" style="text-align:right;font-size:12px;">
+                    @if (strtolower(trim($sender->customer_name)) === 'dr bhangu ayurveda')
+                        <strong>Biller ID:</strong><br>
+                        60883<br>
+                    @else
+                        <strong>Customer ID:</strong><br>
+                        1745048970<br>
+                    @endif
+
+                    <strong>Order ID:</strong>
+                    {{ $order->order_id }}<br>
+
+                    <strong>Date:</strong>
+                    {{ \Carbon\Carbon::parse($order->order_date)->format('d-m-y') }}
+                </td>
+            </tr>
+        </table>
 
 
-        <div class="section text-right" style="text-align: right">
-            @if (strtolower(trim($sender->customer_name)) === 'dr bhangu ayurveda')
-                <span class="bold">Biller ID:</span> 60883<br>
-            @endif
 
-            <!-- @if (strtolower(trim($sender->customer_name)) === 'vivaeli')
-<span class="bold">Biller ID:</span> 00001<br>
-@endif-->
-            <span class="bold">Order ID:</span> {{ $order->order_id }}<br>
-            <span class="bold">Date:</span>
-            {{ \Carbon\Carbon::parse($order->order_date)->format('d-m-y') }}
-        </div>
 
         <hr>
 
@@ -116,6 +137,10 @@
             <span class="bold">Father Name :</span> {{ $order->father_name }}<br>
             <span class="bold">Address:</span>
             {{ $order->shipping_address }}<br>
+            <span class="bold">City:</span>
+            {{ $order->city }}<br>
+            <span class="bold">State:</span>
+            {{ $order->state }}<br>
             <span class="bold">Pincode:</span> {{ ltrim($order->pincode, "'") }}<br>
 
             @php
@@ -158,15 +183,22 @@
             <span class="bold">Communication Address:</span><br>
             {!! nl2br(e($sender->customer_phone)) !!}
         </div>
-        @if (strtolower(trim($sender->customer_name)) === 'dr bhangu ayurveda')
-            <div style="text-align: right;">
-                <img src="{{ public_path('images/Bhangu_Logo_1.png') }}" width="60">
+        @php
+            $senderName = strtolower(trim($sender->customer_name));
+
+            $bhanguLogo = public_path('images/Bhangu_Logo_1.png');
+            $vivaeliLogo = public_path('images/Viveali_Logo_1.png');
+        @endphp
+
+        @if (str_contains($senderName, 'bhangu') && file_exists($bhanguLogo))
+            <div style="text-align:right;">
+                <img src="data:image/png;base64,{{ base64_encode(file_get_contents($bhanguLogo)) }}" width="40">
             </div>
         @endif
 
-        @if (strtolower(trim($sender->customer_name)) === 'vivaeli')
-            <div style="text-align: right;margin-top:30px;">
-                <img src="{{ public_path('images/Viveali_Logo_1.png') }}" width="170">
+        @if (str_contains($senderName, 'viva') && file_exists($vivaeliLogo))
+            <div style="text-align:right;margin-top:20px;">
+                <img src="data:image/png;base64,{{ base64_encode(file_get_contents($vivaeliLogo)) }}" width="100">
             </div>
         @endif
     </div>

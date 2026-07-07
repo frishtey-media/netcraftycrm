@@ -26,6 +26,8 @@ use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\ReportController;
 use App\Models\CallingOrder;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ExtreportController;
+
 
 require __DIR__ . '/inventory.php';
 
@@ -51,6 +53,11 @@ Route::match(
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
+
+
+    Route::get('/dashboard/orders', [AdminController::class, 'dashboardOrders'])
+        ->name('dashboard.orders');
+
 
     Route::get('/users', [UserController::class, 'index'])
         ->name('users.index');
@@ -106,6 +113,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.list');
     Route::get('/orders/import', [OrderController::class, 'importForm'])->name('orders.import');
     Route::post('/orders/import', [OrderController::class, 'importExcel'])->name('orders.import.post');
+
+
+    Route::post('/orders/whstappimport', [RecordController::class, 'whstappimportOrders'])
+        ->name('record.whstappimport');
+
+
     Route::get('/labels', [OrderController::class, 'labelIndex'])->name('labels.index');
     Route::get('/labels/final-export', [OrderController::class, 'finalLabelExport'])->name('labels.final.export');
     Route::post(
@@ -114,6 +127,25 @@ Route::middleware(['auth'])->group(function () {
     )->name('postoffice.export');
     Route::post('/whatsapp-excel-import', [ShopifyOrderController::class, 'whatsappExcelImport'])->name('whatsapp.excel.import');
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
+
+
+
+
+
+
+    Route::get('/reports/{type}', [ReportController::class, 'index'])
+        ->name('reports.index');
+
+    Route::get('/reports/export/{type}', [ReportController::class, 'export'])
+        ->name('reports.export');
+
+
+    Route::post(
+        '/orders/manual-delivery',
+        [OrderController::class, 'manualDelivery']
+    )->name('orders.manual.delivery');
+
+
     Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
     Route::get('/rto-export', [RTOController::class, 'export'])->name('rto.export');
     Route::get('/record/create', [RecordController::class, 'create'])->name('record.create');
@@ -136,6 +168,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
     Route::get('/performance', [AdminController::class, 'performance'])
         ->name('performance.dashboard');
+
+    Route::get('/get-products/{client}', [OrderController::class, 'getProducts'])
+        ->name('get.products');
 
     Route::get(
         '/performance/orders',

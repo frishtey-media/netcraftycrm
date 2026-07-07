@@ -10,9 +10,10 @@ use App\Models\ShopifyOrder;
 use Illuminate\Support\Facades\DB;
 use App\Models\ClientProduct;
 use App\Models\Client;
-use App\Models\CallingOrder;
+use App\Models\callingorder;
 use App\Models\CallingUser;
-
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\BulkOrderImport;
 
 class RecordController extends Controller
 {
@@ -181,5 +182,29 @@ class RecordController extends Controller
             ->get();
 
         return response()->json($products);
+    }
+
+
+
+    public function whstappimportOrders(Request $request)
+    {
+        $request->validate([
+            'client_id'   => 'required',
+            'assigned_to' => 'required',
+            'file'        => 'required|mimes:xlsx,xls,csv'
+        ]);
+
+        Excel::import(
+            new BulkOrderImport(
+                $request->client_id,
+                $request->assigned_to
+            ),
+            $request->file('file')
+        );
+
+        return back()->with(
+            'success',
+            'Orders Imported Successfully'
+        );
     }
 }

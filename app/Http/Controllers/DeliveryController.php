@@ -70,7 +70,7 @@ class DeliveryController extends Controller
             ->where('delivery_status', 'In Transit')
             ->count();
         $lastDeliveryUpdate = Order::whereNotNull('delivery_status')
-            ->max('updated_at');
+            ->max('delivery_date');
 
         $lastPaymentUpdate = Order::where('recivedpaysts', 1)
             ->max('updated_at');
@@ -163,20 +163,20 @@ class DeliveryController extends Controller
 
         $rows = Excel::toArray([], $request->file('file'));
 
-        $updated  = 0;
+        $updated = 0;
         $notFound = 0;
 
         foreach ($rows[0] as $key => $row) {
 
-            // Skip Header Row
+            // Skip Header
             if ($key == 0) {
                 continue;
             }
 
             // Excel Columns
-            $trackingNo = trim($row[1] ?? ''); // Article Number (Column B)
-            $status     = trim($row[6] ?? ''); // Status (Column G)
-            $lastEvent  = trim($row[7] ?? ''); // Last Event (Column H)
+            $trackingNo = trim($row[1] ?? '');   // Article Number
+            $status     = trim($row[6] ?? '');   // Status
+            $lastEvent  = trim($row[7] ?? '');   // Last Event
 
             if (empty($trackingNo)) {
                 continue;
@@ -189,27 +189,36 @@ class DeliveryController extends Controller
                 continue;
             }
 
-            // Status Mapping
-            $event = strtolower($lastEvent);
-            $status = strtolower(trim($status));
+            $statusLower = strtolower(trim($status));
+            $eventLower  = strtolower(trim($lastEvent));
+
+            /*
+        |--------------------------------------------------------------------------
+        | CRM Status Mapping
+        |--------------------------------------------------------------------------
+        */
 
             if (
-                str_contains($event, 'sender') ||
-                str_contains($event, 'return to sender') ||
-                str_contains($event, 'returned to sender')
+                str_contains($eventLower, 'sender') ||
+                str_contains($eventLower, 'return to sender') ||
+                str_contains($eventLower, 'returned to sender')
             ) {
 
                 $crmStatus = 'RTO';
             } elseif (
-                $status == 'delivered' &&
-                str_contains($event, 'addressee')
+                $statusLower == 'delivered' &&
+                str_contains($eventLower, 'addressee')
             ) {
 
                 $crmStatus = 'Delivered';
             } elseif (
-                $status == 'not delivered' ||
-                str_contains($event, 'in transit') ||
-                str_contains($event, 'out for delivery')
+                $statusLower == 'not delivered' ||
+                str_contains($eventLower, 'in transit') ||
+                str_contains($eventLower, 'out for delivery') ||
+                str_contains($eventLower, 'bagged') ||
+                str_contains($eventLower, 'received') ||
+                str_contains($eventLower, 'dispatched') ||
+                str_contains($eventLower, 'booked')
             ) {
 
                 $crmStatus = 'In Transit';
@@ -218,29 +227,57 @@ class DeliveryController extends Controller
                 $crmStatus = 'In Transit';
             }
 
-            // Extract Delivery Date only when Delivered
-            $deliveryDate = null;
+            /*
+        |--------------------------------------------------------------------------
+        | Extract Event Date
+        |--------------------------------------------------------------------------
+        */
 
-            if (
-                strtolower($status) === 'delivered' &&
-                preg_match('/(\d{2}\/\d{2}\/\d{4})/', $lastEvent, $matches)
-            ) {
+            $eventDate = null;
+
+            if (preg_match('/(\d{2}\/\d{2}\/\d{4})/', $lastEvent, $matches)) {
+
                 try {
-                    $deliveryDate = Carbon::createFromFormat(
+
+                    $eventDate = Carbon::createFromFormat(
                         'd/m/Y',
                         $matches[1]
                     )->format('Y-m-d');
                 } catch (\Exception $e) {
-                    $deliveryDate = null;
+
+                    $eventDate = null;
                 }
             }
 
-            // Save Data
+            /*
+        |--------------------------------------------------------------------------
+        | Save Order
+        |--------------------------------------------------------------------------
+        */
+
             $order->delivery_status = $crmStatus;
             $order->delivery_remark = $lastEvent;
 
-            if ($deliveryDate) {
-                $order->delivery_date = $deliveryDate;
+            // Delivered Date
+            if ($crmStatus == 'Delivered' && $eventDate) {
+
+                $order->delivery_date = $eventDate;
+            }
+
+            // RTO Date
+            if ($crmStatus == 'RTO' && $eventDate) {
+
+                if (empty($order->rtodate)) {
+                    $order->rtodate = $eventDate;
+                }
+            }
+
+            // Transit Date
+            if ($crmStatus == 'In Transit' && $eventDate) {
+
+                if (empty($order->intransitdate)) {
+                    $order->intransitdate = $eventDate;
+                }
             }
 
             $order->save();
@@ -263,7 +300,7 @@ class DeliveryController extends Controller
 
         return back()->with(
             'payment_success',
-            'Payment status updated successfully.'
+            'Payment uploaded successfully.'
         );
     }
 

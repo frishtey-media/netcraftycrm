@@ -26,7 +26,7 @@
 
                 <div class="row mb-4">
 
-                    <div class="col-md-3">
+                    <div class="col">
                         <div class="card border-primary h-100">
                             <div class="card-body text-center">
                                 <h6>Staff</h6>
@@ -35,7 +35,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col">
                         <div class="card bg-primary text-white h-100">
                             <div class="card-body text-center">
                                 <h6>Total Orders</h6>
@@ -44,7 +44,16 @@
                         </div>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col">
+                        <div class="card bg-warning h-100">
+                            <div class="card-body text-center">
+                                <h6>Pending</h6>
+                                <h3>{{ $pendingOrders }}</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col">
                         <div class="card bg-success text-white h-100">
                             <div class="card-body text-center">
                                 <h6>Verified</h6>
@@ -53,7 +62,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col">
                         <div class="card bg-danger text-white h-100">
                             <div class="card-body text-center">
                                 <h6>Cancel</h6>
@@ -62,7 +71,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col">
                         <div class="card bg-dark text-white h-100">
                             <div class="card-body text-center">
                                 <h6>Not Reachable</h6>
@@ -71,7 +80,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-1">
+                    <div class="col">
                         <div class="card bg-secondary text-white h-100">
                             <div class="card-body text-center">
                                 <h6>Same</h6>
@@ -94,6 +103,7 @@
                                 <th>Customer</th>
                                 <th>Phone</th>
                                 <th>Product</th>
+                                <th>Quantity</th>
                                 <th>Amount</th>
                                 <th>Status</th>
                                 <th>Updated Date</th>
@@ -120,6 +130,7 @@
                                     <td>{{ $order->customer_phone }}</td>
 
                                     <td>{{ $order->product_name }}</td>
+                                    <td>{{ $order->quantity }}</td>
 
                                     <td>
                                         ₹{{ number_format($order->amount, 2) }}

@@ -4,6 +4,8 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     @push('scripts')
         <script>
             $(function() {
@@ -62,6 +64,43 @@
     <div class="container">
         <h4>Import Shopify Orders</h4>
 
+        @if (session('duplicate_orders') || session('duplicate_barcodes'))
+            <script>
+                let orders =
+                    @json(session('duplicate_orders', []));
+
+                let barcodes =
+                    @json(session('duplicate_barcodes', []));
+
+                let html = '';
+
+                if (orders.length) {
+
+                    html +=
+                        '<b>Duplicate Orders</b><br>' +
+                        orders.join('<br>') +
+                        '<br><br>';
+                }
+
+                if (barcodes.length) {
+
+                    html +=
+                        '<b>Duplicate Barcodes</b><br>' +
+                        barcodes.join('<br>');
+                }
+
+                Swal.fire({
+
+                    icon: 'warning',
+
+                    title: 'Duplicate Records Found',
+
+                    html: html,
+
+                    width: 700
+                });
+            </script>
+        @endif
         @if (session('success'))
             <div class="alert alert-success alert-dismissible fade show">
                 {{ session('success') }}
@@ -83,7 +122,45 @@
             </div>
         @endif
 
+        <div style="text-align:right;">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#excelImportModal">
+                WhatsApp Excel Import
+            </button>
+        </div>
 
+        <div class="modal fade" id="excelImportModal">
+            <div class="modal-dialog">
+                <form id="excelImportForm" method="POST" action="{{ route('whatsapp.excel.import') }}"
+                    enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5>WhatsApp Excel Import</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div class="modal-body">
+                            <label>Client *</label>
+                            <select name="client_id" class="form-control mb-3" required>
+                                <option value="">Select Client</option>
+                                @foreach ($clients as $client)
+                                    <option value="{{ $client->id }}">{{ $client->client_name }}</option>
+                                @endforeach
+                            </select>
+
+                            <label>Excel File *</label>
+                            <input type="file" name="file" class="form-control" accept=".xls,.xlsx" required>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="submit" id="importBtn" class="btn btn-success">
+                                Import
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <form id="shopifyImportForm" style="margin: 35px 0px 35px 0px;" method="POST"
             action="{{ route('shopify.import') }}" enctype="multipart/form-data">
@@ -128,7 +205,43 @@
             </div>
         </form>
 
+        <div class="row mb-4">
 
+            @if (($showPostOffice ?? false) && !($showLabel ?? false))
+                <div class="col-md-6">
+                    <div class="card text-center shadow-sm mb-3">
+
+                        <form action="{{ route('postoffice.export') }}" method="POST">
+                            @csrf
+
+                            <button type="submit" class="btn btn-primary w-100 p-4">
+
+                                <h5>Export Post Office Format</h5>
+
+                            </button>
+
+                        </form>
+
+                    </div>
+                </div>
+            @endif
+            @if ($showLabel ?? false)
+                <div class="col-md-6">
+
+                    <div class="card text-center shadow-sm">
+
+                        <button class="btn btn-success p-4 w-100" data-bs-toggle="modal" data-bs-target="#senderModal">
+
+                            <h5>Export Labels</h5>
+
+                        </button>
+
+                    </div>
+
+                </div>
+            @endif
+
+        </div>
 
         <table id="ordersTable" class="table table-bordered table-striped">
             <thead class="table-dark">
@@ -185,5 +298,83 @@
                 <small>Please wait, do not refresh</small>
             </div>
         </div>
+    </div>
+
+    <div class="modal fade" id="senderModal" tabindex="-1">
+
+        <div class="modal-dialog">
+
+            <form method="POST" action="{{ route('labels.export') }}">
+
+                @csrf
+
+                <div class="modal-content">
+
+                    <div class="modal-header">
+
+                        <h5 class="modal-title">
+                            Select Sender
+                        </h5>
+
+                        <button type="button" class="btn-close" data-bs-dismiss="modal">
+                        </button>
+
+                    </div>
+
+                    <div class="modal-body">
+
+                        @if (auth()->user()->role == 'client')
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Client Name
+                                </label>
+
+                                <input type="text" class="form-control" value="{{ $clients->first()->client_name }}"
+                                    readonly>
+
+                            </div>
+                        @endif
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+                                Select Sender
+                            </label>
+
+                            <select name="sender_id" class="form-control" required>
+
+                                <option value="">
+                                    Select Sender
+                                </option>
+
+                                @foreach ($senders as $sender)
+                                    <option value="{{ $sender->id }}">
+                                        {{ $sender->customer_name }}
+                                    </option>
+                                @endforeach
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+
+                        <button type="submit" class="btn btn-success">
+
+                            Generate PDF
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
     </div>
 @endsection

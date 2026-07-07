@@ -5,7 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\CallingUser;
 use App\Models\Order;
+
+use App\Models\Client;
 use App\Models\callingorder;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use App\Exports\OrdersReportExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
@@ -132,5 +138,264 @@ class ReportController extends Controller
             'inTransit',
             'rto'
         ));
+    }
+
+
+    public function index($type)
+    {
+
+        $query = Order::query()
+            ->whereDate(
+                'orders.created_at',
+                '>=',
+                now()->subDays(30)
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Client Login
+        |--------------------------------------------------------------------------
+        */
+
+        if (auth()->check() && auth()->user()->role == 'client') {
+
+            $query->where(
+                'orders.client_id',
+                auth()->user()->client_id
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Report Type
+        |--------------------------------------------------------------------------
+        */
+
+        switch ($type) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Not Book India Post
+            |--------------------------------------------------------------------------
+            */
+
+            case 'not_booked':
+
+                $title = 'Not Book India Post';
+
+                $query->where(function ($q) {
+
+                    $q->whereNull('orders.delivery_status')
+
+                        ->orWhere('orders.delivery_status', '');
+                });
+
+                break;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | 7 Days In Transit
+            |--------------------------------------------------------------------------
+            */
+
+            case 'transit7':
+
+                $title = '7 Days In Transit';
+
+                $query->where('orders.delivery_status', 'In Transit')
+
+                    ->whereNotNull('orders.intransitdate')
+
+                    ->whereDate(
+                        'orders.intransitdate',
+                        '<=',
+                        now()->subDays(7)
+                    );
+
+                break;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | RTO Not Received
+            |--------------------------------------------------------------------------
+            */
+
+            case 'rto5':
+
+                $title = 'RTO Not Received';
+
+                $query->where('orders.delivery_status', 'RTO')
+
+                    ->where('orders.rtorecivedsts', 0)
+
+                    ->whereNotNull('orders.rtodate')
+
+                    ->whereDate(
+                        'orders.rtodate',
+                        '<=',
+                        now()->subDays(5)
+                    );
+
+                break;
+
+            default:
+
+                abort(404);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Total Orders
+        |--------------------------------------------------------------------------
+        */
+
+        $totalOrders = (clone $query)->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Client Wise Summary
+        |--------------------------------------------------------------------------
+        */
+
+        $clientSummary = (clone $query)
+
+            ->join(
+                'clients',
+                'clients.id',
+                '=',
+                'orders.client_id'
+            )
+
+            ->select(
+
+                'clients.client_name',
+
+                DB::raw('COUNT(*) as total')
+
+            )
+
+            ->groupBy(
+
+                'clients.client_name'
+
+            )
+
+            ->orderByDesc('total')
+
+            ->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Orders
+        |--------------------------------------------------------------------------
+        */
+
+        $orders = (clone $query)
+
+            ->with('client')
+
+            ->latest()
+
+            ->get();
+        /*
+        |--------------------------------------------------------------------------
+        | Return View
+        |--------------------------------------------------------------------------
+        */
+
+        return view(
+            'reports.orders',
+            compact(
+                'title',
+                'type',
+                'totalOrders',
+                'clientSummary',
+                'orders'
+            )
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export Excel
+    |--------------------------------------------------------------------------
+    */
+
+    public function export($type)
+    {
+        $query = Order::query()
+            ->whereDate(
+                'orders.created_at',
+                '>=',
+                now()->subDays(30)
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Client Login
+        |--------------------------------------------------------------------------
+        */
+
+        if (auth()->check() && auth()->user()->role == 'client') {
+
+            $query->where(
+                'orders.client_id',
+                auth()->user()->client_id
+            );
+        }
+
+        switch ($type) {
+
+            case 'not_booked':
+
+                $query->where(function ($q) {
+
+                    $q->whereNull('orders.delivery_status')
+                        ->orWhere('orders.delivery_status', '');
+                });
+
+                break;
+
+            case 'transit7':
+
+                $query->where('orders.delivery_status', 'In Transit')
+                    ->whereNotNull('orders.intransitdate')
+                    ->whereDate(
+                        'orders.intransitdate',
+                        '<=',
+                        now()->subDays(7)
+                    );
+
+                break;
+
+            case 'rto_not_received':
+
+                $query->where('orders.delivery_status', 'RTO')
+                    ->where('orders.rtorecivedsts', 0)
+                    ->whereNotNull('orders.rtodate')
+                    ->whereDate(
+                        'orders.rtodate',
+                        '<=',
+                        now()->subDays(5)
+                    );
+
+                break;
+
+            default:
+
+                abort(404);
+        }
+
+        $orders = $query
+            ->with('client')
+            ->latest()
+            ->get();
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\OrdersReportExport($orders),
+            $type . '_' . now()->format('Ymd_His') . '.xlsx'
+        );
     }
 }

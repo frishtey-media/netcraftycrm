@@ -12,6 +12,7 @@ use App\Models\RtoReport;
 use Illuminate\Support\Facades\DB;
 use App\Models\CallingUser;
 use App\Models\Client;
+use Carbon\Carbon;
 
 class RTOController extends Controller
 {
@@ -116,7 +117,8 @@ class RTOController extends Controller
         // Update RTO Status
         Order::whereIn('barcode', $newBarcodes)
             ->update([
-                'rtorecivedsts' => 1
+                'rtorecivedsts'  => 1,
+                'rtoreciveddate' => Carbon::now(),
             ]);
 
         // Orders found
@@ -200,6 +202,7 @@ class RTOController extends Controller
                     'tracking_no' => $order->barcode,
                     'customer_name' => $order->customer_name,
                     'customer_phone' => $order->customer_phone,
+                    'father_name' => $order->father_name,
                     'shipping_address' => $order->shipping_address,
                     'payment_mode' => $order->payment_mode,
                     'amount' => $order->amount,

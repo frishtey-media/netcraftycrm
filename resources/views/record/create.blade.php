@@ -65,46 +65,120 @@
             </div>
         @endif
 
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bulkImportModal">
 
-        <div style="text-align:right;">
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#excelImportModal">
-                WhatsApp Excel Import
-            </button>
-        </div>
+            <i class="bi bi-upload"></i>
+            Bulk Order Import
 
-        <div class="modal fade" id="excelImportModal">
+        </button>
+        <div class="modal fade" id="bulkImportModal" tabindex="-1">
+
             <div class="modal-dialog">
-                <form id="excelImportForm" method="POST" action="{{ route('whatsapp.excel.import') }}"
-                    enctype="multipart/form-data">
-                    @csrf
-                    <div class="modal-content">
+
+                <div class="modal-content">
+
+                    <form method="POST" action="{{ route('record.whstappimport') }}" enctype="multipart/form-data">
+
+                        @csrf
+
                         <div class="modal-header">
-                            <h5>WhatsApp Excel Import</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+                            <h5 class="modal-title">
+                                Bulk Order Import
+                            </h5>
+
+                            <button type="button" class="btn-close" data-bs-dismiss="modal">
+                            </button>
+
                         </div>
 
                         <div class="modal-body">
-                            <label>Client *</label>
-                            <select name="client_id" class="form-control mb-3" required>
-                                <option value="">Select Client</option>
-                                @foreach ($clients as $client)
-                                    <option value="{{ $client->id }}">{{ $client->client_name }}</option>
-                                @endforeach
-                            </select>
 
-                            <label>Excel File *</label>
-                            <input type="file" name="file" class="form-control" accept=".xls,.xlsx" required>
+                            {{-- Client --}}
+
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Client
+                                </label>
+
+                                <select name="client_id" class="form-control" required>
+
+                                    <option value="">
+                                        Select Client
+                                    </option>
+
+                                    @foreach ($clients as $client)
+                                        <option value="{{ $client->id }}">
+                                            {{ $client->client_name }}
+                                        </option>
+                                    @endforeach
+
+                                </select>
+
+                            </div>
+
+                            {{-- Staff --}}
+
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Assign Staff
+                                </label>
+
+                                <select name="assigned_to" class="form-control" required>
+
+                                    <option value="">
+                                        Select Staff
+                                    </option>
+
+                                    @foreach ($staffs as $staff)
+                                        <option value="{{ $staff->id }}">
+                                            {{ $staff->name }}
+                                        </option>
+                                    @endforeach
+
+                                </select>
+
+                            </div>
+
+                            {{-- Excel --}}
+
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Excel File
+                                </label>
+
+                                <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+
+                            </div>
+
                         </div>
 
                         <div class="modal-footer">
-                            <button type="submit" id="importBtn" class="btn btn-success">
-                                Import
+
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                Close
                             </button>
+
+                            <button type="submit" class="btn btn-success">
+
+                                Import Orders
+
+                            </button>
+
                         </div>
-                    </div>
-                </form>
+
+                    </form>
+
+                </div>
+
             </div>
+
         </div>
+
+
 
 
         <form method="POST" action="{{ route('record.store') }}">
@@ -197,7 +271,8 @@
                 <div class="col-md-4">
                     <label class="form-label">Quantity</label>
 
-                    <input type="number" name="quantity" id="quantity" class="form-control" value="1" min="1">
+                    <input type="number" name="quantity" id="quantity" class="form-control" value="1"
+                        min="1">
                 </div>
 
                 {{-- Weight --}}
