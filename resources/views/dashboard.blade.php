@@ -167,42 +167,18 @@
             </div>
 
 
-            <div class="col-lg-4 mb-3">
 
-                <div class="card shadow border-0 alert-card" style="background:#ffd8d8;">
-
-                    <div class="card-body d-flex justify-content-between align-items-center">
-
-                        <div>
-
-                            <h4 class="mb-2">
-
-                                Payments
-
-                            </h4>
-
-                            <h2 class="mb-0 text-success">
-
-                                ₹{{ number_format($paymentAmount, 2) }}
-
-                            </h2>
-
-                            <small class="text-dark">
-
-                                {{ number_format($paymentCount) }} Articles Paid
-
-                            </small>
-
-                        </div>
-
-                        <i class="fas fa-money-bill-wave fa-3x text-dark"></i>
+            <div class="col-md-4">
+                <a href="{{ route('payments.index') }}" class="dashboard-card card-green">
+                    <div>
+                        <div class="card-title">Payments</div>
 
                     </div>
-
-                </div>
-
+                    <i class="bi bi-people card-icon"></i>
+                </a>
             </div>
             {{-- Clients --}}
+
             <div class="col-md-4">
                 <a href="/clients" class="dashboard-card card-green">
                     <div>

@@ -27,6 +27,7 @@ use App\Http\Controllers\ReportController;
 use App\Models\CallingOrder;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExtreportController;
+use App\Http\Controllers\PaymentController;
 
 
 require __DIR__ . '/inventory.php';
@@ -189,6 +190,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/payment-upload', [DeliveryController::class, 'paymentupload'])
         ->name('delivery.paymentupload');
+
+
+    Route::get('/payments', [PaymentController::class, 'index'])
+        ->name('payments.index');
+
+    Route::get('/payments/export', [PaymentController::class, 'export'])
+        ->name('payments.export');
+
+
 
     Route::post('/orders/export-selected', [OrderController::class, 'exportSelected'])
         ->name('orders.export.selected');

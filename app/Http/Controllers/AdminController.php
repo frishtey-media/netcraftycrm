@@ -321,6 +321,7 @@ class AdminController extends Controller
             'pendingOrders'
         ));
     }
+
     public function shiftOrders(Request $request)
     {
         // Client Block
