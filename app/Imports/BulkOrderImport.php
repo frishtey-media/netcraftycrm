@@ -11,11 +11,17 @@ class BulkOrderImport implements ToCollection
 {
     protected $clientId;
     protected $staffId;
-
-    public function __construct($clientId, $staffId)
-    {
+    protected $createdAt;
+    public function __construct(
+        $clientId,
+        $staffId,
+        $createdAt
+    ) {
         $this->clientId = $clientId;
-        $this->staffId  = $staffId;
+
+        $this->staffId = $staffId;
+
+        $this->createdAt = \Carbon\Carbon::parse($createdAt);
     }
 
     public function collection(Collection $rows)
@@ -43,13 +49,18 @@ class BulkOrderImport implements ToCollection
                 strtoupper(substr($name, 0, 1))
                 . strtolower(substr($name, -1));
 
-            $date = now()->format('d-m-y');
+            // $date = now()->format('d-m-y');
+
+            $date = $this->createdAt->format('d-m-y');
 
             $todayCount = CallingOrder::whereDate(
                 'created_at',
-                today()
+                $this->createdAt
             )
-                ->where('assigned_to', $staff->id)
+                ->where(
+                    'assigned_to',
+                    $staff->id
+                )
                 ->count() + 1;
 
             $orderId = $shortName . '-' . $date . '-' . $todayCount;
@@ -83,7 +94,7 @@ class BulkOrderImport implements ToCollection
 
                 'order_id' => $orderId,
 
-                'order_date' => now(),
+                'order_date' => $this->createdAt,
 
                 'product_name' => $row[4] ?? '',
 
@@ -118,6 +129,9 @@ class BulkOrderImport implements ToCollection
                 'status' => 'verified',
 
                 'order_source' => 'whatsapp',
+                'created_at' => $this->createdAt,
+
+                'updated_at' => $this->createdAt,
             ]);
         }
     }

@@ -43,26 +43,23 @@ class RecordController extends Controller
             )
         );
     }
-    public function generateOrderId($staffId)
+    public function generateOrderId(Request $request, $staffId)
     {
         $staff = CallingUser::findOrFail($staffId);
 
-        $name = trim($staff->name);
+        $selectedDate = \Carbon\Carbon::parse($request->created_at);
 
-        $shortName =
-            strtoupper(substr($name, 0, 1)) .
-            strtolower(substr($name, -1));
+        $shortName = strtoupper(substr($staff->name, 0, 1))
+            . strtolower(substr($staff->name, -1));
 
-        $date = now()->format('d-m-y');
+        $date = $selectedDate->format('d-m-y');
 
-        $todayCount = CallingOrder::whereDate('created_at', today())
-            ->where('assigned_to', $staff->id)
+        $count = CallingOrder::where('assigned_to', $staff->id)
+            ->whereDate('created_at', $selectedDate)
             ->count() + 1;
 
-        $orderId = $shortName . '-' . $date . '-' . $todayCount;
-
         return response()->json([
-            'order_id' => $orderId
+            'order_id' => $shortName . '-' . $date . '-' . $count
         ]);
     }
     public function store(Request $request)
@@ -72,6 +69,7 @@ class RecordController extends Controller
             'assigned_to'               => 'required',
             'products'                  => 'required|array|min:1',
             'products.*.product'        => 'required',
+            'created_at'                => 'required|date',
             'products.*.quantity'       => 'required|integer|min:1',
             'customer_name'             => 'required',
             'customer_phone'            => 'required',
@@ -159,6 +157,9 @@ class RecordController extends Controller
             'status' => 'verified',
 
             'order_source' => 'whatsapp',
+            'created_at' => \Carbon\Carbon::parse($request->created_at),
+
+            'updated_at' => \Carbon\Carbon::parse($request->created_at),
         ]);
         $productCount = count($request->products);
 
@@ -191,13 +192,15 @@ class RecordController extends Controller
         $request->validate([
             'client_id'   => 'required',
             'assigned_to' => 'required',
+            'created_at'  => 'required|date',
             'file'        => 'required|mimes:xlsx,xls,csv'
         ]);
 
         Excel::import(
             new BulkOrderImport(
                 $request->client_id,
-                $request->assigned_to
+                $request->assigned_to,
+                $request->created_at
             ),
             $request->file('file')
         );

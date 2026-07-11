@@ -1,262 +1,456 @@
 @extends('layouts.admin')
 
 @section('content')
+
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        {{-- =========================
+        DUPLICATE ORDER ALERT
+    ========================== --}}
 
-            {{-- DUPLICATE ORDERS --}}
-            @if (session('duplicate_orders'))
-                <script>
-                    let duplicates = @json(session('duplicate_orders'));
+        @if (session('duplicate_orders'))
+            <script>
+                let duplicates = @json(session('duplicate_orders'));
 
-                    Swal.fire({
+                Swal.fire({
 
-                        icon: 'warning',
+                    icon: 'warning',
 
-                        title: 'Duplicate Orders Found!',
+                    title: 'Duplicate Orders Found',
 
-                        html: '<div style="max-height:200px;overflow:auto;">' +
-                            duplicates.join('<br>') +
-                            '</div>',
+                    html: '<div style="max-height:250px;overflow:auto;text-align:left;">' +
+                        duplicates.join('<br>') +
+                        '</div>',
 
-                        showCancelButton: true,
+                    confirmButtonText: 'Clear Duplicate',
 
-                        confirmButtonText: 'Clear & Move to Log',
+                    showCancelButton: true,
 
-                        cancelButtonText: 'Cancel'
+                    cancelButtonText: 'Cancel'
 
-                    }).then((result) => {
+                }).then((result) => {
 
-                        if (result.isConfirmed) {
+                    if (result.isConfirmed) {
 
-                            let form = document.createElement('form');
+                        let form = document.createElement('form');
 
-                            form.method = 'POST';
+                        form.method = 'POST';
 
-                            form.action =
-                                "{{ route('clear.duplicates') }}";
+                        form.action = "{{ route('clear.duplicates') }}";
 
-                            let csrf = document.createElement('input');
+                        let token = document.createElement('input');
 
-                            csrf.type = 'hidden';
-                            csrf.name = '_token';
-                            csrf.value = "{{ csrf_token() }}";
+                        token.type = 'hidden';
 
-                            let input = document.createElement('input');
+                        token.name = '_token';
 
-                            input.type = 'hidden';
+                        token.value = "{{ csrf_token() }}";
 
-                            input.name = 'order_ids';
+                        form.appendChild(token);
 
-                            input.value =
-                                JSON.stringify(duplicates);
+                        let ids = document.createElement('input');
 
-                            form.appendChild(csrf);
+                        ids.type = 'hidden';
 
-                            form.appendChild(input);
+                        ids.name = 'order_ids';
 
-                            document.body.appendChild(form);
+                        ids.value = JSON.stringify(duplicates);
 
-                            form.submit();
-                        }
+                        form.appendChild(ids);
 
-                    });
-                </script>
-            @endif
+                        let importDate = document.createElement('input');
 
+                        importDate.type = 'hidden';
 
-            {{-- SUCCESS --}}
-            @if (session('success'))
-                <script>
-                    Swal.fire({
+                        importDate.name = 'import_date';
 
-                        icon: 'success',
+                        importDate.value = document.getElementById('import_date').value;
 
-                        title: 'Done!',
+                        form.appendChild(importDate);
 
-                        text: "{{ session('success') }}",
+                        document.body.appendChild(form);
 
-                        timer: 2000,
+                        form.submit();
 
-                        showConfirmButton: false,
+                    }
 
-                        timerProgressBar: true
-
-                    });
-                </script>
-            @endif
+                });
+            </script>
+        @endif
 
 
-            {{-- ERROR --}}
-            @if (session('error'))
-                <div class="alert alert-danger">
 
-                    {{ session('error') }}
+        {{-- =========================
+        SUCCESS
+    ========================== --}}
 
-                </div>
-            @endif
+        @if (session('success'))
+            <script>
+                Swal.fire({
+
+                    icon: 'success',
+
+                    title: 'Success',
+
+                    text: "{{ session('success') }}",
+
+                    timer: 2500,
+
+                    showConfirmButton: false,
+
+                    timerProgressBar: true
+
+                });
+            </script>
+        @endif
 
 
-            <div class="col-md-4">
 
-                @if ($orders->count())
-                    {{-- POST OFFICE EXPORT --}}
-                    <div class="card text-center shadow-sm mb-3">
+        {{-- =========================
+        ERROR
+    ========================== --}}
 
-                        <form action="{{ route('postoffice.export') }}" method="POST">
+        @if (session('error'))
+            <script>
+                Swal.fire({
 
-                            @csrf
+                    icon: 'error',
 
-                            <button type="submit" class="btn btn-primary w-100 p-4">
+                    title: 'Oops',
 
-                                <div class="card-body">
+                    text: "{{ session('error') }}"
 
-                                    <h5 class="mt-2">
+                });
+            </script>
+        @endif
 
-                                        Export Post Office Format
+        @if ($errors->any())
+            <div class="alert alert-danger">
 
-                                        <i class="bi bi-download fs-1"></i>
+                <ul class="mb-0">
 
-                                    </h5>
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+
+                </ul>
+
+            </div>
+        @endif
+
+        <div class="row">
+
+            @if ($orders->count())
+                <div class="col-lg-6">
+
+                    <!-- Post Office Export Card -->
+
+                    <div class="card shadow-sm border-0">
+
+                        <div class="card-header bg-primary text-white">
+
+                            <h5 class="mb-0">
+                                Post Office Export
+                            </h5>
+
+                        </div>
+
+                        <div class="card-body">
+
+                            <form action="{{ route('postoffice.export') }}" method="POST">
+
+                                @csrf
+
+                                <div class="mb-3">
+
+                                    <label>Import Date</label>
+
+                                    <input type="date" id="import_date" name="import_date" class="form-control"
+                                        value="{{ $importDate }}" required>
 
                                 </div>
 
-                            </button>
+                                <button class="btn btn-primary w-100">
 
-                        </form>
+                                    Export Post Office Format
 
-                    </div>
+                                </button>
 
-
-                    {{-- LABEL EXPORT --}}
-                    <div class="card text-center shadow-sm">
-
-                        <button class="btn btn-success p-4" data-bs-toggle="modal" data-bs-target="#senderModal">
-
-                            <div class="card-body">
-
-                                <h5 class="mt-2">
-
-                                    Export Labels
-
-                                    <i class="bi bi-download fs-1"></i>
-
-                                </h5>
-
-                            </div>
-
-                        </button>
-
-                    </div>
-                @else
-                    <div class="alert alert-warning text-center">
-
-                        <strong>
-                            No record for label generation now
-                        </strong>
-
-                    </div>
-                @endif
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    {{-- SENDER MODAL --}}
-    <div class="modal fade" id="senderModal" tabindex="-1">
-
-        <div class="modal-dialog">
-
-            <form method="POST" action="{{ route('labels.export') }}">
-
-                @csrf
-
-                <div class="modal-content">
-
-                    <div class="modal-header">
-
-                        <h5 class="modal-title">
-
-                            Select Sender
-
-                        </h5>
-
-                        <button type="button" class="btn-close" data-bs-dismiss="modal">
-                        </button>
-
-                    </div>
-
-                    <div class="modal-body">
-
-                        {{-- CLIENT NAME --}}
-                        @if (auth()->user()->role == 'client')
-                            <div class="mb-3">
-
-                                <label class="form-label">
-
-                                    Client Name
-
-                                </label>
-
-                                <input type="text" class="form-control" value="{{ $clients->first()->client_name }}"
-                                    readonly>
-
-                            </div>
-                        @endif
-
-
-                        {{-- SENDER --}}
-                        <div class="mb-3">
-
-                            <label class="form-label">
-
-                                Select Sender
-
-                            </label>
-
-                            <select name="sender_id" class="form-control" required>
-
-                                <option value="">
-
-                                    Select Sender
-
-                                </option>
-
-                                @foreach ($senders as $sender)
-                                    <option value="{{ $sender->id }}">
-
-                                        {{ $sender->customer_name }}
-
-                                    </option>
-                                @endforeach
-
-                            </select>
+                            </form>
 
                         </div>
 
                     </div>
 
-                    <div class="modal-footer">
+                </div>
 
-                        <button type="submit" class="btn btn-success">
 
-                            Generate PDF
+                <div class="col-lg-6">
 
-                        </button>
+                    <div class="card shadow-sm border-0">
+
+                        <div class="card-header bg-success text-white">
+
+                            <h5 class="mb-0">
+
+                                Label Export
+
+                            </h5>
+
+                        </div>
+
+                        <div class="card-body">
+
+                            <button class="btn btn-success" {{ $canGenerate ? '' : 'disabled' }} data-bs-toggle="modal"
+                                data-bs-target="#senderModal">
+
+                                Generate Label PDF
+
+                            </button>
+
+                        </div>
 
                     </div>
 
                 </div>
+            @else
+                <div class="col-12">
 
-            </form>
+                    <div class="alert alert-warning text-center">
+
+                        <h5 class="mb-0">
+
+                            No Orders Available for Selected Import Date
+
+                        </h5>
+
+                    </div>
+
+                </div>
+            @endif
 
         </div>
+        {{-- ===========================================
+    LABEL EXPORT MODAL
+============================================ --}}
+        <div class="modal fade" id="senderModal" tabindex="-1" aria-hidden="true">
+
+            <div class="modal-dialog modal-lg">
+
+                <form method="POST" action="{{ route('labels.export') }}">
+
+                    @csrf
+                    <input type="hidden" name="import_date" value="{{ $importDate }}">
+                    <div class="modal-content">
+
+                        <div class="modal-header bg-success text-white">
+
+                            <h5 class="modal-title">
+
+                                <i class="bi bi-printer"></i>
+
+                                Generate India Post Labels
+
+                            </h5>
+
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal">
+                            </button>
+
+                        </div>
+
+                        <div class="modal-body">
+
+                            <div class="row">
+
+                                {{-- CLIENT --}}
+
+                                @if (auth()->user()->role == 'client')
+                                    <div class="col-md-12 mb-3">
+
+                                        <label class="form-label">
+
+                                            Client
+
+                                        </label>
+
+                                        <input type="text" class="form-control"
+                                            value="{{ $clients->first()->client_name }}" readonly>
+
+                                    </div>
+                                @else
+                                    <div class="col-md-6 mb-3">
+
+                                        <label class="form-label">
+
+                                            Client
+
+                                        </label>
+
+                                        <select class="form-control" disabled>
+
+                                            @foreach ($clients as $client)
+                                                <option>
+
+                                                    {{ $client->client_name }}
+
+                                                </option>
+                                            @endforeach
+
+                                        </select>
+
+                                    </div>
+                                @endif
+
+
+                                {{-- IMPORT DATE --}}
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label class="form-label">
+
+                                        Import Date
+
+                                    </label>
+
+                                    <input type="date" class="form-control" value="{{ $importDate }}" readonly>
+
+                                </div>
+
+
+                                {{-- SENDER --}}
+
+                                <div class="col-md-12">
+
+                                    <label class="form-label">
+
+                                        Sender
+
+                                    </label>
+
+                                    <select class="form-control" name="sender_id" required>
+
+                                        <option value="">
+
+                                            Select Sender
+
+                                        </option>
+
+                                        @foreach ($senders as $sender)
+                                            <option value="{{ $sender->id }}">
+
+                                                {{ $sender->customer_name }}
+
+                                            </option>
+                                        @endforeach
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="modal-footer">
+
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+
+                                Close
+
+                            </button>
+
+                            <button type="submit" class="btn btn-success">
+
+                                <i class="bi bi-file-earmark-pdf"></i>
+
+                                Generate Labels
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+        @push('scripts')
+            <script>
+                $(function() {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Post Office Export
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $('form[action="{{ route('postoffice.export') }}"]').on('submit', function() {
+
+                        let btn = $(this).find('button[type=submit]');
+
+                        btn.prop('disabled', true);
+
+                        btn.html(
+                            '<span class="spinner-border spinner-border-sm"></span> Preparing Export...'
+                        );
+
+                    });
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Label Export
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $('form[action="{{ route('labels.export') }}"]').on('submit', function() {
+
+                        let sender = $(this).find('[name=sender_id]').val();
+
+                        if (sender == '') {
+
+                            Swal.fire({
+
+                                icon: 'warning',
+
+                                title: 'Select Sender',
+
+                                text: 'Please select sender first.'
+
+                            });
+
+                            return false;
+                        }
+
+                        let btn = $(this).find('button[type=submit]');
+
+                        btn.prop('disabled', true);
+
+                        btn.html(
+                            '<span class="spinner-border spinner-border-sm"></span> Generating PDF...'
+                        );
+
+                    });
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Focus Sender
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $('#senderModal').on('shown.bs.modal', function() {
+
+                        $(this).find('[name=sender_id]').focus();
+
+                    });
+
+                });
+            </script>
+        @endpush
 
     </div>
+
 @endsection

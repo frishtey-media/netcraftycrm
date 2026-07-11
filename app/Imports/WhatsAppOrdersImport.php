@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 
 class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
 {
-    protected $clientId;
 
     public $imported = 0;
     public $skipped  = 0;
@@ -20,10 +19,15 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
 
     protected $seenOrderIds = [];
 
-    public function __construct($clientId)
+    protected $clientId;
+    protected $importDate;
+
+    public function __construct($clientId, $importDate)
     {
         $this->clientId = $clientId;
+        $this->importDate = Carbon::parse($importDate)->startOfDay();
     }
+
 
     public function collection(Collection $rows)
     {
@@ -162,7 +166,7 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
                     $this->skipped++;
                     continue;
                 }
-
+                // dd($this->importDate);
                 /* ================= INSERT ORDER ================= */
 
                 ShopifyOrder::create([
@@ -205,6 +209,9 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
                     'state' => $row['state'],
 
                     'pincode' => $row['shipping_pincode'],
+                    'created_at' => $this->importDate,
+
+                    'updated_at' => $this->importDate,
                 ]);
 
                 /* ================= MARK BARCODE USED ================= */
@@ -248,15 +255,27 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
 
     private function parseDate($value)
     {
+        if (empty($value)) {
+            return now()->format('Y-m-d');
+        }
+
         try {
 
-            return Carbon::createFromFormat(
-                'd-M-y',
-                $value
-            )->format('Y-m-d');
+            // Handles: 2026-07-04 00:00:00
+            return Carbon::parse($value)->format('Y-m-d');
         } catch (\Exception $e) {
 
-            return now()->format('Y-m-d');
+            try {
+
+                // Handles: 04-Jul-26
+                return Carbon::createFromFormat(
+                    'd-M-y',
+                    trim($value)
+                )->format('Y-m-d');
+            } catch (\Exception $e) {
+
+                return now()->format('Y-m-d');
+            }
         }
     }
 }

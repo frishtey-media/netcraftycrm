@@ -31,6 +31,8 @@ class Order extends Model
         'rtorecivedsts',
         'delivery_date',
         'delivery_remark',
+        'created_at',
+        'updated_at',
         'manual_delivery',
 
         'manual_delivery_by',

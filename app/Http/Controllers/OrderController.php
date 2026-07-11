@@ -1293,13 +1293,6 @@ class OrderController extends Controller
     {
         if ($this->isClient()) {
 
-            $orders = ShopifyOrder::where(
-                'client_id',
-                $this->clientId()
-            )
-                ->latest()
-                ->paginate(20);
-
             $senders = LabelSender::where(
                 'client_id',
                 $this->clientId()
@@ -1313,24 +1306,71 @@ class OrderController extends Controller
             )->get();
         } else {
 
-            $orders = ShopifyOrder::latest()
-                ->paginate(20);
+            $senders = LabelSender::orderBy('customer_name')->get();
 
-            $senders = LabelSender::orderBy(
-                'customer_name'
-            )->get();
+            $clients = Client::orderBy('client_name')->get();
+        }
+        // Get selected import date
+        $importDate = request()->get('import_date');
 
-            $clients = Client::orderBy(
-                'client_name'
-            )->get();
+        if (empty($importDate)) {
+
+            $query = ShopifyOrder::query();
+
+            if ($this->isClient()) {
+                $query->where('client_id', $this->clientId());
+            }
+
+            $importDate = $query
+                ->orderByDesc('created_at')
+                ->value(DB::raw('DATE(created_at)'));
         }
 
+        $importDate = $importDate ?: date('Y-m-d');
+
+        $query = ShopifyOrder::query();
+
+        if ($this->isClient()) {
+            $query->where('client_id', $this->clientId());
+        }
+
+        $query->whereDate('created_at', $importDate);
+
+        $orders = $query->latest()->paginate(20);
+
+        $canGenerate = ShopifyOrder::whereDate(
+            'created_at',
+            $importDate
+        )
+
+            ->when($this->isClient(), function ($q) {
+
+                $q->where(
+                    'client_id',
+                    $this->clientId()
+                );
+            })
+
+            ->where(
+                'postoffice_exported',
+                1
+            )
+
+            ->exists();
         return view(
             'labels.index',
             compact(
+
                 'orders',
+
+                'clients',
+
                 'senders',
-                'clients'
+
+                'canGenerate',
+
+                'importDate'
+
             )
         );
     }

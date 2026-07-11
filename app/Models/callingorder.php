@@ -38,7 +38,9 @@ class CallingOrder extends Model
         'amount',
 
         'status',
-        'order_source'
+        'order_source',
+        'created_at',
+        'updated_at'
     ];
 
     // Client Relation

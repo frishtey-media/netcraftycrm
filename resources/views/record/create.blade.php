@@ -95,7 +95,14 @@
                         <div class="modal-body">
 
                             {{-- Client --}}
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Import Date
+                                </label>
 
+                                <input type="date" name="created_at" class="form-control" value="{{ date('Y-m-d') }}"
+                                    required>
+                            </div>
                             <div class="mb-3">
 
                                 <label class="form-label">
@@ -189,10 +196,11 @@
 
                 {{-- Date --}}
                 <div class="col-md-4">
-                    <label class="form-label">Date</label>
-                    <input type="date" name="date" class="form-control" value="{{ date('Y-m-d') }}">
-                </div>
+                    <label class="form-label">Import Date</label>
 
+                    <input type="date" name="created_at" class="form-control"
+                        value="{{ old('created_at', date('Y-m-d')) }}" required>
+                </div>
                 {{-- Client --}}
                 <div class="col-md-4">
                     <label class="form-label">Client Name</label>
@@ -253,7 +261,8 @@
                             </div>
 
                             <div class="col-md-3">
-                                <input type="number" name="products[0][weight]" class="form-control weight-input" readonly>
+                                <input type="number" name="products[0][weight]" class="form-control weight-input"
+                                    readonly>
                             </div>
 
                             <div class="col-md-1">
@@ -384,22 +393,28 @@
         });
     </script>
     <script>
-        $('#assigned_to').change(function() {
+        function generateOrderId() {
 
-            let staffId = $(this).val();
+            let staffId = $('#assigned_to').val();
+            let createdAt = $('input[name="created_at"]').val();
 
-            if (!staffId) {
+            if (!staffId || !createdAt) {
+
                 $('#order_id').val('Auto Generate');
                 return;
             }
 
-            $.get('/generate-order-id/' + staffId, function(response) {
-
+            $.get('/generate-order-id/' + staffId, {
+                created_at: createdAt
+            }, function(response) {
                 $('#order_id').val(response.order_id);
-
             });
 
-        });
+        }
+
+        $('#assigned_to').change(generateOrderId);
+
+        $('input[name="created_at"]').change(generateOrderId);
     </script>
     <script>
         let productOptions = '';

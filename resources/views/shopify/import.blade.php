@@ -121,7 +121,21 @@
                 <button class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         @endif
+        @if (session('errors') && count(session('errors')))
+            <div class="alert alert-danger">
 
+                <strong>Import Errors</strong>
+
+                <ul class="mb-0">
+
+                    @foreach (session('errors') as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+
+                </ul>
+
+            </div>
+        @endif
         <div style="text-align:right;">
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#excelImportModal">
                 WhatsApp Excel Import
@@ -147,6 +161,13 @@
                                     <option value="{{ $client->id }}">{{ $client->client_name }}</option>
                                 @endforeach
                             </select>
+
+
+                            <label class="form-label">Import Date <span class="text-danger">*</span></label>
+
+                            <input type="date" name="import_date" class="form-control" value="{{ date('Y-m-d') }}"
+                                required>
+
 
                             <label>Excel File *</label>
                             <input type="file" name="file" class="form-control" accept=".xls,.xlsx" required>
@@ -207,41 +228,41 @@
 
         <!--  <div class="row mb-4">
 
-                        @if (($showPostOffice ?? false) && !($showLabel ?? false))
+                                            @if (($showPostOffice ?? false) && !($showLabel ?? false))
     <div class="col-md-6">
-                                <div class="card text-center shadow-sm mb-3">
+                                                    <div class="card text-center shadow-sm mb-3">
 
-                                    <form action="{{ route('postoffice.export') }}" method="POST">
-                                        @csrf
+                                                        <form action="{{ route('postoffice.export') }}" method="POST">
+                                                            @csrf
 
-                                        <button type="submit" class="btn btn-primary w-100 p-4">
+                                                            <button type="submit" class="btn btn-primary w-100 p-4">
 
-                                            <h5>Export Post Office Format</h5>
+                                                                <h5>Export Post Office Format</h5>
 
-                                        </button>
+                                                            </button>
 
-                                    </form>
+                                                        </form>
 
-                                </div>
-                            </div>
+                                                    </div>
+                                                </div>
     @endif
-                        @if ($showLabel ?? false)
+                                            @if ($showLabel ?? false)
     <div class="col-md-6">
 
-                                <div class="card text-center shadow-sm">
+                                                    <div class="card text-center shadow-sm">
 
-                                    <button class="btn btn-success p-4 w-100" data-bs-toggle="modal" data-bs-target="#senderModal">
+                                                        <button class="btn btn-success p-4 w-100" data-bs-toggle="modal" data-bs-target="#senderModal">
 
-                                        <h5>Export Labels</h5>
+                                                            <h5>Export Labels</h5>
 
-                                    </button>
+                                                        </button>
 
-                                </div>
+                                                    </div>
 
-                            </div>
+                                                </div>
     @endif
 
-                    </div>-->
+                                        </div>-->
 
         <table id="ordersTable" class="table table-bordered table-striped">
             <thead class="table-dark">

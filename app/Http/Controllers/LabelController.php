@@ -51,6 +51,8 @@ class LabelController extends Controller
             $request->sender_id
         );
 
+
+
         /*
     |--------------------------------------------------------------------------
     | CLIENT SECURITY
@@ -129,11 +131,52 @@ class LabelController extends Controller
         | DELETE SHOPIFY ORDERS
         |--------------------------------------------------------------------------
         */
+            $importDate = request('import_date');
 
-            ShopifyOrder::whereIn(
-                'id',
-                $orders->pluck('id')
-            )->delete();
+            $allowed = ShopifyOrder::whereDate(
+                'created_at',
+                $importDate
+            )
+
+                ->when(auth()->user()->role == 'client', function ($q) {
+
+                    $q->where(
+                        'client_id',
+                        auth()->user()->client_id
+                    );
+                })
+
+                ->where(
+                    'postoffice_exported',
+                    1
+                )
+
+                ->exists();
+
+            if (!$allowed) {
+
+                return back()->with(
+
+                    'error',
+
+                    'Please export India Post Excel first.'
+
+                );
+            }
+            ShopifyOrder::whereDate(
+                'created_at',
+                $importDate
+            )
+
+                ->when(auth()->user()->role == 'client', function ($q) {
+
+                    $q->where(
+                        'client_id',
+                        auth()->user()->client_id
+                    );
+                })
+
+                ->delete();
 
             /*
         |--------------------------------------------------------------------------

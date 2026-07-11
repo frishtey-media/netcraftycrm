@@ -27,6 +27,8 @@ class ShopifyOrder extends Model
         'pincode',
         'payment_mode',
         'amount',
+        'created_at',
+        'updated_at',
     ];
 
 

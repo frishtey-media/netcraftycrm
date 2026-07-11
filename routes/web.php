@@ -76,6 +76,9 @@ Route::middleware(['auth'])->group(function () {
         ->name('users.update');
     Route::get('/generate-order-id/{staffId}', [RecordController::class, 'generateOrderId']);
 
+    Route::get('/generate-order-id', [RecordController::class, 'generateOrderId'])
+        ->name('generate.order.id');
+
     Route::get('/ordersdashboard', [AdminController::class, 'ordersdashboard'])->name('ordersdashboard');
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])->name('labelsenders');
     Route::post('/labelsenders', [AdminController::class, 'storeLabelSenders'])->name('labelsenders.store');
