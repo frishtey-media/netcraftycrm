@@ -43,12 +43,18 @@ class PaymentController extends Controller
             )
 
             ->leftJoin(
+                'callingorder',
+                'callingorder.order_id',
+                '=',
+                'orders.order_id'
+            )
+
+            ->leftJoin(
                 'clients',
                 'clients.id',
                 '=',
                 'orders.client_id'
             );
-
 
 
         /*
@@ -108,7 +114,22 @@ class PaymentController extends Controller
         }
 
 
+        /*
+|--------------------------------------------------------------------------
+| Order Source Filter
+|--------------------------------------------------------------------------
+*/
 
+        if ($request->filled('order_source')) {
+
+            if ($request->order_source == 'web') {
+
+                $query->whereNull('callingorder.order_source');
+            } elseif ($request->order_source == 'whatsapp') {
+
+                $query->where('callingorder.order_source', 'whatsapp');
+            }
+        }
         /*
         |--------------------------------------------------------------------------
         | Product Filter
@@ -369,6 +390,28 @@ class PaymentController extends Controller
 
             ->get();
 
+        /*
+|--------------------------------------------------------------------------
+| Web & WhatsApp Counting
+|--------------------------------------------------------------------------
+*/
+
+        $webArticles = (clone $query)
+            ->whereNull('callingorder.order_source')
+            ->count();
+
+        $whatsappArticles = (clone $query)
+            ->where('callingorder.order_source', 'whatsapp')
+            ->count();
+
+        $webAmount = (clone $query)
+            ->whereNull('callingorder.order_source')
+            ->sum('payments.cod_value');
+
+        $whatsappAmount = (clone $query)
+            ->where('callingorder.order_source', 'whatsapp')
+            ->sum('payments.cod_value');
+
         return view(
             'payments.index',
             compact(
@@ -378,6 +421,11 @@ class PaymentController extends Controller
                 'clients',
 
                 'products',
+
+                'webArticles',
+                'whatsappArticles',
+                'webAmount',
+                'whatsappAmount',
 
                 'clientSummary',
 

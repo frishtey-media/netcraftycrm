@@ -751,6 +751,7 @@ class OrderController extends Controller
                 }
             }
 
+
             $notFound = collect($searchTerms)
                 ->map(fn($v) => strtoupper(trim($v)))
                 ->reject(fn($item) => in_array($item, $foundValues))

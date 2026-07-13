@@ -6,7 +6,23 @@
 
     <div class="container-fluid">
         <div class="row mb-4">
+            <!--  <div class="col-lg-2">
+                                                        <label class="form-label">Order Source</label>
 
+                                                        <select name="order_source" class="form-control">
+
+                                                            <option value="">All Orders</option>
+
+                                                            <option value="web" {{ request('order_source') == 'web' ? 'selected' : '' }}>
+                                                                Web
+                                                            </option>
+
+                                                            <option value="whatsapp" {{ request('order_source') == 'whatsapp' ? 'selected' : '' }}>
+                                                                WhatsApp
+                                                            </option>
+
+                                                        </select>
+                                                    </div>-->
             <div class="col-lg-3">
 
                 <div class="card shadow">
@@ -15,7 +31,7 @@
 
                         <h5>Total Payment</h5>
 
-                        <h2 class="text-success">
+                        <h2 class="text-success" style="font-size: 18px;">
 
                             ₹{{ number_format($totalAmount, 2) }}
 
@@ -35,11 +51,36 @@
 
                         <h5>Total Articles</h5>
 
-                        <h2>
+                        <h2 style="font-size: 18px;">
 
                             {{ $totalArticles }}
 
                         </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+            <div class="col-lg-3">
+
+                <div class="card shadow">
+
+                    <div class="card-body">
+
+                        <h5>Web Orders</h5>
+
+                        <h2 class="text-primary" style="font-size: 18px;">
+
+                            {{ $webArticles }} ( <small>
+
+                                ₹{{ number_format($webAmount, 2) }}
+
+                            </small>)
+
+                        </h2>
+
+
 
                     </div>
 
@@ -53,9 +94,36 @@
 
                     <div class="card-body">
 
+                        <h5>WhatsApp Orders</h5>
+
+                        <h2 class="text-success" style="font-size: 18px;">
+
+                            {{ $whatsappArticles }} ( <small>
+
+                                ₹{{ number_format($whatsappAmount, 2) }}
+
+                            </small>)
+
+                        </h2>
+
+
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+        <div class="row mb-4">
+            <div class="col-lg-3">
+
+                <div class="card shadow">
+
+                    <div class="card-body">
+
                         <h5>Matched Orders</h5>
 
-                        <h2 class="text-success">
+                        <h2 class="text-success" style="font-size: 18px;">
 
                             {{ $matchedArticles }}
 
@@ -75,7 +143,7 @@
 
                         <h5>Barcode Not Found</h5>
 
-                        <h2 class="text-danger">
+                        <h2 class="text-danger" style="font-size: 18px;">
 
                             {{ $unMatchedArticles }}
 
