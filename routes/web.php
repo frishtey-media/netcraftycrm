@@ -200,7 +200,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/payments/export', [PaymentController::class, 'export'])
         ->name('payments.export');
+    Route::get(
+        '/payments/pending',
+        [PaymentController::class, 'pendingPayment']
+    )->name('payments.pending');
 
+    Route::get(
+        '/payments/pending/export',
+        [PaymentController::class, 'pendingPaymentExport']
+    )->name('payments.pending.export');
 
 
     Route::post('/orders/export-selected', [OrderController::class, 'exportSelected'])

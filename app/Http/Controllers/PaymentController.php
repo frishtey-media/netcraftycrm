@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Exports\PaymentExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\Order;
+use App\Exports\PendingPaymentExport;
 
 class PaymentController extends Controller
 {
@@ -266,63 +268,125 @@ class PaymentController extends Controller
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Matched Orders
-        |--------------------------------------------------------------------------
-        */
+|--------------------------------------------------------------------------
+| Pending Payment
+|--------------------------------------------------------------------------
+*/
 
-        $payments = (clone $query)
-
-            ->whereNotNull('orders.id')
-
-            ->select(
-
-                'payments.id',
-
-                'payments.article_number',
-
-                'payments.cod_invoice_number',
-
-                'payments.bill_date',
-
-                'payments.delivered_date',
-
-                'payments.cod_value',
-
-                'payments.cod_commission',
-
-                'orders.order_id',
-
-                'orders.customer_name',
-
-                'orders.customer_phone',
-
-                'orders.shipping_address',
-
-                'orders.city',
-
-                'orders.state',
-
-                'orders.pincode',
-
-                'orders.product',
-
-                'orders.quantity',
-
-                'orders.weight',
-
-                'orders.amount',
-
-                'clients.client_name'
-
-            )
-
-            ->latest('payments.bill_date')
-
-            ->paginate(
-                $request->records ?? 100
+        $pendingQuery = Order::query()
+            ->leftJoin(
+                'clients',
+                'clients.id',
+                '=',
+                'orders.client_id'
             );
 
+        // Client
+        if ($this->isClient()) {
+
+            $pendingQuery->where(
+                'orders.client_id',
+                $this->clientId()
+            );
+        } elseif ($request->filled('client_id')) {
+
+            $pendingQuery->where(
+                'orders.client_id',
+                $request->client_id
+            );
+        }
+
+        // Product
+        if ($request->filled('product')) {
+
+            $pendingQuery->where(
+                'orders.product',
+                $request->product
+            );
+        }
+
+        // Date (use Delivery Date)
+        if ($request->filled('from')) {
+
+            $pendingQuery->whereDate(
+                'orders.delivery_date',
+                '>=',
+                $request->from
+            );
+        }
+
+        if ($request->filled('to')) {
+
+            $pendingQuery->whereDate(
+                'orders.delivery_date',
+                '<=',
+                $request->to
+            );
+        }
+
+        // Search
+        if ($request->filled('search')) {
+
+            $search = trim($request->search);
+
+            $pendingQuery->where(function ($q) use ($search) {
+
+                $q->where(
+                    'orders.order_id',
+                    'like',
+                    "%{$search}%"
+                )
+
+                    ->orWhere(
+                        'orders.barcode',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'orders.customer_name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'orders.customer_phone',
+                        'like',
+                        "%{$search}%"
+                    );
+            });
+        }
+
+        // Order Source
+        if ($request->filled('order_source')) {
+
+            if ($request->order_source == 'web') {
+
+                $pendingQuery->whereNull('orders.order_source');
+            } else {
+
+                $pendingQuery->where(
+                    'orders.order_source',
+                    'whatsapp'
+                );
+            }
+        }
+
+        // Pending Payment Condition
+        $pendingQuery->where(
+            'orders.delivery_status',
+            'Delivered'
+        )
+
+            ->where(function ($q) {
+
+                $q->whereNull('orders.recivedpaysts')
+                    ->orWhere('orders.recivedpaysts', 0);
+            });
+
+        $pendingPaymentOrders = (clone $pendingQuery)->count();
+
+        $pendingPaymentAmount = (clone $pendingQuery)->sum('orders.amount');
 
 
         /*
@@ -412,6 +476,56 @@ class PaymentController extends Controller
             ->where('callingorder.order_source', 'whatsapp')
             ->sum('payments.cod_value');
 
+
+        $payments = (clone $query)
+
+            ->whereNotNull('orders.id')
+
+            ->select(
+
+                'payments.id',
+
+                'payments.article_number',
+
+                'payments.cod_invoice_number',
+
+                'payments.bill_date',
+
+                'payments.delivered_date',
+
+                'payments.cod_value',
+
+                'payments.cod_commission',
+
+                'orders.order_id',
+
+                'orders.customer_name',
+
+                'orders.customer_phone',
+
+                'orders.shipping_address',
+
+                'orders.city',
+
+                'orders.state',
+
+                'orders.pincode',
+
+                'orders.product',
+
+                'orders.quantity',
+
+                'orders.weight',
+
+                'orders.amount',
+
+                'clients.client_name'
+
+            )
+
+            ->latest('payments.bill_date')
+
+            ->paginate($request->records ?? 100);
         return view(
             'payments.index',
             compact(
@@ -421,7 +535,8 @@ class PaymentController extends Controller
                 'clients',
 
                 'products',
-
+                'pendingPaymentOrders',
+                'pendingPaymentAmount',
                 'webArticles',
                 'whatsappArticles',
                 'webAmount',
@@ -440,13 +555,283 @@ class PaymentController extends Controller
                 'unMatchedArticles',
 
                 'totalAmount',
+                'payments',
 
                 'unmatched'
 
             )
         );
     }
+    public function pendingPayment(Request $request)
+    {
+        $query = Order::query()
 
+            ->leftJoin(
+                'clients',
+                'clients.id',
+                '=',
+                'orders.client_id'
+            );
+
+        /*
+    |--------------------------------------------------------------------------
+    | Client Filter
+    |--------------------------------------------------------------------------
+    */
+
+        if ($this->isClient()) {
+
+            $query->where(
+                'orders.client_id',
+                $this->clientId()
+            );
+
+            $clients = Client::where(
+                'id',
+                $this->clientId()
+            )->get();
+        } else {
+
+            $clients = Client::orderBy(
+                'client_name'
+            )->get();
+
+            if ($request->filled('client_id')) {
+
+                $query->where(
+                    'orders.client_id',
+                    $request->client_id
+                );
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Pending Payment
+    |--------------------------------------------------------------------------
+    */
+
+        $query->where(
+            'orders.delivery_status',
+            'Delivered'
+        )
+
+            ->where(function ($q) {
+
+                $q->whereNull('orders.recivedpaysts')
+
+                    ->orWhere(
+                        'orders.recivedpaysts',
+                        0
+                    );
+            });
+
+        /*
+    |--------------------------------------------------------------------------
+    | Date Filter
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('from')) {
+
+            $query->whereDate(
+                'orders.delivery_date',
+                '>=',
+                $request->from
+            );
+        }
+
+        if ($request->filled('to')) {
+
+            $query->whereDate(
+                'orders.delivery_date',
+                '<=',
+                $request->to
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Product
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('product')) {
+
+            $query->where(
+                'orders.product',
+                $request->product
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Web / WhatsApp
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('order_source')) {
+
+            if ($request->order_source == 'web') {
+
+                $query->whereNull(
+                    'orders.order_source'
+                );
+            } else {
+
+                $query->where(
+                    'orders.order_source',
+                    'whatsapp'
+                );
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('search')) {
+
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'orders.order_id',
+                    'like',
+                    "%{$search}%"
+                )
+
+                    ->orWhere(
+                        'orders.barcode',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'orders.customer_name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'orders.customer_phone',
+                        'like',
+                        "%{$search}%"
+                    );
+            });
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Dashboard Cards
+    |--------------------------------------------------------------------------
+    */
+
+        $totalOrders = (clone $query)->count();
+
+        $totalAmount = (clone $query)->sum(
+            'orders.amount'
+        );
+
+        /*
+    |--------------------------------------------------------------------------
+    | Products
+    |--------------------------------------------------------------------------
+    */
+
+        $products = Order::select('product')
+
+            ->whereNotNull('product')
+
+            ->distinct()
+
+            ->orderBy('product')
+
+            ->pluck('product');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Data Table
+    |--------------------------------------------------------------------------
+    */
+
+        $orders = (clone $query)
+
+            ->select(
+
+                'orders.id',
+
+                'orders.order_id',
+
+                'orders.barcode',
+
+                'orders.customer_name',
+
+                'orders.customer_phone',
+
+                'orders.shipping_address',
+
+                'orders.city',
+
+                'orders.state',
+
+                'orders.pincode',
+
+                'orders.product',
+
+                'orders.quantity',
+
+                'orders.amount',
+
+                'orders.delivery_date',
+
+                'orders.delivery_status',
+
+                'clients.client_name'
+
+            )
+
+            ->latest('orders.delivery_date')
+
+            ->paginate(
+                $request->records ?? 100
+            );
+
+        return view(
+
+            'payments.pending',
+
+            compact(
+
+                'orders',
+
+                'clients',
+
+                'products',
+
+                'totalOrders',
+
+                'totalAmount'
+
+            )
+
+        );
+    }
+    public function pendingPaymentExport(Request $request)
+    {
+        return Excel::download(
+
+            new PendingPaymentExport($request),
+
+            'Pending_Payment_' .
+                now()->format('YmdHis') .
+                '.xlsx'
+
+        );
+    }
     public function export(Request $request)
     {
         return Excel::download(
