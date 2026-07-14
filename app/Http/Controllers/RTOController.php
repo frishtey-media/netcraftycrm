@@ -19,62 +19,157 @@ class RTOController extends Controller
     public function index(Request $request)
     {
         $clients = Client::orderBy('client_name')->get();
+
         $staffs = CallingUser::orderBy('name')->get();
 
-        $staffCounts = DB::table('rto_reports')
+        $staffCounts = DB::table('orders')
 
-            ->leftJoin('callingorder', 'rto_reports.order_id', '=', 'callingorder.order_id')
-            ->leftJoin('calling_users', 'callingorder.assigned_to', '=', 'calling_users.id')
-            ->leftJoin('clients', 'callingorder.client_id', '=', 'clients.id')
+            ->leftJoin(
+                'callingorder',
+                'orders.order_id',
+                '=',
+                'callingorder.order_id'
+            )
+
+            ->leftJoin(
+                'calling_users',
+                'callingorder.assigned_to',
+                '=',
+                'calling_users.id'
+            )
+
+            ->leftJoin(
+                'clients',
+                'orders.client_id',
+                '=',
+                'clients.id'
+            )
+
+            ->where(
+                'orders.delivery_status',
+                'RTO'
+            )
 
             ->when($request->filled('from_date'), function ($q) use ($request) {
-                $q->whereDate('rto_reports.created_at', '>=', $request->from_date);
+
+                $q->whereDate(
+                    'orders.created_at',
+                    '>=',
+                    $request->from_date
+                );
             })
 
             ->when($request->filled('to_date'), function ($q) use ($request) {
-                $q->whereDate('rto_reports.created_at', '<=', $request->to_date);
+
+                $q->whereDate(
+                    'orders.created_at',
+                    '<=',
+                    $request->to_date
+                );
             })
 
             ->when($request->filled('client_id'), function ($q) use ($request) {
-                $q->where('callingorder.client_id', $request->client_id);
+
+                $q->where(
+                    'orders.client_id',
+                    $request->client_id
+                );
             })
 
             ->when($request->filled('staff_id'), function ($q) use ($request) {
 
                 if ($request->staff_id == 'other') {
 
-                    $q->whereNull('callingorder.assigned_to');
+                    $q->whereNull(
+                        'callingorder.assigned_to'
+                    );
                 } else {
 
-                    $q->where('callingorder.assigned_to', $request->staff_id);
+                    $q->where(
+                        'callingorder.assigned_to',
+                        $request->staff_id
+                    );
                 }
             })
 
             ->selectRaw("
-        COALESCE(calling_users.name, 'Other') as staff_name,
-        COALESCE(clients.client_name, 'Client Mapping Missing') as client_name,
-        COUNT(*) as total_rto
-    ")
+    COALESCE(calling_users.name,'Other') as staff_name,
+    COALESCE(clients.client_name,'Client Mapping Missing') as client_name,
+
+    COUNT(DISTINCT orders.id) as total_rto,
+
+    COUNT(DISTINCT CASE
+        WHEN callingorder.order_source IS NULL
+        THEN orders.id
+    END) as web_rto,
+
+    COUNT(DISTINCT CASE
+        WHEN callingorder.order_source='whatsapp'
+        THEN orders.id
+    END) as whatsapp_rto,
+
+    SUM(
+        CASE
+            WHEN orders.rtorecivedsts=1
+            THEN 1
+            ELSE 0
+        END
+    ) as rto_received
+")
 
             ->groupByRaw("
-        COALESCE(calling_users.name, 'Other'),
-        COALESCE(clients.client_name, 'Client Mapping Missing')
-    ")
+            COALESCE(calling_users.name,'Other'),
+            COALESCE(clients.client_name,'Client Mapping Missing')
+        ")
 
             ->orderByDesc('total_rto')
+
             ->get();
 
+        foreach ($staffCounts as $row) {
+
+            $row->pending_rto =
+                $row->total_rto - $row->rto_received;
+        }
+
         $grandTotal = $staffCounts->sum('total_rto');
+        $grandWeb = $staffCounts->sum('web_rto');
+
+        $grandWhatsapp = $staffCounts->sum('whatsapp_rto');
+
+        $grandReceived = $staffCounts->sum('rto_received');
+
+        $grandPending = $staffCounts->sum('pending_rto');
+        $grandReceived = $staffCounts->sum('rto_received');
+
+        $grandPending = $staffCounts->sum('pending_rto');
 
         $orders = [];
 
-        return view('rto.index', compact(
-            'staffCounts',
-            'grandTotal',
-            'clients',
-            'staffs',
-            'orders'
-        ));
+        return view(
+            'rto.index',
+            compact(
+
+                'staffCounts',
+
+                'grandTotal',
+
+                'grandWeb',
+
+                'grandWhatsapp',
+
+                'grandReceived',
+
+                'grandPending',
+
+                'clients',
+
+                'staffs',
+
+                'orders'
+
+            )
+        );
     }
 
     public function search(Request $request)

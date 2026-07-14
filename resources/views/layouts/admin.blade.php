@@ -194,32 +194,25 @@
             <a href="{{ route('record.create') }}">
                 <i class="bi bi-upload"></i> Import Records
             </a>
-
-
-
-
-
             <a href="{{ route('barcodes') }}">
                 <i class="bi bi-upc-scan"></i> Barcodes
             </a>
-
             <div class="sidebar-dropdown">
                 <div class="sidebar-link">
                     <i class="bi bi-printer"></i>
                     <span>Reports</span>
                     <i class="bi bi-chevron-down ms-auto arrow"></i>
                 </div>
-
                 <div class="sidebar-submenu">
                     <a href="{{ route('orders.list') }}">
-                        <i class="bi bi-truck"></i> Date wise Report
+                        <i class="bi bi-truck"></i>Orders Reports
                     </a>
-
+                    <a href="{{ route('delivered.index') }}">
+                        <i class="bi bi-truck"></i>Delivery Reports
+                    </a>
                     <a href="/rto">
                         <i class="bi bi-receipt"></i> RTO Reports
                     </a>
-
-
                 </div>
             </div>
 

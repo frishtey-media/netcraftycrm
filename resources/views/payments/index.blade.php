@@ -7,22 +7,22 @@
     <div class="container-fluid">
         <div class="row mb-4">
             <!--  <div class="col-lg-2">
-                                                                                    <label class="form-label">Order Source</label>
+                                                                                        <label class="form-label">Order Source</label>
 
-                                                                                    <select name="order_source" class="form-control">
+                                                                                        <select name="order_source" class="form-control">
 
-                                                                                        <option value="">All Orders</option>
+                                                                                            <option value="">All Orders</option>
 
-                                                                                        <option value="web" {{ request('order_source') == 'web' ? 'selected' : '' }}>
-                                                                                            Web
-                                                                                        </option>
+                                                                                            <option value="web" {{ request('order_source') == 'web' ? 'selected' : '' }}>
+                                                                                                Web
+                                                                                            </option>
 
-                                                                                        <option value="whatsapp" {{ request('order_source') == 'whatsapp' ? 'selected' : '' }}>
-                                                                                            WhatsApp
-                                                                                        </option>
+                                                                                            <option value="whatsapp" {{ request('order_source') == 'whatsapp' ? 'selected' : '' }}>
+                                                                                                WhatsApp
+                                                                                            </option>
 
-                                                                                    </select>
-                                                                                </div>-->
+                                                                                        </select>
+                                                                                    </div>-->
             <div class="col-lg-3">
 
                 <div class="card shadow">
@@ -173,8 +173,6 @@
                                 </small>)
 
                             </h2>
-
-
 
                         </div>
 

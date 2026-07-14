@@ -79,6 +79,210 @@ class OrderController extends Controller
                 'Status Updated Successfully.'
             );
     }
+
+    public function deliverindex(Request $request)
+    {
+        $query = Order::query()
+
+            ->leftJoin(
+                'clients',
+                'clients.id',
+                '=',
+                'orders.client_id'
+            )
+
+            ->leftJoin(
+                'callingorder',
+                'callingorder.order_id',
+                '=',
+                'orders.order_id'
+            )
+
+            ->where(
+                'orders.delivery_status',
+                'Delivered'
+            );
+
+        /*
+    |--------------------------------------------------------------------------
+    | Client
+    |--------------------------------------------------------------------------
+    */
+
+        if ($this->isClient()) {
+
+            $query->where(
+                'orders.client_id',
+                $this->clientId()
+            );
+
+            $clients = Client::where(
+                'id',
+                $this->clientId()
+            )->get();
+        } else {
+
+            $clients = Client::orderBy('client_name')->get();
+
+            if ($request->filled('client_id')) {
+
+                $query->where(
+                    'orders.client_id',
+                    $request->client_id
+                );
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Delivery Date
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('from')) {
+
+            $query->whereDate(
+                'orders.delivery_date',
+                '>=',
+                $request->from
+            );
+        }
+
+        if ($request->filled('to')) {
+
+            $query->whereDate(
+                'orders.delivery_date',
+                '<=',
+                $request->to
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Product
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('product')) {
+
+            $query->where(
+                'orders.product',
+                $request->product
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Order Source
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('order_source')) {
+
+            if ($request->order_source == 'web') {
+
+                $query->whereNull(
+                    'callingorder.order_source'
+                );
+            } else {
+
+                $query->where(
+                    'callingorder.order_source',
+                    'whatsapp'
+                );
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('search')) {
+
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'orders.order_id',
+                    'like',
+                    "%{$search}%"
+                )
+
+                    ->orWhere(
+                        'orders.barcode',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'orders.customer_name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'orders.customer_phone',
+                        'like',
+                        "%{$search}%"
+                    );
+            });
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Dashboard
+    |--------------------------------------------------------------------------
+    */
+
+        $totalOrders = (clone $query)->count();
+
+        $totalAmount = (clone $query)->sum(
+            'orders.amount'
+        );
+
+        $products = Order::select('product')
+
+            ->distinct()
+
+            ->orderBy('product')
+
+            ->pluck('product');
+
+        $orders = (clone $query)
+
+            ->select(
+
+                'orders.*',
+
+                'clients.client_name',
+
+                'callingorder.order_source'
+
+            )
+
+            ->latest(
+                'orders.delivery_date'
+            )
+
+            ->paginate(
+                $request->records ?? 100
+            );
+
+        return view(
+            'reports.delivered',
+            compact(
+                'orders',
+                'clients',
+                'products',
+                'totalOrders',
+                'totalAmount'
+            )
+        );
+    }
+
     public function index(Request $request)
     {
         $sortOrder = $request->get('sort_order', 'desc');

@@ -115,6 +115,19 @@ Route::middleware(['auth'])->group(function () {
 
     Route::delete('/admin/orders/delete', [OrderController::class, 'deleteOrdersWithLog'])->name('admin.orders.delete');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.list');
+
+
+    Route::get(
+        '/reports/delivered',
+        [OrderController::class, 'deliverindex']
+    )->name('delivered.index');
+
+    Route::get(
+        '/reports/delivered/export',
+        [OrderController::class, 'deliverExport']
+    )->name('delivered.export');
+
+
     Route::get('/orders/import', [OrderController::class, 'importForm'])->name('orders.import');
     Route::post('/orders/import', [OrderController::class, 'importExcel'])->name('orders.import.post');
 

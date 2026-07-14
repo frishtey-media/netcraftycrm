@@ -155,6 +155,10 @@
                                 <th>Client</th>
                                 <th>Staff</th>
                                 <th>Total RTO</th>
+                                <th>Web RTO</th>
+                                <th>WhatsApp RTO</th>
+                                <th>RTO Received</th>
+                                <th>Pending</th>
                             </tr>
                         </thead>
 
@@ -165,12 +169,28 @@
                                     <td>{{ $row->client_name }}</td>
                                     <td>{{ $row->staff_name }}</td>
                                     <td>{{ $row->total_rto }}</td>
+
+                                    <td>{{ $row->web_rto }}</td>
+
+                                    <td>{{ $row->whatsapp_rto }}</td>
+
+                                    <td>{{ $row->rto_received }}</td>
+
+                                    <td>{{ $row->pending_rto }}</td>
                                 </tr>
                             @endforeach
 
                             <tr class="table-success">
                                 <th colspan="3">Grand Total</th>
-                                <th>{{ $grandTotal }}</th>
+                                <td>{{ $grandTotal }}</td>
+
+                                <td>{{ $grandWeb }}</td>
+
+                                <td>{{ $grandWhatsapp }}</td>
+
+                                <td>{{ $grandReceived }}</td>
+
+                                <td>{{ $grandPending }}</td>
                             </tr>
                         </tbody>
 
