@@ -28,6 +28,8 @@ class PendingPaymentExport implements FromCollection, WithHeadings
                 'orders.client_id'
             )
 
+            ->where('orders.payment_mode', 'COD')   // Only COD Orders
+
             ->where(
                 'orders.delivery_status',
                 'Delivered'

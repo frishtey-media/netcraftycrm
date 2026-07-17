@@ -53,6 +53,7 @@ class ShopifyOrdersImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
+        // dd($rows->first()->toArray());
         $this->availableBarcodes = Barcode::where('client_id', $this->clientId)
             ->where('is_used', 0)
             ->count();
@@ -62,11 +63,11 @@ class ShopifyOrdersImport implements ToCollection, WithHeadingRow
         }
 
         foreach ($rows as $index => $row) {
-
+            // dd($row->toArray());
             if ($this->importedCount >= $this->availableBarcodes) break;
 
             DB::beginTransaction();
-
+            //  Log::info($row->keys()->toArray());
             try {
 
                 /* ================= CORRECT COLUMN READ ================= */
@@ -131,11 +132,12 @@ class ShopifyOrdersImport implements ToCollection, WithHeadingRow
                         $customerPhone = substr($customerPhone, 2);
                     }
                 }
-
+                // dd($row->toArray());
                 /* ================= INSERT ================= */
                 ShopifyOrder::create([
                     'client_id'            => $this->clientId,
                     'order_id'             => $orderId,
+                    'shopify_order_id'     => $row['shopify_orderid'] ?? null,
                     'order_date'           => $orderDate,
                     'shopify_product_name' => $productName,
                     'quantity'             => $quantity,

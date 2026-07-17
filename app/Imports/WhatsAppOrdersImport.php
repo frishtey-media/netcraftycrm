@@ -31,6 +31,8 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
+
+        //dd($rows->first()->toArray());
         DB::transaction(function () use ($rows) {
 
             foreach ($rows as $index => $row) {
@@ -174,10 +176,9 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
                     'client_id' => $this->clientId,
 
                     'order_id' => $row['order_id'],
+                    'shopify_order_id' => $row['shopify_order_id'],
 
-                    'order_date' => $this->parseDate(
-                        $row['date']
-                    ),
+                    'order_date' => $this->importDate,
 
                     'barcode' => $barcode->barcode,
 

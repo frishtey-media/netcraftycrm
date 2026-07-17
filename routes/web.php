@@ -128,6 +128,19 @@ Route::middleware(['auth'])->group(function () {
     )->name('delivered.export');
 
 
+    Route::get(
+        '/reports/staff-delivery-detail',
+        [OrderController::class, 'staffDeliveryDetail']
+    )->name('reports.staff.delivery.detail');
+
+
+
+    Route::get(
+        '/order/staff-summary/export',
+        [OrderController::class, 'exportStaffSummary']
+    )->name('order.staff.export');
+
+
     Route::get('/orders/import', [OrderController::class, 'importForm'])->name('orders.import');
     Route::post('/orders/import', [OrderController::class, 'importExcel'])->name('orders.import.post');
 
@@ -144,10 +157,6 @@ Route::middleware(['auth'])->group(function () {
     )->name('postoffice.export');
     Route::post('/whatsapp-excel-import', [ShopifyOrderController::class, 'whatsappExcelImport'])->name('whatsapp.excel.import');
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
-
-
-
-
 
 
     Route::get('/reports/{type}', [ReportController::class, 'index'])

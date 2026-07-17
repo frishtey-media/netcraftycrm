@@ -44,47 +44,47 @@ class PaymentImport implements ToCollection
             }
 
             // Save Payment History
-            Payment::updateOrCreate(
+            // Skip duplicate article number
+            if (Payment::where('article_number', $article)->exists()) {
+                continue;
+            }
 
-                [
-                    'article_number' => $article
-                ],
+            // Save Payment History
+            Payment::create([
 
-                [
+                'order_id' => optional($order)->id,
 
-                    'order_id' => optional($order)->id,
+                'article_number' => $article,
 
-                    'article_count' => $row[1] ?? 0,
+                'article_count' => $row[1] ?? 0,
 
-                    'cod_invoice_number' => $row[2] ?? '',
+                'cod_invoice_number' => $row[2] ?? '',
 
-                    'delivered_date' => !empty($row[3])
-                        ? Carbon::createFromFormat('d-m-Y', $row[3])->format('Y-m-d')
-                        : null,
+                'delivered_date' => !empty($row[3])
+                    ? Carbon::createFromFormat('d-m-Y', $row[3])->format('Y-m-d')
+                    : null,
 
-                    'cod_value' => $row[4] ?? 0,
+                'cod_value' => $row[4] ?? 0,
 
-                    'cod_commission' => $row[5] ?? 0,
+                'cod_commission' => $row[5] ?? 0,
 
-                    'office_id' => $row[6] ?? '',
+                'office_id' => $row[6] ?? '',
 
-                    'office_name' => $row[7] ?? '',
+                'office_name' => $row[7] ?? '',
 
-                    'customer_id' => $row[8] ?? '',
+                'customer_id' => $row[8] ?? '',
 
-                    'customer_name' => $row[9] ?? '',
+                'customer_name' => $row[9] ?? '',
 
-                    'bill_date' => !empty($row[10])
-                        ? Carbon::createFromFormat('d-m-Y', $row[10])->format('Y-m-d')
-                        : null,
+                'bill_date' => !empty($row[10])
+                    ? Carbon::createFromFormat('d-m-Y', $row[10])->format('Y-m-d')
+                    : null,
 
-                    'contract_id' => $row[11] ?? '',
+                'contract_id' => $row[11] ?? '',
 
-                    'contract_mode' => $row[12] ?? ''
+                'contract_mode' => $row[12] ?? ''
 
-                ]
-
-            );
+            ]);
         }
     }
 }

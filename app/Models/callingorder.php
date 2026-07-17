@@ -17,7 +17,7 @@ class CallingOrder extends Model
 
         'order_id',
         'order_date',
-
+        'shopify_order_id',
         'product_name',
         'shopify_product_name',
 

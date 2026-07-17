@@ -10,6 +10,7 @@ class ShopifyOrder extends Model
     protected $fillable = [
         'client_id',
         'order_id',
+        'shopify_order_id',
         'order_date',
         'product_name',
         'shopify_product_name',

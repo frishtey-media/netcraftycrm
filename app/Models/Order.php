@@ -12,6 +12,7 @@ class Order extends Model
     protected $fillable = [
         'order_id',
         'client_id',
+        'shopify_order_id',
         'date',
         'barcode',
         'payment_mode',

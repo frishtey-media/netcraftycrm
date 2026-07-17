@@ -46,7 +46,7 @@ class SyncShopifyOrders extends Command
                 $url = "https://{$client->shopify_store_url}/admin/api/2026-01/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
             } else {
 
-                $url = "https://{$client->shopify_store_url}/admin/api/2024-04/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
+                $url = "https://{$client->shopify_store_url}/admin/api/2025-10/orders.json?status=any&limit=250&created_at_min={$start}&created_at_max={$end}";
             }
 
             try {
@@ -111,11 +111,16 @@ class SyncShopifyOrders extends Command
                         implode(', ', $noteAddress),
                     ]));
 
-                    $orderId = isset($order['name'])
+                    $orderNumber = isset($order['name'])
                         ? str_replace('#', '', $order['name'])
-                        : $order['id'];
+                        : '';
 
-                    $exists = CallingOrder::where('order_id', $orderId)
+                    $shopifyOrderId = $order['id'];
+
+                    $exists = CallingOrder::where(
+                        'shopify_order_id',
+                        $shopifyOrderId
+                    )
                         ->where('client_id', $client->id)
                         ->exists();
 
@@ -151,8 +156,8 @@ class SyncShopifyOrders extends Command
 
                         'client_id' => $client->id,
 
-                        'order_id' => $orderId,
-
+                        'order_id' => $orderNumber,
+                        'shopify_order_id' => $shopifyOrderId,
                         'order_date' => isset($order['created_at'])
                             ? Carbon::parse($order['created_at'])
                             : now(),

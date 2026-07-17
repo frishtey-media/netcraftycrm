@@ -48,7 +48,30 @@
 
                             </div>
                         @endif
+                        <div class="col-md-2">
+                            <label>Staff</label>
 
+                            <select name="staff_id" class="form-control">
+
+                                <option value="">All Staff</option>
+
+                                @foreach ($staffs as $staff)
+                                    <option value="{{ $staff->id }}"
+                                        {{ request('staff_id') == $staff->id ? 'selected' : '' }}>
+
+                                        {{ $staff->name }}
+
+                                    </option>
+                                @endforeach
+
+                                <option value="other" {{ request('staff_id') == 'other' ? 'selected' : '' }}>
+
+                                    Other
+
+                                </option>
+
+                            </select>
+                        </div>
 
                         <div class="col-md-2">
 
@@ -200,163 +223,264 @@
 
                 <strong>
 
-                    Delivered Orders
+                    Staff Wise Delivered Summary
 
                 </strong>
 
             </div>
 
-            <div class="card-body p-0">
+            <div class="table-responsive">
 
-                <div class="table-responsive">
+                <table class="table table-bordered table-striped mb-0">
 
-                    <table class="table table-bordered table-hover mb-0">
+                    <thead>
 
-                        <thead class="table-dark">
+                        <tr>
 
+                            <th>#</th>
+
+                            <th>Client</th>
+
+                            <th>Staff</th>
+
+                            <th>Total Delivered</th>
+
+                            <th>Web Delivered</th>
+
+                            <th>WhatsApp Delivered</th>
+
+                            <th>Total Amount</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        @forelse($staffSummary as $row)
                             <tr>
 
-                                <th>#</th>
+                                <td>{{ $loop->iteration }}</td>
 
-                                <th>Delivery Date</th>
+                                <td>{{ $row->client_name }}</td>
 
-                                <th>Client</th>
+                                <td>{{ $row->staff_name }}</td>
 
-                                <th>Order ID</th>
+                                <td>{{ $row->total_delivered }}</td>
 
-                                <th>Barcode</th>
+                                <td>{{ $row->web_delivered }}</td>
 
-                                <th>Customer</th>
+                                <td>{{ $row->whatsapp_delivered }}</td>
 
-                                <th>Phone</th>
-
-                                <th>Product</th>
-
-                                <th>Qty</th>
-
-                                <th>Amount</th>
-
-                                <th>Source</th>
-
-                                <th>Status</th>
+                                <td><a
+                                        href="{{ route('reports.staff.delivery.detail', [
+                                            'staff_id' => $row->staff_id ?? 'other',
+                                            'client_id' => request('client_id'),
+                                            'from' => request('from'),
+                                            'to' => request('to'),
+                                        ]) }}">
+                                        ₹{{ number_format($row->total_amount, 2) }}
+                                    </a></td>
 
                             </tr>
 
-                        </thead>
+                        @empty
 
-                        <tbody>
+                            <tr>
 
-                            @forelse($orders as $row)
-                                <tr>
+                                <td colspan="7" class="text-center">
 
-                                    <td>
+                                    No Record Found
 
-                                        {{ $loop->iteration + ($orders->currentPage() - 1) * $orders->perPage() }}
+                                </td>
 
-                                    </td>
+                            </tr>
+                        @endforelse
 
-                                    <td>
+                    </tbody>
 
-                                        {{ \Carbon\Carbon::parse($row->delivery_date)->format('d-m-Y') }}
+                    <tfoot>
 
-                                    </td>
+                        <tr class="table-success">
 
-                                    <td>
+                            <th colspan="3">
 
-                                        {{ $row->client_name }}
+                                Grand Total
 
-                                    </td>
+                            </th>
 
-                                    <td>
+                            <th>{{ $grandDelivered }}</th>
 
-                                        {{ $row->order_id }}
+                            <th>{{ $grandWeb }}</th>
 
-                                    </td>
+                            <th>{{ $grandWhatsapp }}</th>
 
-                                    <td>
+                            <th>₹{{ number_format($grandAmount, 2) }}</th>
 
-                                        {{ $row->barcode }}
+                        </tr>
 
-                                    </td>
+                    </tfoot>
 
-                                    <td>
+                </table>
 
-                                        {{ $row->customer_name }}
+            </div>
 
-                                    </td>
+        </div>
+        <div class="card shadow mt-4">
 
-                                    <td>
+            <div class="card-header">
 
-                                        {{ $row->customer_phone }}
+                <strong>
 
-                                    </td>
+                    Delivered Orders Details
 
-                                    <td>
+                </strong>
 
-                                        {{ $row->product }}
+            </div>
 
-                                    </td>
+            <div class="table-responsive">
 
-                                    <td>
+                <table class="table table-bordered table-striped">
 
-                                        {{ $row->quantity }}
+                    <thead>
 
-                                    </td>
+                        <tr>
 
-                                    <td>
+                            <th>#</th>
 
-                                        ₹{{ number_format($row->amount, 2) }}
+                            <th>Delivery Date</th>
 
-                                    </td>
+                            <th>Client</th>
 
-                                    <td>
+                            <th>Staff</th>
 
-                                        @if ($row->order_source == 'whatsapp')
-                                            <span class="badge bg-success">
+                            <th>Order ID</th>
 
-                                                WhatsApp
+                            <th>Barcode</th>
 
-                                            </span>
-                                        @else
-                                            <span class="badge bg-primary">
+                            <th>Customer</th>
 
-                                                Web
+                            <th>Phone</th>
 
-                                            </span>
-                                        @endif
+                            <th>Product</th>
 
-                                    </td>
+                            <th>Qty</th>
 
-                                    <td>
+                            <th>Amount</th>
 
+                            <th>Source</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        @forelse($orders as $row)
+                            <tr>
+
+                                <td>
+
+                                    {{ $loop->iteration + ($orders->currentPage() - 1) * $orders->perPage() }}
+
+                                </td>
+
+                                <td>
+
+                                    {{ \Carbon\Carbon::parse($row->delivery_date)->format('d-m-Y') }}
+
+                                </td>
+
+                                <td>
+
+                                    {{ $row->client_name }}
+
+                                </td>
+
+                                <td>
+
+                                    {{ $row->staff_name ?? 'Other' }}
+
+                                </td>
+
+                                <td>
+
+                                    {{ $row->order_id }}
+
+                                </td>
+
+                                <td>
+
+                                    {{ $row->barcode }}
+
+                                </td>
+
+                                <td>
+
+                                    {{ $row->customer_name }}
+
+                                </td>
+
+                                <td>
+
+                                    {{ $row->customer_phone }}
+
+                                </td>
+
+                                <td>
+
+                                    {{ $row->product }}
+
+                                </td>
+
+                                <td>
+
+                                    {{ $row->quantity }}
+
+                                </td>
+
+                                <td>
+
+                                    ₹{{ number_format($row->amount, 2) }}
+
+                                </td>
+
+                                <td>
+
+                                    @if ($row->order_source == 'whatsapp')
                                         <span class="badge bg-success">
 
-                                            Delivered
+                                            WhatsApp
 
                                         </span>
+                                    @else
+                                        <span class="badge bg-primary">
 
-                                    </td>
+                                            Web
 
-                                </tr>
+                                        </span>
+                                    @endif
 
-                            @empty
+                                </td>
 
-                                <tr>
+                            </tr>
 
-                                    <td colspan="12" class="text-center">
+                        @empty
 
-                                        No Delivered Orders Found
+                            <tr>
 
-                                    </td>
+                                <td colspan="12" class="text-center">
 
-                                </tr>
-                            @endforelse
+                                    No Delivered Orders Found
 
-                        </tbody>
+                                </td>
 
-                    </table>
+                            </tr>
+                        @endforelse
 
-                </div>
+                    </tbody>
+
+                </table>
 
             </div>
 
@@ -367,7 +491,6 @@
             </div>
 
         </div>
-
     </div>
 
 @endsection

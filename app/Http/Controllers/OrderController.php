@@ -17,6 +17,10 @@ use App\Exports\PostOfficeExport;
 use App\Models\CallingUser;
 use App\Exports\SelectedOrdersExport;
 use Carbon\Carbon;
+use App\Exports\StaffPerformanceExport;
+
+use App\Exports\DeliveredOrdersExport;
+
 
 
 class OrderController extends Controller
@@ -30,7 +34,161 @@ class OrderController extends Controller
     {
         return auth()->user()->client_id;
     }
+    public function staffDeliveryDetail(Request $request)
+    {
+        $query = Order::query()
 
+            ->leftJoin(
+                'callingorder',
+                'callingorder.order_id',
+                '=',
+                'orders.order_id'
+            )
+
+            ->leftJoin(
+                'calling_users',
+                'calling_users.id',
+                '=',
+                'callingorder.assigned_to'
+            )
+
+            ->leftJoin(
+                'clients',
+                'clients.id',
+                '=',
+                'orders.client_id'
+            )
+
+            ->where('orders.delivery_status', 'Delivered');
+
+        // Staff
+        if ($request->filled('staff_id')) {
+
+            if ($request->staff_id == 'other') {
+
+                $query->whereNull('callingorder.assigned_to');
+            } else {
+
+                $query->where(
+                    'callingorder.assigned_to',
+                    $request->staff_id
+                );
+            }
+        }
+
+        // Client
+        if ($request->filled('client_id')) {
+
+            $query->where(
+                'orders.client_id',
+                $request->client_id
+            );
+        }
+
+        // Date
+        if ($request->filled('from')) {
+
+            $query->whereDate(
+                'orders.delivery_date',
+                '>=',
+                $request->from
+            );
+        }
+
+        if ($request->filled('to')) {
+
+            $query->whereDate(
+                'orders.delivery_date',
+                '<=',
+                $request->to
+            );
+        }
+
+        // Web / WhatsApp
+        if ($request->filled('order_source')) {
+
+            if ($request->order_source == 'web') {
+
+                $query->whereNull('callingorder.order_source');
+            } else {
+
+                $query->where(
+                    'callingorder.order_source',
+                    'whatsapp'
+                );
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Product Summary
+    |--------------------------------------------------------------------------
+    */
+
+        $productSummary = (clone $query)
+
+            ->selectRaw("
+            orders.product,
+            COUNT(*) as orders,
+            SUM(orders.quantity) as qty,
+            SUM(orders.amount) as amount
+        ")
+
+            ->groupBy('orders.product')
+
+            ->orderByDesc('amount')
+
+            ->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Order Details
+    |--------------------------------------------------------------------------
+    */
+
+        $orders = (clone $query)
+
+            ->select(
+                'orders.order_id',
+                'orders.barcode',
+                'orders.customer_name',
+                'orders.customer_phone',
+                'orders.city',
+                'orders.state',
+                'orders.product',
+                'orders.quantity',
+                'orders.amount',
+                'orders.delivery_date',
+                'callingorder.order_source'
+            )
+
+            ->latest('orders.delivery_date')
+
+            ->paginate(100);
+
+        /*
+    |--------------------------------------------------------------------------
+    | Cards
+    |--------------------------------------------------------------------------
+    */
+
+        $totalOrders = $productSummary->sum('orders');
+
+        $totalQty = $productSummary->sum('qty');
+
+        $totalAmount = $productSummary->sum('amount');
+
+        return view(
+            'reports.staff_delivery_detail',
+            compact(
+                'orders',
+                'productSummary',
+                'totalOrders',
+                'totalQty',
+                'totalAmount'
+            )
+        );
+    }
     public function getProducts($clientId)
     {
         $products = Order::where('client_id', $clientId)
@@ -231,6 +389,104 @@ class OrderController extends Controller
             });
         }
 
+        $staffSummary = DB::table('orders')
+
+            ->leftJoin(
+                'callingorder',
+                'orders.order_id',
+                '=',
+                'callingorder.order_id'
+            )
+
+            ->leftJoin(
+                'calling_users',
+                'callingorder.assigned_to',
+                '=',
+                'calling_users.id'
+            )
+
+            ->leftJoin(
+                'clients',
+                'orders.client_id',
+                '=',
+                'clients.id'
+            )
+
+            ->where(
+                'orders.delivery_status',
+                'Delivered'
+            )
+
+            // Client
+            ->when($request->filled('client_id'), function ($q) use ($request) {
+                $q->where('orders.client_id', $request->client_id);
+            })
+
+            // Staff
+            ->when($request->filled('staff_id'), function ($q) use ($request) {
+
+                if ($request->staff_id == 'other') {
+
+                    $q->whereNull('callingorder.assigned_to');
+                } else {
+
+                    $q->where(
+                        'callingorder.assigned_to',
+                        $request->staff_id
+                    );
+                }
+            })
+
+            // Delivery Date
+            ->when($request->filled('from'), function ($q) use ($request) {
+
+                $q->whereDate(
+                    'orders.delivery_date',
+                    '>=',
+                    $request->from
+                );
+            })
+
+            ->when($request->filled('to'), function ($q) use ($request) {
+
+                $q->whereDate(
+                    'orders.delivery_date',
+                    '<=',
+                    $request->to
+                );
+            })
+
+            ->selectRaw("
+    callingorder.assigned_to as staff_id,
+
+    COALESCE(calling_users.name,'Other') as staff_name,
+
+    COALESCE(clients.client_name,'No Client') as client_name,
+
+    COUNT(DISTINCT orders.id) as total_delivered,
+
+    COUNT(DISTINCT CASE
+        WHEN callingorder.order_source IS NULL
+        THEN orders.id
+    END) as web_delivered,
+
+    COUNT(DISTINCT CASE
+        WHEN callingorder.order_source='whatsapp'
+        THEN orders.id
+    END) as whatsapp_delivered,
+
+    SUM(orders.amount) as total_amount
+")
+
+            ->groupBy(
+                'callingorder.assigned_to',
+                'calling_users.name',
+                'clients.client_name'
+            )
+
+            ->orderByDesc('total_delivered')
+
+            ->get();
         /*
     |--------------------------------------------------------------------------
     | Dashboard
@@ -253,35 +509,69 @@ class OrderController extends Controller
 
         $orders = (clone $query)
 
+            ->leftJoin(
+                'calling_users',
+                'callingorder.assigned_to',
+                '=',
+                'calling_users.id'
+            )
+
             ->select(
 
                 'orders.*',
 
                 'clients.client_name',
 
-                'callingorder.order_source'
+                'callingorder.order_source',
+
+                'calling_users.name as staff_name'
 
             )
 
-            ->latest(
-                'orders.delivery_date'
-            )
+            ->latest('orders.delivery_date')
 
             ->paginate(
                 $request->records ?? 100
             );
 
+
+        $grandDelivered = $staffSummary->sum('total_delivered');
+
+        $grandWeb = $staffSummary->sum('web_delivered');
+
+        $grandWhatsapp = $staffSummary->sum('whatsapp_delivered');
+
+        $grandAmount = $staffSummary->sum('total_amount');
+        $staffs = CallingUser::orderBy('name')->get();
         return view(
             'reports.delivered',
             compact(
                 'orders',
                 'clients',
                 'products',
+                'staffs',
+
+                'staffSummary',
+
+                'grandDelivered',
+                'grandWeb',
+                'grandWhatsapp',
+                'grandAmount',
+
                 'totalOrders',
                 'totalAmount'
             )
         );
     }
+    public function deliverExport(Request $request)
+    {
+        return Excel::download(
+            new DeliveredOrdersExport($request),
+            'Delivered_Orders_' . now()->format('YmdHis') . '.xlsx'
+        );
+    }
+
+
 
     public function index(Request $request)
     {
@@ -610,8 +900,6 @@ class OrderController extends Controller
 
             $totalOrdersChart[] = $row->total;
         }
-
-
 
 
         $webTrend = (clone $query)
@@ -986,7 +1274,25 @@ class OrderController extends Controller
             ->count();
 
 
+        $totalDeliveredPercent = $totalOrders > 0
+            ? round(($totalDelivered / $totalOrders) * 100, 2)
+            : 0;
 
+        $totalRtoPercent = $totalOrders > 0
+            ? round(($totalRto / $totalOrders) * 100, 2)
+            : 0;
+
+        $totalRtoReceivedPercent = $totalOrders > 0
+            ? round(($totalRtoReceived / $totalOrders) * 100, 2)
+            : 0;
+
+        $totalTransitPercent = $totalOrders > 0
+            ? round(($totalTransit / $totalOrders) * 100, 2)
+            : 0;
+
+        $totalNoStatusPercent = $totalOrders > 0
+            ? round(($totalNoStatus / $totalOrders) * 100, 2)
+            : 0;
         $paymentReceivedPercent = $totalOrders > 0 ? round(($paymentReceivedOrders / $totalOrders) * 100, 2) : 0;
 
         $paymentPendingPercent = $totalOrders > 0 ? round(($paymentPendingOrders / $totalOrders) * 100, 2) : 0;
@@ -1239,6 +1545,12 @@ class OrderController extends Controller
         return view(
             'orders.index',
             compact(
+                'totalDeliveredPercent',
+                'totalRtoPercent',
+                'totalRtoReceivedPercent',
+                'totalTransitPercent',
+                'totalNoStatusPercent',
+
                 'comparePercent',
                 'compareData',
                 'webDeliveredPercent',
@@ -1321,6 +1633,29 @@ class OrderController extends Controller
                 'bestStaff',
                 'staffPerformance'
             )
+        );
+    }
+
+    public function exportStaffSummary(Request $request)
+    {
+        $staffSummary = $this->getStaffSummary($request);
+
+        foreach ($staffSummary as $row) {
+
+            $row->web_percentage =
+                $row->web_orders > 0
+                ? round(($row->web_delivered * 100) / $row->web_orders, 2)
+                : 0;
+
+            $row->whatsapp_percentage =
+                $row->whatsapp_orders > 0
+                ? round(($row->whatsapp_delivered * 100) / $row->whatsapp_orders, 2)
+                : 0;
+        }
+
+        return Excel::download(
+            new StaffPerformanceExport($staffSummary),
+            'Staff_Performance_' . now()->format('YmdHis') . '.xlsx'
         );
     }
     public function exportSelected(Request $request)

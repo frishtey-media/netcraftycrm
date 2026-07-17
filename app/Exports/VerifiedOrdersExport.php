@@ -19,6 +19,7 @@ class VerifiedOrdersExport implements FromCollection, WithHeadings
         return [
             'Order ID',
             'Date',
+            'Shopify Order id',
             'Payment Mode',
             'Amount',
             'Customer Name',
@@ -46,6 +47,7 @@ class VerifiedOrdersExport implements FromCollection, WithHeadings
             return [
                 $o->order_id,
                 $o->order_date,
+                $o->shopify_order_id,
                 $o->payment_mode,
                 $o->amount,
                 $o->customer_name,

@@ -37,12 +37,15 @@ class PaymentController extends Controller
 
         $query = Payment::query()
 
-            ->leftJoin(
-                'orders',
-                'orders.barcode',
-                '=',
-                'payments.article_number'
-            )
+            ->leftJoin('orders', function ($join) {
+
+                $join->on('orders.barcode', '=', 'payments.article_number')
+                    ->whereIn('orders.payment_mode', [
+                        'COD',
+                        'cod',
+                        'Cash on Delivery'
+                    ]);
+            })
 
             ->leftJoin(
                 'callingorder',
@@ -192,22 +195,29 @@ class PaymentController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $totalArticles = (clone $query)->count();
+        $totalArticles = (clone $query)
+            ->distinct('payments.id')
+            ->count('payments.id');
 
         $totalAmount = (clone $query)
             ->sum('payments.cod_value');
+
 
         $matchedArticles = (clone $query)
 
             ->whereNotNull('orders.id')
 
-            ->count();
+            ->distinct('payments.id')
+
+            ->count('payments.id');
 
         $unMatchedArticles = (clone $query)
 
             ->whereNull('orders.id')
 
-            ->count();
+            ->distinct('payments.id')
+
+            ->count('payments.id');
 
 
 
@@ -216,7 +226,6 @@ class PaymentController extends Controller
         | Client Wise Summary
         |--------------------------------------------------------------------------
         */
-
         $clientSummary = (clone $query)
 
             ->whereNotNull('orders.id')
@@ -227,18 +236,15 @@ class PaymentController extends Controller
 
                 'clients.client_name',
 
-                DB::raw('COUNT(payments.id) as articles'),
+                DB::raw('COUNT(DISTINCT payments.id) as articles'),
 
                 DB::raw('SUM(payments.cod_value) as amount')
 
             )
 
             ->groupBy(
-
                 'clients.id',
-
                 'clients.client_name'
-
             )
 
             ->orderByDesc('amount')
@@ -279,7 +285,13 @@ class PaymentController extends Controller
                 'clients.id',
                 '=',
                 'orders.client_id'
-            );
+            )
+
+            ->whereIn('orders.payment_mode', [
+                'COD',
+                'cod',
+                'Cash on Delivery'
+            ]);
 
         // Client
         if ($this->isClient()) {
@@ -425,7 +437,7 @@ class PaymentController extends Controller
 
                 'orders.product',
 
-                DB::raw('COUNT(payments.id) as articles'),
+                DB::raw('COUNT(DISTINCT payments.id) as articles'),
 
                 DB::raw('SUM(payments.cod_value) as amount')
 
@@ -442,7 +454,7 @@ class PaymentController extends Controller
 
                 'payments.bill_date',
 
-                DB::raw('COUNT(payments.id) as articles'),
+                DB::raw('COUNT(DISTINCT payments.id) as articles'),
 
                 DB::raw('SUM(payments.cod_value) as amount')
 
@@ -461,19 +473,38 @@ class PaymentController extends Controller
 */
 
         $webArticles = (clone $query)
-            ->whereNull('callingorder.order_source')
-            ->count();
+
+            ->where(function ($q) {
+
+                $q->whereNull('callingorder.order_source')
+                    ->orWhere('callingorder.order_source', '');
+            })
+
+            ->distinct('payments.id')
+
+            ->count('payments.id');
 
         $whatsappArticles = (clone $query)
+
             ->where('callingorder.order_source', 'whatsapp')
-            ->count();
+
+            ->distinct('payments.id')
+
+            ->count('payments.id');
 
         $webAmount = (clone $query)
-            ->whereNull('callingorder.order_source')
-            ->sum('payments.cod_value');
 
+            ->where(function ($q) {
+
+                $q->whereNull('callingorder.order_source')
+                    ->orWhere('callingorder.order_source', '');
+            })
+
+            ->sum('payments.cod_value');
         $whatsappAmount = (clone $query)
+
             ->where('callingorder.order_source', 'whatsapp')
+
             ->sum('payments.cod_value');
 
 
@@ -523,6 +554,8 @@ class PaymentController extends Controller
 
             )
 
+            ->distinct('payments.id')
+
             ->latest('payments.bill_date')
 
             ->paginate($request->records ?? 100);
@@ -571,8 +604,13 @@ class PaymentController extends Controller
                 'clients.id',
                 '=',
                 'orders.client_id'
-            );
+            )
 
+            ->whereIn('orders.payment_mode', [
+                'COD',
+                'cod',
+                'Cash on Delivery'
+            ]);
         /*
     |--------------------------------------------------------------------------
     | Client Filter

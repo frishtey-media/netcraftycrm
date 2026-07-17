@@ -9,6 +9,9 @@ use App\Exports\PostOfficeMultiSheetExport;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\DB;
+use App\Models\Client;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class PostOfficeExportController extends Controller
 {
@@ -235,51 +238,36 @@ class PostOfficeExportController extends Controller
             |--------------------------------------------------------------------------
             */
 
-                Order::create([
+                $newOrder = Order::create([
 
                     'order_id'          => $order->order_id,
 
                     'client_id'         => $order->client_id,
-
                     'date'              => $order->order_date,
-
                     'barcode'           => $order->barcode,
-
                     'payment_mode'      => $order->payment_mode,
-
                     'amount'            => $order->amount,
-
                     'customer_name'     => $order->customer_name,
-
                     'father_name'       => $order->father_name,
-
                     'customer_phone'    => $order->customer_phone,
-
                     'shipping_address'  => $order->shipping_address,
-
                     'city'              => $order->city,
-
                     'state'             => $order->state,
-
                     'pincode'           => ltrim($order->pincode, "'"),
-
                     'product'           => $order->shopify_product_name,
-
                     'quantity'          => $order->quantity,
-
                     'weight'            => $order->total_weight ?? $order->weight,
 
-                    /*
-                |--------------------------------------------------------------------------
-                | Preserve Import Date
-                |--------------------------------------------------------------------------
-                */
+                    // IMPORTANT
+                    'shopify_order_id'  => $order->shopify_order_id,
 
                     'created_at'        => $order->created_at,
-
                     'updated_at'        => $order->updated_at,
 
                 ]);
+
+
+                $this->shopifyFulfillment($newOrder);
             }
 
             DB::commit();
@@ -313,13 +301,280 @@ class PostOfficeExportController extends Controller
 | COPY SHOPIFY ORDERS TO ORDERS TABLE
 |--------------------------------------------------------------------------
 */
+    private function shopifyFulfillment(Order $order)
+    {
+        if (empty($order->barcode)) {
+            return false;
+        }
 
+        $client = Client::find($order->client_id);
 
+        if (!$client) {
+            return false;
+        }
+
+        try {
+
+            $fulfillmentOrderId = $this->getFulfillmentOrderId(
+                $client,
+                $order->shopify_order_id
+            );
+
+            $response = Http::withHeaders([
+
+                'X-Shopify-Access-Token' => $client->shopify_access_token,
+
+                'Content-Type' => 'application/json',
+
+            ])->post(
+
+                "https://{$client->shopify_store_url}/admin/api/2024-04/fulfillments.json",
+
+                [
+
+                    "fulfillment" => [
+
+                        "line_items_by_fulfillment_order" => [
+
+                            [
+
+                                "fulfillment_order_id" => $fulfillmentOrderId
+
+                            ]
+
+                        ],
+
+                        "tracking_info" => [
+
+                            "number" => $order->barcode,
+
+                            "company" => "India Post"
+
+                        ],
+
+                        "notify_customer" => true
+
+                    ]
+
+                ]
+
+            );
+
+            if (!$response->successful()) {
+
+                Log::error(
+
+                    "Shopify Fulfillment Failed",
+
+                    [
+
+                        'order_id' => $order->order_id,
+
+                        'response' => $response->body()
+
+                    ]
+
+                );
+
+                return false;
+            }
+
+            return true;
+        } catch (\Exception $e) {
+
+            Log::error(
+
+                "Shopify Fulfillment Exception",
+
+                [
+
+                    'order_id' => $order->order_id,
+
+                    'message' => $e->getMessage()
+
+                ]
+
+            );
+
+            return false;
+        }
+    }
+
+    private function getFulfillmentOrderId(Client $client, $shopifyOrderId)
+    {
+        $response = Http::withHeaders([
+
+            'X-Shopify-Access-Token' => $client->shopify_access_token,
+
+            'Content-Type' => 'application/json'
+
+        ])->get(
+
+            "https://{$client->shopify_store_url}/admin/api/2024-04/orders/{$shopifyOrderId}/fulfillment_orders.json"
+
+        );
+
+        if (!$response->successful()) {
+
+            throw new \Exception($response->body());
+        }
+
+        $data = $response->json();
+
+        if (empty($data['fulfillment_orders'])) {
+
+            throw new \Exception("Fulfillment Order Not Found");
+        }
+
+        return $data['fulfillment_orders'][0]['id'];
+    }
     /*
 |--------------------------------------------------------------------------
 | EXPORT SELECTED ORDERS
 |--------------------------------------------------------------------------
 */
+
+    public function fulfillOrder(Order $order)
+    {
+        $client = Client::findOrFail($order->client_id);
+
+        if (empty($order->barcode)) {
+
+            return false;
+        }
+
+        $fulfillmentOrderId = $this->getFulfillmentOrderId(
+            $client,
+            $order->shopify_order_id
+        );
+
+        $response = Http::withHeaders([
+
+            'X-Shopify-Access-Token' => $client->shopify_access_token,
+
+            'Content-Type' => 'application/json'
+
+        ])->post(
+
+            "https://{$client->shopify_store_url}/admin/api/2024-04/fulfillments.json",
+
+            [
+
+                "fulfillment" => [
+
+                    "line_items_by_fulfillment_order" => [
+
+                        [
+
+                            "fulfillment_order_id" => $fulfillmentOrderId
+
+                        ]
+
+                    ],
+
+                    "tracking_info" => [
+
+                        "number" => $order->barcode,
+
+                        "company" => "India Post"
+
+                    ],
+
+                    "notify_customer" => true
+
+                ]
+
+            ]
+
+        );
+
+        if (!$response->successful()) {
+
+            throw new \Exception(
+
+                "Fulfillment Failed : "
+
+                    . $response->body()
+
+            );
+        }
+
+        return $response->json();
+    }
+
+
+    public function updateTracking($fulfillmentId, Order $order)
+    {
+        $client = Client::findOrFail($order->client_id);
+
+        $response = Http::withHeaders([
+
+            'X-Shopify-Access-Token' => $client->shopify_access_token,
+
+            'Content-Type' => 'application/json'
+
+        ])->put(
+
+            "https://{$client->shopify_store_url}/admin/api/2024-04/fulfillments/{$fulfillmentId}/update_tracking.json",
+
+            [
+
+                "fulfillment" => [
+
+                    "notify_customer" => true,
+
+                    "tracking_info" => [
+
+                        "number" => $order->barcode,
+
+                        "company" => "India Post"
+
+                    ]
+
+                ]
+
+            ]
+
+        );
+
+        if (!$response->successful()) {
+
+            throw new \Exception(
+
+                "Tracking Update Failed"
+
+            );
+        }
+
+        return $response->json();
+    }
+
+
+    public function cancelFulfillment($fulfillmentId, Client $client)
+    {
+        $response = Http::withHeaders([
+
+            'X-Shopify-Access-Token' => $client->shopify_access_token,
+
+            'Content-Type' => 'application/json'
+
+        ])->post(
+
+            "https://{$client->shopify_store_url}/admin/api/2024-04/fulfillments/{$fulfillmentId}/cancel.json"
+
+        );
+
+        if (!$response->successful()) {
+
+            throw new \Exception(
+
+                "Cancel Failed"
+
+            );
+        }
+
+        return true;
+    }
 
     public function postOfficeExcel(Request $request)
     {
