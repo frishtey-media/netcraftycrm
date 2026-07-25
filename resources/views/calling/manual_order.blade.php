@@ -340,8 +340,7 @@
 
                             </label>
 
-                            <input type="text" name="customer_phone" id="customer_phone" class="form-control" required
-                                readonly>
+                            <input type="text" name="customer_phone" id="customer_phone" class="form-control" required>
 
                         </div>
 
@@ -384,6 +383,9 @@
 
                                 <option value="cancel">
                                     Cancel
+                                </option>
+                                <option value="Other">
+                                    Other
                                 </option>
 
                             </select>

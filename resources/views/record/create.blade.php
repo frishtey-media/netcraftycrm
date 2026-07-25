@@ -346,6 +346,9 @@
                                 <option value="cancel">
                                     Cancel
                                 </option>
+                                <option value="Other">
+                                    Other
+                                </option>
 
                             </select>
 
@@ -417,13 +420,13 @@
 
                 <!--  <div class="mb-3">
 
-                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                                        data-bs-target="#bulkImportModal">
-                                        <i class="fas fa-upload"></i>
-                                        Bulk Order Import
-                                    </button>
+                                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                                    data-bs-target="#bulkImportModal">
+                                                    <i class="fas fa-upload"></i>
+                                                    Bulk Order Import
+                                                </button>
 
-                                </div>-->
+                                            </div>-->
 
                 <div class="card-header bg-success text-white">
 

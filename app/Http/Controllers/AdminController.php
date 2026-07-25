@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\conversation;
 use App\Models\Payment;
 
+use App\Exports\StaffPerformanceOrdersExport;
+
 class AdminController extends Controller
 {
 
@@ -265,63 +267,387 @@ class AdminController extends Controller
 
     public function orderDetails(Request $request)
     {
-        $from = Carbon::parse($request->from)->startOfDay();
-        $to   = Carbon::parse($request->to)->endOfDay();
+        /*
+    |--------------------------------------------------------------------------
+    | Staff
+    |--------------------------------------------------------------------------
+    */
 
+        $request->validate([
+            'staff_id' => 'required|exists:calling_users,id',
+        ]);
 
         $staff = CallingUser::findOrFail($request->staff_id);
 
-        $query = CallingOrder::where(
-            'assigned_to',
-            $request->staff_id
-        )
+
+        /*
+    |--------------------------------------------------------------------------
+    | Date Range
+    |--------------------------------------------------------------------------
+    */
+
+        $from = $request->filled('from')
+            ? Carbon::parse($request->from)->startOfDay()
+            : Carbon::today()->startOfDay();
+
+        $to = $request->filled('to')
+            ? Carbon::parse($request->to)->endOfDay()
+            : Carbon::today()->endOfDay();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Base Query
+    |--------------------------------------------------------------------------
+    */
+
+        $query = CallingOrder::query()
+            ->where('assigned_to', $request->staff_id)
             ->whereBetween('updated_at', [$from, $to]);
 
-        // Summary Counts (ALL RECORDS)
+
+        // ======================================================
+        // ORDER SOURCE FILTER
+        // ======================================================
+
+        if ($request->filled('order_source')) {
+
+            if ($request->order_source === 'web') {
+
+                // Existing Web records can have NULL / empty / web
+                $query->where(function ($q) {
+
+                    $q->whereNull('order_source')
+                        ->orWhere('order_source', '')
+                        ->orWhereRaw('LOWER(TRIM(order_source)) = ?', ['web']);
+                });
+            } elseif ($request->order_source === 'whatsapp') {
+
+                $query->whereRaw(
+                    'LOWER(TRIM(order_source)) = ?',
+                    ['whatsapp']
+                );
+            }
+        }
+
+
+
+
+
+        // ======================================================
+        // STATUS FILTER
+        // ======================================================
+
+        if ($request->filled('status')) {
+
+            if ($request->status === 'other') {
+
+                $query->where(function ($q) {
+
+                    $q->whereNotIn('status', [
+                        'pending',
+                        'verified',
+                        'cancel',
+                        'not_reachable',
+                        'same_order'
+                    ])
+                        ->orWhereNull('status');
+                });
+            } else {
+
+                $query->where(
+                    'status',
+                    $request->status
+                );
+            }
+        }
+
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('search')) {
+
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where('order_id', 'LIKE', "%{$search}%")
+                    ->orWhere('customer_name', 'LIKE', "%{$search}%")
+                    ->orWhere('customer_phone', 'LIKE', "%{$search}%")
+                    ->orWhere('product_name', 'LIKE', "%{$search}%")
+                    ->orWhere('remarks', 'LIKE', "%{$search}%");
+            });
+        }
+
+
+
+
+        $summaryQuery = clone $query;
+
+
+
+
+        // ======================================================
+        // SUMMARY COUNTS
+        // ======================================================
 
         $totalOrders = (clone $query)->count();
+
+        $webOrders = (clone $query)
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', 'web');
+            })
+            ->count();
+
+        $whatsappOrders = (clone $query)
+            ->where('order_source', 'whatsapp')
+            ->count();
+
+
+        // ======================================================
+        // PENDING
+        // ======================================================
+
+        $pendingOrders = (clone $query)
+            ->where('status', 'pending')
+            ->count();
+
+        $pendingWeb = (clone $query)
+            ->where('status', 'pending')
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', 'web');
+            })
+            ->count();
+
+        $pendingWhatsapp = (clone $query)
+            ->where('status', 'pending')
+            ->where('order_source', 'whatsapp')
+            ->count();
+
+
+        // ======================================================
+        // VERIFIED
+        // ======================================================
 
         $verifiedOrders = (clone $query)
             ->where('status', 'verified')
             ->count();
-        $pendingOrders = (clone $query)
-            ->where('status', 'pending')
+
+        $verifiedWeb = (clone $query)
+            ->where('status', 'verified')
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', 'web');
+            })
             ->count();
+
+        $verifiedWhatsapp = (clone $query)
+            ->where('status', 'verified')
+            ->where('order_source', 'whatsapp')
+            ->count();
+
+
+        // ======================================================
+        // CANCEL
+        // ======================================================
+
         $cancelOrders = (clone $query)
             ->where('status', 'cancel')
             ->count();
+
+        $cancelWeb = (clone $query)
+            ->where('status', 'cancel')
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', 'web');
+            })
+            ->count();
+
+        $cancelWhatsapp = (clone $query)
+            ->where('status', 'cancel')
+            ->where('order_source', 'whatsapp')
+            ->count();
+
+
+        // ======================================================
+        // NOT REACHABLE
+        // ======================================================
 
         $notReachableOrders = (clone $query)
             ->where('status', 'not_reachable')
             ->count();
 
+        $notReachableWeb = (clone $query)
+            ->where('status', 'not_reachable')
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', 'web');
+            })
+            ->count();
+
+        $notReachableWhatsapp = (clone $query)
+            ->where('status', 'not_reachable')
+            ->where('order_source', 'whatsapp')
+            ->count();
+
+
+        // ======================================================
+        // SAME ORDER
+        // ======================================================
+
         $sameOrderOrders = (clone $query)
             ->where('status', 'same_order')
             ->count();
 
-        $pendingOrders = (clone $query)
-            ->where('status', 'pending')
+        $sameOrderWeb = (clone $query)
+            ->where('status', 'same_order')
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', 'web');
+            })
             ->count();
 
-        // Table Data
+        $sameOrderWhatsapp = (clone $query)
+            ->where('status', 'same_order')
+            ->where('order_source', 'whatsapp')
+            ->count();
+
+
+        // ======================================================
+        // OTHER
+        // Any status outside our standard statuses
+        // ======================================================
+
+        $standardStatuses = [
+            'pending',
+            'verified',
+            'cancel',
+            'not_reachable',
+            'same_order'
+        ];
+
+        $otherOrders = (clone $query)
+            ->where(function ($q) use ($standardStatuses) {
+                $q->whereNotIn('status', $standardStatuses)
+                    ->orWhereNull('status');
+            })
+            ->count();
+
+        $otherWeb = (clone $query)
+            ->where(function ($q) use ($standardStatuses) {
+                $q->whereNotIn('status', $standardStatuses)
+                    ->orWhereNull('status');
+            })
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', 'web');
+            })
+            ->count();
+
+        $otherWhatsapp = (clone $query)
+            ->where(function ($q) use ($standardStatuses) {
+                $q->whereNotIn('status', $standardStatuses)
+                    ->orWhereNull('status');
+            })
+            ->where('order_source', 'whatsapp')
+            ->count();
+
+
+        // ======================================================
+        // PAYMENT
+        // ======================================================
+
+        $codOrders = (clone $query)
+            ->whereIn('payment_mode', ['COD', 'cod'])
+            ->count();
+
+        $prepaidOrders = (clone $query)
+            ->whereIn('payment_mode', ['Prepaid', 'prepaid', 'PREPAID'])
+            ->count();
+
+
+
+        //  $clients = Client::orderBy('client_name')->get();
 
         $orders = (clone $query)
             ->with('client')
-            ->latest()
-            ->paginate(100);
-
+            ->orderByDesc('updated_at')
+            ->paginate(100)
+            ->withQueryString();
         return view('performance-orders', compact(
+
             'orders',
             'staff',
+            'from',
+            'to',
+
             'totalOrders',
+            'webOrders',
+            'whatsappOrders',
+
+            'pendingOrders',
+            'pendingWeb',
+            'pendingWhatsapp',
+
             'verifiedOrders',
+            'verifiedWeb',
+            'verifiedWhatsapp',
+
             'cancelOrders',
+            'cancelWeb',
+            'cancelWhatsapp',
+
             'notReachableOrders',
+            'notReachableWeb',
+            'notReachableWhatsapp',
+
             'sameOrderOrders',
-            'pendingOrders'
+            'sameOrderWeb',
+            'sameOrderWhatsapp',
+
+            'otherOrders',
+            'otherWeb',
+            'otherWhatsapp',
+
+            'codOrders',
+            'prepaidOrders'
         ));
     }
+    public function exportOrderDetails(Request $request)
+    {
+        $request->validate([
+            'staff_id' => 'required|exists:calling_users,id',
+        ]);
 
+        $staff = CallingUser::findOrFail(
+            $request->staff_id
+        );
+
+
+        $fileName =
+            'Performance-'
+            . str_replace(
+                ' ',
+                '-',
+                $staff->name
+            )
+            . '-'
+            . now()->format('d-m-Y-H-i-s')
+            . '.xlsx';
+
+
+        return Excel::download(
+            new StaffPerformanceOrdersExport($request),
+            $fileName
+        );
+    }
     public function shiftOrders(Request $request)
     {
         // Client Block

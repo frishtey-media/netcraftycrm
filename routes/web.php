@@ -209,7 +209,10 @@ Route::middleware(['auth'])->group(function () {
         '/performance/orders',
         [AdminController::class, 'orderDetails']
     )->name('performance.orders');
-
+    Route::get(
+        '/performance/orders/export',
+        [AdminController::class, 'exportOrderDetails']
+    )->name('performance.orders.export');
     Route::prefix('reports')->group(function () {
 
         Route::get(

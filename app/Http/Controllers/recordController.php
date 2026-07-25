@@ -14,31 +14,9 @@ use App\Models\callingorder;
 use App\Models\CallingUser;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\BulkOrderImport;
-use Carbon\Carbon;
 
 class RecordController extends Controller
 {
-
-
-    private function normalizePhone($phone)
-    {
-        $phone = preg_replace('/\D+/', '', (string) $phone);
-
-        if (strlen($phone) === 12 && str_starts_with($phone, '91')) {
-            $phone = substr($phone, 2);
-        }
-
-        if (strlen($phone) === 11 && str_starts_with($phone, '0')) {
-            $phone = substr($phone, 1);
-        }
-
-        if (strlen($phone) > 10) {
-            $phone = substr($phone, -10);
-        }
-
-        return $phone;
-    }
-
 
     public function create()
     {
@@ -86,328 +64,109 @@ class RecordController extends Controller
     }
     public function store(Request $request)
     {
-        /*
-    |--------------------------------------------------------------------------
-    | Common Validation
-    |--------------------------------------------------------------------------
-    */
-
         $request->validate([
-
-            'client_id' => 'required|exists:clients,id',
-
-            'assigned_to' => 'required',
-
-            'created_at' => 'required|date',
-
-            'customer_phone' => 'required',
-
-            'status' => 'required|in:verified,pending,not_reachable,same_order,cancel',
-
+            'client_id'                 => 'required',
+            'assigned_to'               => 'required',
+            'products'                  => 'required|array|min:1',
+            'products.*.product'        => 'required',
+            'created_at'                => 'required|date',
+            'products.*.quantity'       => 'required|integer|min:1',
+            'customer_name'             => 'required',
+            'customer_phone'            => 'required',
+            'payment_mode'              => 'required',
+            'age'                       => 'required',
+            'amount'                    => 'required|numeric',
+            'status' => 'required|in:verified,pending,not_reachable,same_order,cancel,Other',
         ]);
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Normalize Phone
-    |--------------------------------------------------------------------------
-    */
-
-        $phone = $this->normalizePhone(
-            $request->customer_phone
-        );
-
-
-        if (strlen($phone) !== 10) {
-
-            return back()
-                ->withInput()
-                ->with(
-                    'error',
-                    'Invalid customer mobile number.'
-                );
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Staff
-    |--------------------------------------------------------------------------
-    */
-
-        $staff = CallingUser::findOrFail(
-            $request->assigned_to
-        );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Generate Order ID
-    |--------------------------------------------------------------------------
-    */
-
-        $selectedDate = Carbon::parse(
-            $request->created_at
-        );
-
+        $staff = CallingUser::findOrFail($request->assigned_to);
 
         $name = trim($staff->name);
 
-
         $shortName =
-            strtoupper(substr($name, 0, 1))
-            .
+            strtoupper(substr($name, 0, 1)) .
             strtolower(substr($name, -1));
 
+        $date = now()->format('d-m-y');
 
-        $date = $selectedDate->format('d-m-y');
-
-
-        $count = CallingOrder::where(
-            'assigned_to',
-            $staff->id
-        )
-            ->whereDate(
-                'created_at',
-                $selectedDate
-            )
+        $todayCount = CallingOrder::whereDate('created_at', today())
+            ->where('assigned_to', $staff->id)
             ->count() + 1;
 
-
-        $orderId =
-            $shortName
-            . '-'
-            . $date
-            . '-'
-            . $count;
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | NON VERIFIED LEAD
-    |--------------------------------------------------------------------------
-    */
-
-        if ($request->status !== 'verified') {
-
-            $request->validate([
-
-                'remarks' => 'required|string|max:1000',
-
-            ]);
-
-
-            CallingOrder::create([
-
-                'client_id' => $request->client_id,
-
-                'assigned_to' => $request->assigned_to,
-
-                'order_id' => $orderId,
-
-                'order_date' => $selectedDate,
-
-                'customer_phone' => $phone,
-
-                'status' => $request->status,
-
-                'remarks' => $request->remarks,
-
-                'order_source' => 'whatsapp',
-
-                'created_at' => $selectedDate,
-
-                'updated_at' => $selectedDate,
-
-            ]);
-
-
-            return back()->with(
-
-                'success',
-
-                ucfirst(
-                    str_replace(
-                        '_',
-                        ' ',
-                        $request->status
-                    )
-                )
-                    . ' lead saved successfully.'
-
-            );
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | VERIFIED VALIDATION
-    |--------------------------------------------------------------------------
-    */
-
-        $request->validate([
-
-            'products' => 'required|array|min:1',
-
-            'products.*.product' =>
-            'required|string',
-
-            'products.*.quantity' =>
-            'required|integer|min:1',
-
-            'customer_name' =>
-            'required|string',
-
-            'payment_mode' =>
-            'required',
-
-            'age' =>
-            'required',
-
-            'amount' =>
-            'required|numeric',
-
-            'shipping_pincode' =>
-            'required',
-
-            'shipping_address_line1' =>
-            'required',
-
-        ]);
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Product Calculation
-    |--------------------------------------------------------------------------
-    */
+        $orderId = $shortName . '-' . $date . '-' . $todayCount;
 
         $productNames = [];
-
         $totalQty = 0;
-
         $totalWeight = 0;
-
 
         foreach ($request->products as $product) {
 
-            $productName =
-                trim($product['product']);
+            $productNames[] = $product['product'];
 
+            $qty = $product['quantity'];
 
-            $qty =
-                (int) $product['quantity'];
-
-
-            $weight =
-                (float) ($product['weight'] ?? 0);
-
-
-            $productNames[] =
-                $productName
-                . ' (Qty: '
-                . $qty
-                . ')';
-
+            $weight = $product['weight'] ?? 0;
 
             $totalQty += $qty;
 
-
-            $totalWeight +=
-                ($qty * $weight);
+            $totalWeight += ($qty * $weight);
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | VERIFIED ORDER SAVE
-    |--------------------------------------------------------------------------
-    */
 
         CallingOrder::create([
 
-            'client_id' =>
-            $request->client_id,
+            'client_id' => $request->client_id,
 
-            'assigned_to' =>
-            $request->assigned_to,
+            'assigned_to' => $request->assigned_to,
 
-            'order_id' =>
-            $orderId,
+            'order_id' => $orderId,
 
-            'order_date' =>
-            $selectedDate,
+            'order_date' => $request->date ?? now(),
 
-            'product_name' =>
-            implode(', ', $productNames),
+            'product_name' => implode(', ', $productNames),
 
-            'shopify_product_name' =>
-            implode(', ', $productNames),
+            'shopify_product_name' => implode(', ', $productNames),
 
-            'quantity' =>
-            $totalQty,
+            'quantity' => $totalQty,
 
-            'weight' =>
-            $totalWeight,
+            'weight' => $totalWeight,
 
-            'total_weight' =>
-            $totalWeight,
+            'total_weight' => $totalWeight,
 
-            'customer_name' =>
-            $request->customer_name,
+            'customer_name' => $request->customer_name,
 
-            'father_name' =>
-            $request->father_name,
+            'father_name' => $request->father_name,
 
-            'age' =>
-            $request->age,
+            'age' => $request->age,
 
-            'customer_phone' =>
-            $phone,
+            'customer_phone' => $request->customer_phone,
 
-            'shipping_address' =>
-            trim(
-                ($request->shipping_address_line1 ?? '')
-                    . ' '
-                    . ($request->shipping_address_line2 ?? '')
+            'shipping_address' => trim(
+                ($request->shipping_address_line1 ?? '') . ' ' .
+                    ($request->shipping_address_line2 ?? '')
             ),
 
-            'city' =>
-            $request->city,
+            'city' => $request->city,
 
-            'state' =>
-            $request->state,
+            'state' => $request->state,
 
-            'pincode' =>
-            $request->shipping_pincode,
+            'pincode' => $request->shipping_pincode,
 
-            'payment_mode' =>
-            $request->payment_mode,
+            'payment_mode' => $request->payment_mode,
 
-            'amount' =>
-            $request->amount,
+            'amount' => $request->amount,
 
-            'status' =>
-            'verified',
+            'status' => 'verified',
 
-            'remarks' =>
-            $request->verified_remarks,
+            'order_source' => 'whatsapp',
+            'created_at' => \Carbon\Carbon::parse($request->created_at),
 
-            'order_source' =>
-            'whatsapp',
-
-            'created_at' =>
-            $selectedDate,
-
-            'updated_at' =>
-            $selectedDate,
-
+            'updated_at' => \Carbon\Carbon::parse($request->created_at),
         ]);
-
+        $productCount = count($request->products);
 
         return back()->with(
             'success',
-            "Verified order {$orderId} saved successfully."
+            "Order Saved Successfully. {$productCount} products added with total quantity {$totalQty}."
         );
     }
 

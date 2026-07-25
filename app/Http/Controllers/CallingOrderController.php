@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-use App\Models\CallingOrder;
+use App\Models\callingorder;
 use App\Models\Client;
 use App\Models\ClientProduct;
 
@@ -361,7 +361,7 @@ class CallingOrderController extends Controller
             'required',
 
             'status' =>
-            'required|in:verified,pending,not_reachable,same_order,cancel',
+            'required|in:verified,pending,not_reachable,same_order,cancel,Other',
 
         ]);
 
