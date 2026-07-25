@@ -401,8 +401,8 @@ class AdminController extends Controller
                 ->get();
 
             // client can assign orders
-            $allStaff = CallingUser::all();
-
+            $allStaff = CallingUser::where('status', '1')->get();
+            //   dd($allStaff->pluck('name', 'status'));
             return view('ordersdashboard', [
                 'ordersData' => $ordersData,
                 'waClients'  => $waClients,

@@ -36,7 +36,7 @@ class CallingOrder extends Model
         'age',
         'payment_mode',
         'amount',
-
+        'remarks',
         'status',
         'order_source',
         'created_at',

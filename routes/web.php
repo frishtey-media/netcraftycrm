@@ -28,7 +28,9 @@ use App\Models\CallingOrder;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExtreportController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\RepeatCustomerController;
 
+//dd(base_path());
 
 require __DIR__ . '/inventory.php';
 
@@ -134,6 +136,11 @@ Route::middleware(['auth'])->group(function () {
     )->name('reports.staff.delivery.detail');
 
 
+    Route::get(
+        '/record/customer-history',
+        [RepeatCustomerController::class, 'customerHistory']
+    )->name('record.customer.history');
+
 
     Route::get(
         '/order/staff-summary/export',
@@ -159,11 +166,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
 
 
-    Route::get('/reports/{type}', [ReportController::class, 'index'])
-        ->name('reports.index');
 
-    Route::get('/reports/export/{type}', [ReportController::class, 'export'])
-        ->name('reports.export');
 
 
     Route::post(
@@ -177,6 +180,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/record/create', [RecordController::class, 'create'])->name('record.create');
     Route::post('/record/store', [RecordController::class, 'store'])->name('record.store');
     Route::get('/get-client-products/{clientId}', [RecordController::class, 'getClientProducts'])->name('client.products');
+
+    Route::get('/record/generate-order-id/{staffId}', [RecordController::class, 'generateOrderId'])
+        ->name('record.generateOrderId');
+
     Route::post('/labels/export', [LabelController::class, 'export'])->name('labels.export');
     Route::post('labels/selected-pdf', [LabelController::class, 'exportSelected'])->name('labels.selected.pdf');
     Route::get('/Invoice', [InvoiceController::class, 'InvoiceIndex'])->name('Invoice.index');
@@ -203,7 +210,28 @@ Route::middleware(['auth'])->group(function () {
         [AdminController::class, 'orderDetails']
     )->name('performance.orders');
 
+    Route::prefix('reports')->group(function () {
 
+        Route::get(
+            '/repeat-rto',
+            [RepeatCustomerController::class, 'repeatRto']
+        )
+            ->name('reports.repeat.rto');
+
+
+        Route::get(
+            '/repeat-rto/{phone}',
+            [RepeatCustomerController::class, 'repeatRtoDetail']
+        )
+            ->name('reports.repeat.rto.detail');
+    });
+
+
+    Route::get('/reports/{type}', [ReportController::class, 'index'])
+        ->name('reports.index');
+
+    Route::get('/reports/export/{type}', [ReportController::class, 'export'])
+        ->name('reports.export');
     Route::get('/staff-report/{staff_id}', [ReportController::class, 'staffReport'])
         ->name('staff.report');
 
@@ -310,6 +338,16 @@ Route::middleware('calling_user')->group(function () {
 
 
 
+    Route::get(
+        '/calling/customer-history',
+        [RepeatCustomerController::class, 'customerHistory']
+    )->name('calling.customer.history');
+
+    Route::post(
+        '/record/save-call-status',
+        [RecordController::class, 'saveCallStatus']
+    )->name('record.saveCallStatus');
+
     Route::get('/calling/verified', [CallingUserAuthController::class, 'verified'])
         ->name('calling.verified');
 
@@ -331,9 +369,29 @@ Route::middleware('calling_user')->group(function () {
         ->middleware('calling_user');
     Route::post('/calling/statusupdate/{id}', [CallingUserAuthController::class, 'statusupdate'])
         ->middleware('calling_user');
+
+
+
     Route::get('/calling/manual-order', [CallingOrderController::class, 'create'])->name('calling.manual');
     Route::post('/calling/manual-order', [CallingOrderController::class, 'store'])->name('calling.manual.store');
+    Route::get(
+        '/calling/customer-history',
+        [CallingOrderController::class, 'customerHistory']
+    )->name('calling.customer.history');
+
+    Route::get(
+        '/calling/client-products/{clientId}',
+        [CallingOrderController::class, 'getClientProducts']
+    )->name('calling.client.products');
+
+    Route::get(
+        '/calling/preview-order-id',
+        [CallingOrderController::class, 'previewOrderId']
+    )->name('calling.preview.order.id');
     Route::get('/calling/whatsapp-orders', [CallingOrderController::class, 'whatsappOrders'])->name('calling.whatsapp');
+
+
+
     Route::post('/calling/logout', [CallingUserAuthController::class, 'logout'])
         ->name('calling.logout');
 

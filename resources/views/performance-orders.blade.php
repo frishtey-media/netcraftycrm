@@ -106,6 +106,7 @@
                                 <th>Quantity</th>
                                 <th>Amount</th>
                                 <th>Status</th>
+                                <th>Remarks</th>
                                 <th>Updated Date</th>
                             </tr>
                         </thead>
@@ -155,7 +156,7 @@
                                         @endif
 
                                     </td>
-
+                                    <td>{{ $order->remarks }}</td>
                                     <td>
                                         {{ $order->updated_at->format('d-m-Y h:i A') }}
                                     </td>

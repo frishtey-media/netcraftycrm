@@ -9,7 +9,7 @@ class CallingUser extends Authenticatable
 {
     protected $table = 'calling_users';
 
-    protected $fillable = ['name', 'email', 'password'];
+    protected $fillable = ['name', 'email', 'password', 'status'];
 
     protected $hidden = ['password'];
     public function orders()

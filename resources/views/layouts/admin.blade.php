@@ -188,9 +188,7 @@
                 <i class="bi bi-speedometer2"></i> Orders Dashboard
             </a>
 
-            <a href="{{ route('performance.dashboard') }}">
-                <i class="bi bi-graph-up"></i>Staff Performance
-            </a>
+
             <a href="{{ route('record.create') }}">
                 <i class="bi bi-upload"></i> Import Records
             </a>
@@ -207,12 +205,31 @@
                     <a href="{{ route('orders.list') }}">
                         <i class="bi bi-truck"></i>Orders Reports
                     </a>
-                    <a href="{{ route('delivered.index') }}">
-                        <i class="bi bi-truck"></i>Delivery Reports
-                    </a>
+
                     <a href="/rto">
                         <i class="bi bi-receipt"></i> RTO Reports
                     </a>
+                    <a href="{{ route('performance.dashboard') }}">
+                        <i class="bi bi-graph-up"></i>Staff Performance
+                    </a>
+
+                    @if (auth()->user()->role == 'super_admin')
+                        <a href="{{ route('delivered.index') }}">
+                            <i class="bi bi-truck"></i>Delivery Reports
+                        </a>
+                        <a href="/payments">
+                            <i class="bi bi-receipt"></i>Payment Reports
+                        </a>
+
+
+                        <a href="{{ route('performance.dashboard') }}">
+                            <i class="bi bi-graph-up"></i>Customer Repeat Delivery Report
+                        </a>
+                        <a href="{{ route('reports.repeat.rto') }}">
+                            <i class="bi bi-graph-up"></i>Customer Repeat RTO Report
+                        </a>
+                    @endif
+
                 </div>
             </div>
 
