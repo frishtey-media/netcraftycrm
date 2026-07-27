@@ -437,22 +437,95 @@ class RepeatCustomerController extends Controller
     {
         $phone = $this->normalizePhone($request->phone);
 
-        if (strlen($phone) !== 10) {
-            return response()->json([], 200);
+        if (!$phone) {
+            return response()->json([
+                'orders' => [],
+                'delivered_order' => null,
+                'phone' => null,
+            ]);
         }
+
+        $last10 = strlen($phone) >= 10
+            ? substr($phone, -10)
+            : $phone;
 
         /*
     |--------------------------------------------------------------------------
-    | Search both Orders + Calling Orders
+    | Reusable phone condition
+    |--------------------------------------------------------------------------
+    */
+
+        $phoneFilter = function ($query) use ($phone, $last10) {
+
+            $cleanPhone = "
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(
+                                    customer_phone,
+                                    ' ',
+                                    ''
+                                ),
+                                '+',
+                                ''
+                            ),
+                            '-',
+                            ''
+                        ),
+                        '(',
+                        ''
+                    ),
+                    ')',
+                    ''
+                ),
+                '.',
+                ''
+            )
+        ";
+
+            $query->whereRaw("{$cleanPhone} = ?", [$phone]);
+
+            if (strlen($last10) === 10) {
+                $query->orWhereRaw(
+                    "RIGHT({$cleanPhone}, 10) = ?",
+                    [$last10]
+                );
+            }
+        };
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Previous Order History
     |--------------------------------------------------------------------------
     */
 
         $orders = DB::table('orders')
-            ->leftJoin('clients', 'clients.id', '=', 'orders.client_id')
+
+            ->leftJoin(
+                'clients',
+                'clients.id',
+                '=',
+                'orders.client_id'
+            )
+
             ->leftJoin('callingorder', function ($join) {
-                $join->on('callingorder.order_id', '=', 'orders.order_id')
-                    ->on('callingorder.client_id', '=', 'orders.client_id');
+
+                $join->on(
+                    'callingorder.order_id',
+                    '=',
+                    'orders.order_id'
+                );
+
+                $join->on(
+                    'callingorder.client_id',
+                    '=',
+                    'orders.client_id'
+                );
             })
+
             ->leftJoin(
                 'calling_users',
                 'calling_users.id',
@@ -460,24 +533,9 @@ class RepeatCustomerController extends Controller
                 'callingorder.assigned_to'
             )
 
-            /*
-        |--------------------------------------------------------------------------
-        | Normalize DB Phone
-        |--------------------------------------------------------------------------
-        |
-        | Examples:
-        |
-        | 9803456598
-        | 919803456598
-        | +91 98034 56598
-        | 09803456598
-        |
-        | All become last 10 digits => 9803456598
-        |
-        */
+            ->where(function ($query) use ($phone, $last10) {
 
-            ->whereRaw("
-            RIGHT(
+                $cleanPhone = "
                 REPLACE(
                     REPLACE(
                         REPLACE(
@@ -502,30 +560,77 @@ class RepeatCustomerController extends Controller
                     ),
                     '.',
                     ''
-                ),
-                10
-            ) = ?
-        ", [$phone])
+                )
+            ";
+
+                $query->whereRaw(
+                    "{$cleanPhone} = ?",
+                    [$phone]
+                );
+
+                if (strlen($last10) === 10) {
+                    $query->orWhereRaw(
+                        "RIGHT({$cleanPhone}, 10) = ?",
+                        [$last10]
+                    );
+                }
+            })
 
             ->select([
                 'orders.id',
                 'orders.order_id',
                 'orders.barcode',
-                'orders.customer_phone',
+                'orders.client_id',
                 'orders.product',
+                'orders.quantity',
+                'orders.weight',
                 'orders.amount',
+                'orders.payment_mode',
+                'orders.customer_name',
+                'orders.father_name',
+                'orders.age',
+                'orders.customer_phone',
+                'orders.shipping_address',
+                'orders.city',
+                'orders.state',
+                'orders.pincode',
                 'orders.delivery_status',
                 'orders.created_at',
 
                 'clients.client_name',
 
-                DB::raw('calling_users.name as staff_name')
+                DB::raw(
+                    'calling_users.name as staff_name'
+                )
             ])
 
             ->orderByDesc('orders.created_at')
             ->get();
 
 
-        return response()->json($orders);
+        /*
+    |--------------------------------------------------------------------------
+    | Find Latest Delivered Order
+    |--------------------------------------------------------------------------
+    */
+
+        $deliveredOrder = $orders
+            ->filter(function ($order) {
+                return strtolower(
+                    trim($order->delivery_status ?? '')
+                ) === 'delivered';
+            })
+            ->first();
+
+
+        return response()->json([
+
+            'orders' => $orders,
+
+            'delivered_order' => $deliveredOrder,
+
+            'phone' => $phone,
+
+        ]);
     }
 }

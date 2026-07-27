@@ -646,7 +646,14 @@ class OrderController extends Controller
                 );
             }
         }
+        // Payment Status
+        if ($request->filled('payment_mode')) {
 
+            $query->where(
+                'payment_mode',
+                $request->payment_mode
+            );
+        }
         // Date Filter
         if ($request->filled('date_from')) {
 

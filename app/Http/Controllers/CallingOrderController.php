@@ -14,11 +14,7 @@ use App\Models\ClientProduct;
 
 class CallingOrderController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | Logged In Calling Staff
-    |--------------------------------------------------------------------------
-    */
+
 
     private function callingStaff()
     {
@@ -92,18 +88,69 @@ class CallingOrderController extends Controller
 
     public function customerHistory(Request $request)
     {
+        /*
+    |--------------------------------------------------------------------------
+    | Normalize searched phone
+    |--------------------------------------------------------------------------
+    */
+
         $phone = $this->normalizePhone($request->phone);
 
-        if (strlen($phone) !== 10) {
-
+        if (!$phone || strlen($phone) < 7) {
             return response()->json([
                 'success' => false,
-                'message' => 'Enter valid 10 digit mobile number.',
-                'orders'  => [],
-                'phone'   => $phone,
+                'message' => 'Please enter a valid phone number.',
+                'orders' => [],
             ], 422);
         }
 
+
+        /*
+    |--------------------------------------------------------------------------
+    | IMPORTANT
+    |--------------------------------------------------------------------------
+    |
+    | Explicitly use orders.customer_phone.
+    | This prevents:
+    |
+    | Column 'customer_phone' in where clause is ambiguous
+    |
+    */
+
+        $cleanOrderPhone = "
+        REPLACE(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                orders.customer_phone,
+                                ' ',
+                                ''
+                            ),
+                            '+',
+                            ''
+                        ),
+                        '-',
+                        ''
+                    ),
+                    '(',
+                    ''
+                ),
+                ')',
+                ''
+            ),
+            '.',
+            ''
+        )
+    ";
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Previous Order History
+    |--------------------------------------------------------------------------
+    */
 
         $orders = DB::table('orders')
 
@@ -113,12 +160,6 @@ class CallingOrderController extends Controller
                 '=',
                 'orders.client_id'
             )
-
-            /*
-            |--------------------------------------------------------------------------
-            | Calling Order
-            |--------------------------------------------------------------------------
-            */
 
             ->leftJoin('callingorder', function ($join) {
 
@@ -135,12 +176,6 @@ class CallingOrderController extends Controller
                 );
             })
 
-            /*
-            |--------------------------------------------------------------------------
-            | Staff
-            |--------------------------------------------------------------------------
-            */
-
             ->leftJoin(
                 'calling_users',
                 'calling_users.id',
@@ -149,75 +184,146 @@ class CallingOrderController extends Controller
             )
 
             /*
-            |--------------------------------------------------------------------------
-            | Phone Search
-            |--------------------------------------------------------------------------
-            */
+        |--------------------------------------------------------------------------
+        | Phone Search
+        |--------------------------------------------------------------------------
+        */
 
-            ->whereRaw("
-                RIGHT(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(
-                                    REPLACE(
-                                        orders.customer_phone,
-                                        ' ',
-                                        ''
-                                    ),
-                                    '+',
-                                    ''
-                                ),
-                                '-',
-                                ''
-                            ),
-                            '(',
-                            ''
-                        ),
-                        ')',
-                        ''
-                    ),
-                    10
-                ) = ?
-            ", [$phone])
+            ->where(function ($query) use ($cleanOrderPhone, $phone) {
+
+                // Exact match
+                $query->whereRaw(
+                    "{$cleanOrderPhone} = ?",
+                    [$phone]
+                );
+
+                /*
+             * Indian compatibility
+             *
+             * 9803456598
+             * +91 9803456598
+             * 919803456598
+             *
+             * all will match.
+             */
+
+                if (strlen($phone) === 10) {
+
+                    $query->orWhereRaw(
+                        "RIGHT({$cleanOrderPhone}, 10) = ?",
+                        [$phone]
+                    );
+                }
+            })
 
             ->select([
 
                 'orders.order_id',
+
                 'orders.barcode',
+
                 'orders.product',
+
                 'orders.amount',
+
                 'orders.delivery_status',
+
                 'orders.created_at',
 
                 'clients.client_name',
 
                 DB::raw(
-                    'MAX(calling_users.name) as staff_name'
-                )
+                    'calling_users.name as staff_name'
+                ),
             ])
 
-            /*
-            |--------------------------------------------------------------------------
-            | Prevent duplicate rows from join
-            |--------------------------------------------------------------------------
-            */
-
-            ->groupBy(
-                'orders.id',
-                'orders.order_id',
-                'orders.barcode',
-                'orders.product',
-                'orders.amount',
-                'orders.delivery_status',
-                'orders.created_at',
-                'clients.client_name'
+            ->orderByDesc(
+                'orders.created_at'
             )
-
-            ->orderByDesc('orders.created_at')
 
             ->get();
 
+
+        /*
+    |--------------------------------------------------------------------------
+    | Latest Delivered Order
+    |--------------------------------------------------------------------------
+    |
+    | Is query me JOIN nahi hai.
+    | Still orders.customer_phone explicitly use kar rahe hain.
+    |
+    */
+
+        $deliveredOrder = DB::table('orders')
+
+            ->where(function ($query) use ($cleanOrderPhone, $phone) {
+
+                $query->whereRaw(
+                    "{$cleanOrderPhone} = ?",
+                    [$phone]
+                );
+
+                if (strlen($phone) === 10) {
+
+                    $query->orWhereRaw(
+                        "RIGHT({$cleanOrderPhone}, 10) = ?",
+                        [$phone]
+                    );
+                }
+            })
+
+            ->whereRaw(
+                "LOWER(TRIM(orders.delivery_status)) = ?",
+                ['delivered']
+            )
+
+            ->orderByDesc(
+                'orders.created_at'
+            )
+
+            ->select([
+
+                'orders.client_id',
+
+                'orders.order_id',
+
+                'orders.customer_name',
+
+                'orders.father_name',
+
+                'orders.age',
+
+                'orders.customer_phone',
+
+                'orders.shipping_address',
+
+                'orders.city',
+
+                'orders.state',
+
+                'orders.pincode',
+
+                'orders.product',
+
+                'orders.quantity',
+
+                'orders.amount',
+
+                'orders.payment_mode',
+
+                'orders.delivery_status',
+
+                'orders.created_at',
+            ])
+
+            ->first();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Final Response
+    |--------------------------------------------------------------------------
+    */
 
         return response()->json([
 
@@ -227,7 +333,7 @@ class CallingOrderController extends Controller
 
             'orders' => $orders,
 
-            'count' => $orders->count(),
+            'delivered_order' => $deliveredOrder,
 
         ]);
     }
@@ -336,26 +442,26 @@ class CallingOrderController extends Controller
     }
     public function store(Request $request)
     {
-        $staff = $this->callingStaff();
+        $staff = Auth::guard('calling_user')->user();
 
         if (!$staff) {
-            abort(403, 'Calling staff login required.');
+            abort(403);
         }
 
 
         /*
-        |--------------------------------------------------------------------------
-        | Common Validation
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | COMMON VALIDATION
+    |--------------------------------------------------------------------------
+    */
 
         $request->validate([
 
-            'client_id' =>
-            'required|exists:clients,id',
-
             'created_at' =>
             'required|date',
+
+            'client_id' =>
+            'required|exists:clients,id',
 
             'customer_phone' =>
             'required',
@@ -367,63 +473,47 @@ class CallingOrderController extends Controller
 
 
         /*
+    |--------------------------------------------------------------------------
+    | VERIFIED VALIDATION
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->status === 'verified') {
+
+            $request->validate([
+
+                'customer_name' =>
+                'required|string|max:255',
+
+                'product_name' =>
+                'required|string',
+
+                'quantity' =>
+                'required|integer|min:1',
+
+                'age' =>
+                'required',
+
+                'amount' =>
+                'required|numeric',
+
+                'payment_mode' =>
+                'required',
+
+                'pincode' =>
+                'required',
+
+                'address' =>
+                'required',
+
+            ]);
+        } else {
+
+            /*
         |--------------------------------------------------------------------------
-        | Normalize Phone
+        | NON VERIFIED
         |--------------------------------------------------------------------------
         */
-
-        $phone = $this->normalizePhone(
-            $request->customer_phone
-        );
-
-
-        if (strlen($phone) !== 10) {
-
-            return back()
-                ->withInput()
-                ->with(
-                    'error',
-                    'Please enter a valid 10 digit mobile number.'
-                );
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Selected Date
-        |--------------------------------------------------------------------------
-        */
-
-        $selectedDate = Carbon::parse(
-            $request->created_at
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Generate Order ID
-        |--------------------------------------------------------------------------
-        */
-
-        $orderId = $this->generateOrderId(
-            $staff,
-            $selectedDate
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | NON VERIFIED LEAD
-        |--------------------------------------------------------------------------
-        |
-        | Pending
-        | Not Reachable
-        | Same Order
-        | Cancel
-        |
-        */
-
-        if ($request->status !== 'verified') {
 
             $request->validate([
 
@@ -431,6 +521,62 @@ class CallingOrderController extends Controller
                 'required|string|max:1000',
 
             ]);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | DATE
+    |--------------------------------------------------------------------------
+    */
+
+        $selectedDate =
+            Carbon::parse(
+                $request->created_at
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | GENERATE ORDER ID
+    |--------------------------------------------------------------------------
+    */
+
+        $orderId =
+            $this->generateOrderId(
+                $staff,
+                $selectedDate
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE PHONE
+    |--------------------------------------------------------------------------
+    */
+
+        $phone =
+            $this->normalizePhone(
+                $request->customer_phone
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | VERIFIED
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->status === 'verified') {
+
+            $quantity =
+                (int) $request->quantity;
+
+            $weight =
+                (float) ($request->weight ?? 0);
+
+            $totalWeight =
+                $quantity * $weight;
 
 
             CallingOrder::create([
@@ -438,9 +584,87 @@ class CallingOrderController extends Controller
                 'client_id' =>
                 $request->client_id,
 
-                /*
-                 * Logged-in staff only.
-                 */
+                'assigned_to' =>
+                $staff->id,
+
+                'order_id' =>
+                $orderId,
+
+                'order_date' =>
+                $selectedDate,
+
+                'product_name' =>
+                $request->product_name,
+
+                'shopify_product_name' =>
+                $request->product_name,
+
+                'quantity' =>
+                $quantity,
+
+                'weight' =>
+                $weight,
+
+                'total_weight' =>
+                $totalWeight,
+
+                'customer_name' =>
+                $request->customer_name,
+
+                'father_name' =>
+                $request->father_name,
+
+                'age' =>
+                $request->age,
+
+                'customer_phone' =>
+                $phone,
+
+                'shipping_address' =>
+                $request->address,
+
+                'city' =>
+                $request->city,
+
+                'state' =>
+                $request->state,
+
+                'pincode' =>
+                $request->pincode,
+
+                'payment_mode' =>
+                $request->payment_mode,
+
+                'amount' =>
+                $request->amount,
+
+                'status' =>
+                'verified',
+
+                'remarks' =>
+                $request->remarks,
+
+                'order_source' =>
+                'whatsapp',
+
+                'created_at' =>
+                $selectedDate,
+
+                'updated_at' =>
+                $selectedDate,
+            ]);
+        } else {
+
+            /*
+        |--------------------------------------------------------------------------
+        | NON VERIFIED LEAD
+        |--------------------------------------------------------------------------
+        */
+
+            CallingOrder::create([
+
+                'client_id' =>
+                $request->client_id,
 
                 'assigned_to' =>
                 $staff->id,
@@ -468,167 +692,16 @@ class CallingOrderController extends Controller
 
                 'updated_at' =>
                 $selectedDate,
-
             ]);
-
-
-            return back()->with(
-                'success',
-                ucfirst(
-                    str_replace(
-                        '_',
-                        ' ',
-                        $request->status
-                    )
-                ) . ' lead saved successfully.'
-            );
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | VERIFIED ORDER VALIDATION
-        |--------------------------------------------------------------------------
-        */
-
-        $request->validate([
-
-            'customer_name' =>
-            'required|string|max:255',
-
-            'age' =>
-            'required',
-
-            'product_name' =>
-            'required|string',
-
-            'quantity' =>
-            'required|integer|min:1',
-
-            'weight' =>
-            'nullable|numeric|min:0',
-
-            'amount' =>
-            'required|numeric|min:0',
-
-            'payment_mode' =>
-            'required',
-
-            'pincode' =>
-            'required',
-
-            'address' =>
-            'required',
-
-        ]);
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Quantity / Weight
-        |--------------------------------------------------------------------------
-        */
-
-        $quantity = (int) $request->quantity;
-
-        $weightPerUnit = (float) ($request->weight ?? 0);
-
-        $totalWeight =
-            $quantity * $weightPerUnit;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Save Verified Order
-        |--------------------------------------------------------------------------
-        */
-
-        CallingOrder::create([
-
-            'client_id' =>
-            $request->client_id,
-
-            /*
-             * IMPORTANT:
-             * Never use assigned_to from request.
-             */
-
-            'assigned_to' =>
-            $staff->id,
-
-            'order_id' =>
-            $orderId,
-
-            'order_date' =>
-            $selectedDate,
-
-            'product_name' =>
-            $request->product_name,
-
-            'shopify_product_name' =>
-            $request->product_name,
-
-            'quantity' =>
-            $quantity,
-
-            'weight' =>
-            $weightPerUnit,
-
-            'total_weight' =>
-            $totalWeight,
-
-            'customer_name' =>
-            $request->customer_name,
-
-            'father_name' =>
-            $request->father_name,
-
-            'age' =>
-            $request->age,
-
-            'customer_phone' =>
-            $phone,
-
-            'shipping_address' =>
-            $request->address,
-
-            'city' =>
-            $request->city,
-
-            'state' =>
-            $request->state,
-
-            'pincode' =>
-            $request->pincode,
-
-            'payment_mode' =>
-            $request->payment_mode,
-
-            'amount' =>
-            $request->amount,
-
-            'status' =>
-            'verified',
-
-            'remarks' =>
-            $request->remarks,
-
-            'order_source' =>
-            'whatsapp',
-
-            'created_at' =>
-            $selectedDate,
-
-            'updated_at' =>
-            $selectedDate,
-
-        ]);
-
-
-        return back()->with(
-            'success',
-            "Verified order {$orderId} saved successfully."
-        );
+        return redirect()
+            ->back()
+            ->with(
+                'success',
+                'Lead saved successfully. Order ID: ' . $orderId
+            );
     }
 
 

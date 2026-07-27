@@ -20,27 +20,94 @@
 
         <!-- FILTER -->
         <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <form method="GET" class="row g-3 align-items-end">
 
-                    <div class="col-md-3 col-6">
-                        <label>From</label>
+            <div class="card-body">
+
+                <form method="GET" action="{{ url()->current() }}" class="row g-3 align-items-end">
+
+                    {{-- FROM DATE --}}
+                    <div class="col-md-2 col-6">
+
+                        <label class="form-label">
+                            From
+                        </label>
+
                         <input type="date" name="from" value="{{ \Carbon\Carbon::parse($from)->format('Y-m-d') }}"
                             class="form-control">
+
                     </div>
 
-                    <div class="col-md-3 col-6">
-                        <label>To</label>
+
+                    {{-- TO DATE --}}
+                    <div class="col-md-2 col-6">
+
+                        <label class="form-label">
+                            To
+                        </label>
+
                         <input type="date" name="to" value="{{ \Carbon\Carbon::parse($to)->format('Y-m-d') }}"
                             class="form-control">
+
                     </div>
 
-                    <div class="col-md-2 col-12">
-                        <button class="btn btn-primary w-100">Apply</button>
+
+                    {{-- CLIENT --}}
+                    <div class="col-md-4 col-12">
+
+                        <label class="form-label">
+                            Client
+                        </label>
+
+                        <select name="client_id" class="form-select" {{ $isClientUser ? 'disabled' : '' }}>
+
+                            @if (!$isClientUser)
+                                <option value="">
+                                    All Clients
+                                </option>
+                            @endif
+
+
+                            @foreach ($clients as $client)
+                                <option value="{{ $client->id }}"
+                                    {{ (string) $clientId === (string) $client->id ? 'selected' : '' }}>
+
+                                    {{ $client->client_name }}
+
+                                </option>
+                            @endforeach
+
+                        </select>
+
+                        @if ($isClientUser)
+                            <input type="hidden" name="client_id" value="{{ $clientId }}">
+                        @endif
+
+                    </div>
+
+
+                    {{-- APPLY --}}
+                    <div class="col-md-2 col-6">
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            Apply
+                        </button>
+
+                    </div>
+
+
+                    {{-- RESET --}}
+                    <div class="col-md-2 col-6">
+
+                        <a href="{{ url()->current() }}" class="btn btn-secondary w-100">
+                            Reset
+                        </a>
+
                     </div>
 
                 </form>
+
             </div>
+
         </div>
 
 
@@ -144,10 +211,10 @@
                             <tr>
 
                                 <!-- <td>
-                                                                                        <a href="{{ route('staff.report', $staff->id) }}">
-                                                                                            {{ $staff->name }}
-                                                                                        </a>
-                                                                                    </td>-->
+                                                                                                            <a href="{{ route('staff.report', $staff->id) }}">
+                                                                                                                {{ $staff->name }}
+                                                                                                            </a>
+                                                                                                        </td>-->
                                 <td>
 
                                     {{ $staff->name }}

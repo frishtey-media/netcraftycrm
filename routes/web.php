@@ -152,6 +152,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orders/import', [OrderController::class, 'importExcel'])->name('orders.import.post');
 
 
+    Route::get('/orders/products', [OrderController::class, 'getProducts'])
+        ->name('orders.products');
+
+
     Route::post('/orders/whstappimport', [RecordController::class, 'whstappimportOrders'])
         ->name('record.whstappimport');
 

@@ -103,7 +103,7 @@ class PaymentController extends Controller
         if ($request->filled('from')) {
 
             $query->whereDate(
-                'payments.bill_date',
+                'payments.delivered_date',
                 '>=',
                 Carbon::parse($request->from)
             );
@@ -112,7 +112,7 @@ class PaymentController extends Controller
         if ($request->filled('to')) {
 
             $query->whereDate(
-                'payments.bill_date',
+                'payments.delivered_date',
                 '<=',
                 Carbon::parse($request->to)
             );

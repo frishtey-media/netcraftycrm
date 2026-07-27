@@ -415,6 +415,37 @@
                         </select>
                     </div>
 
+                    <!-- Payment Type -->
+                    <!-- Payment Type -->
+                    <div class="col-lg-2 col-md-6">
+
+                        <label class="form-label fw-semibold small">
+                            Payment Type
+                        </label>
+
+                        <select name="payment_mode" class="form-select">
+
+                            <option value="">
+                                All Payment
+                            </option>
+
+                            <option value="VPP" {{ request('payment_mode') == 'VPP' ? 'selected' : '' }}>
+                                VPP
+                            </option>
+
+                            <option value="COD" {{ request('payment_mode') == 'COD' ? 'selected' : '' }}>
+                                COD
+                            </option>
+
+                            <option value="prepaid"
+                                {{ strtolower(request('payment_mode', '')) == 'prepaid' ? 'selected' : '' }}>
+                                Prepaid
+                            </option>
+
+                        </select>
+
+                    </div>
+
                     <!-- Status -->
                     <div class="col-lg-2 col-md-6">
                         <label class="form-label fw-semibold small">Status</label>
@@ -765,55 +796,55 @@
                     </div>
 
                     <!-- <div class="col-lg col-md-3">
-                                                                                                                        <div class="card border-0 shadow-sm stat-card">
-                                                                                                                            <div class="card-body d-flex align-items-center">
+                                                                                                                            <div class="card border-0 shadow-sm stat-card">
+                                                                                                                                <div class="card-body d-flex align-items-center">
 
-                                                                                                                                <div class="icon bg-info-subtle text-info">
-                                                                                                                                    <i class="fas fa-money-bill-wave"></i>
+                                                                                                                                    <div class="icon bg-info-subtle text-info">
+                                                                                                                                        <i class="fas fa-money-bill-wave"></i>
+                                                                                                                                    </div>
+
+                                                                                                                                    <div class="ms-3">
+                                                                                                                                        <small class="text-muted">Payment Received</small>
+
+                                                                                                                                        <h4 class="text-success mb-0">
+                                                                                                                                            ₹{{ number_format($paymentReceivedAmount) }}
+                                                                                                                                        </h4>
+
+                                                                                                                                        <small class="text-muted">
+                                                                                                                                            {{ number_format($paymentReceivedOrders) }} Orders
+                                                                                                                                        </small>
+
+                                                                                                                                    </div>
+
                                                                                                                                 </div>
-
-                                                                                                                                <div class="ms-3">
-                                                                                                                                    <small class="text-muted">Payment Received</small>
-
-                                                                                                                                    <h4 class="text-success mb-0">
-                                                                                                                                        ₹{{ number_format($paymentReceivedAmount) }}
-                                                                                                                                    </h4>
-
-                                                                                                                                    <small class="text-muted">
-                                                                                                                                        {{ number_format($paymentReceivedOrders) }} Orders
-                                                                                                                                    </small>
-
-                                                                                                                                </div>
-
                                                                                                                             </div>
                                                                                                                         </div>
-                                                                                                                    </div>
 
-                                                                                                                    <div class="col-lg col-md-3">
-                                                                                                                        <div class="card border-0 shadow-sm stat-card">
-                                                                                                                            <div class="card-body d-flex align-items-center">
+                                                                                                                        <div class="col-lg col-md-3">
+                                                                                                                            <div class="card border-0 shadow-sm stat-card">
+                                                                                                                                <div class="card-body d-flex align-items-center">
 
-                                                                                                                                <div class="icon bg-warning-subtle text-warning">
-                                                                                                                                    <i class="fas fa-wallet"></i>
+                                                                                                                                    <div class="icon bg-warning-subtle text-warning">
+                                                                                                                                        <i class="fas fa-wallet"></i>
+                                                                                                                                    </div>
+
+                                                                                                                                    <div class="ms-3">
+
+                                                                                                                                        <small class="text-muted">Pending Payment</small>
+
+                                                                                                                                        <h4 class="text-warning mb-0">
+                                                                                                                                            ₹{{ number_format($paymentPendingAmount) }}
+                                                                                                                                        </h4>
+
+                                                                                                                                        <small class="text-muted">
+                                                                                                                                            {{ number_format($paymentPendingOrders) }} Orders
+                                                                                                                                        </small>
+
+                                                                                                                                    </div>
+
                                                                                                                                 </div>
-
-                                                                                                                                <div class="ms-3">
-
-                                                                                                                                    <small class="text-muted">Pending Payment</small>
-
-                                                                                                                                    <h4 class="text-warning mb-0">
-                                                                                                                                        ₹{{ number_format($paymentPendingAmount) }}
-                                                                                                                                    </h4>
-
-                                                                                                                                    <small class="text-muted">
-                                                                                                                                        {{ number_format($paymentPendingOrders) }} Orders
-                                                                                                                                    </small>
-
-                                                                                                                                </div>
-
                                                                                                                             </div>
-                                                                                                                        </div>
-                                                                                                                    </div>-->
+                                                                                                                        </div>-->
 
                 </div>
 
@@ -838,7 +869,7 @@
                                     <th>In Transit</th>
                                     <th>No Status</th>
                                     <!--<th>Payment Received</th>
-                                                                                                        <th>Pending Payment</th>-->
+                                                                                                            <th>Pending Payment</th>-->
                                 </tr>
 
                             </thead>
@@ -874,22 +905,22 @@
                                     </td>
 
                                     <!--  <td>
-                                                                                                                                <strong class="text-success">
-                                                                                                                                    ₹{{ number_format($paymentReceivedAmount) }}
-                                                                                                                                </strong><br>
-                                                                                                                                <small>
-                                                                                                                                    {{ $paymentReceivedOrders }} Orders ({{ $paymentReceivedPercent }}%)
-                                                                                                                                </small>
-                                                                                                                            </td>
+                                                                                                                                    <strong class="text-success">
+                                                                                                                                        ₹{{ number_format($paymentReceivedAmount) }}
+                                                                                                                                    </strong><br>
+                                                                                                                                    <small>
+                                                                                                                                        {{ $paymentReceivedOrders }} Orders ({{ $paymentReceivedPercent }}%)
+                                                                                                                                    </small>
+                                                                                                                                </td>
 
-                                                                                                                            <td>
-                                                                                                                                <strong class="text-danger">
-                                                                                                                                    ₹{{ number_format($paymentPendingAmount) }}
-                                                                                                                                </strong><br>
-                                                                                                                                <small>
-                                                                                                                                    {{ $paymentPendingOrders }} Orders ({{ $paymentPendingPercent }}%)
-                                                                                                                                </small>
-                                                                                                                            </td>-->
+                                                                                                                                <td>
+                                                                                                                                    <strong class="text-danger">
+                                                                                                                                        ₹{{ number_format($paymentPendingAmount) }}
+                                                                                                                                    </strong><br>
+                                                                                                                                    <small>
+                                                                                                                                        {{ $paymentPendingOrders }} Orders ({{ $paymentPendingPercent }}%)
+                                                                                                                                    </small>
+                                                                                                                                </td>-->
 
                                 </tr>
 
@@ -938,12 +969,12 @@
 
 
                                     <!--<td class="text-success">
-                                                                                                                            ₹{{ number_format($webPaymentReceivedAmount ?? 0) }}
-                                                                                                                        </td>
+                                                                                                                                ₹{{ number_format($webPaymentReceivedAmount ?? 0) }}
+                                                                                                                            </td>
 
-                                                                                                                        <td class="text-danger">
-                                                                                                                            ₹{{ number_format($webPaymentPendingAmount ?? 0) }}
-                                                                                                                        </td>-->
+                                                                                                                            <td class="text-danger">
+                                                                                                                                ₹{{ number_format($webPaymentPendingAmount ?? 0) }}
+                                                                                                                            </td>-->
 
                                 </tr>
 
@@ -992,12 +1023,12 @@
                                     </td>
 
                                     <!-- <td class="text-success">
-                                                                                                                        ₹{{ number_format($whatsappPaymentReceivedAmount ?? 0) }}
-                                                                                                                    </td>
+                                                                                                                            ₹{{ number_format($whatsappPaymentReceivedAmount ?? 0) }}
+                                                                                                                        </td>
 
-                                                                                                                    <td class="text-danger">
-                                                                                                                        ₹{{ number_format($whatsappPaymentPendingAmount ?? 0) }}
-                                                                                                                    </td>-->
+                                                                                                                        <td class="text-danger">
+                                                                                                                            ₹{{ number_format($whatsappPaymentPendingAmount ?? 0) }}
+                                                                                                                        </td>-->
 
                                 </tr>
 
@@ -1222,363 +1253,365 @@
                 @endif
                 <!--<div class="row g-3 mb-3">
 
-                                                                                                                                                                                                                                                    <div class="col-xl-3 col-lg-6">
-                                                                                                                                                                                                                                                        <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                            <div class="card-body">
-                                                                                                                                                                                                                                                                <h6 class="fw-bold">Orders Trend</h6>
-                                                                                                                                                                                                                                                                <canvas id="ordersChart"></canvas>
+                                                                                                                                                                                                                                                        <div class="col-xl-3 col-lg-6">
+                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
+                                                                                                                                                                                                                                                                <div class="card-body">
+                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Orders Trend</h6>
+                                                                                                                                                                                                                                                                    <canvas id="ordersChart"></canvas>
+                                                                                                                                                                                                                                                                </div>
                                                                                                                                                                                                                                                             </div>
                                                                                                                                                                                                                                                         </div>
-                                                                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                                                                                                    <div class="col-xl-3 col-lg-6">
-                                                                                                                                                                                                                                                        <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                            <div class="card-body">
-                                                                                                                                                                                                                                                                <h6 class="fw-bold">Delivery Trend</h6>
-                                                                                                                                                                                                                                                                <canvas id="deliveryChart"></canvas>
+                                                                                                                                                                                                                                                        <div class="col-xl-3 col-lg-6">
+                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
+                                                                                                                                                                                                                                                                <div class="card-body">
+                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Delivery Trend</h6>
+                                                                                                                                                                                                                                                                    <canvas id="deliveryChart"></canvas>
+                                                                                                                                                                                                                                                                </div>
                                                                                                                                                                                                                                                             </div>
                                                                                                                                                                                                                                                         </div>
-                                                                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                                                                                                    <div class="col-xl-3 col-lg-6">
-                                                                                                                                                                                                                                                        <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                            <div class="card-body">
-                                                                                                                                                                                                                                                                <h6 class="fw-bold">Payment Trend</h6>
-                                                                                                                                                                                                                                                                <canvas id="paymentChart"></canvas>
+                                                                                                                                                                                                                                                        <div class="col-xl-3 col-lg-6">
+                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
+                                                                                                                                                                                                                                                                <div class="card-body">
+                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Payment Trend</h6>
+                                                                                                                                                                                                                                                                    <canvas id="paymentChart"></canvas>
+                                                                                                                                                                                                                                                                </div>
                                                                                                                                                                                                                                                             </div>
                                                                                                                                                                                                                                                         </div>
-                                                                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                                                                                                    <div class="col-xl-3 col-lg-6">
-                                                                                                                                                                                                                                                        <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                            <div class="card-body">
-                                                                                                                                                                                                                                                                <h6 class="fw-bold">Source Distribution</h6>
-                                                                                                                                                                                                                                                                <canvas id="sourceChart"></canvas>
+                                                                                                                                                                                                                                                        <div class="col-xl-3 col-lg-6">
+                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
+                                                                                                                                                                                                                                                                <div class="card-body">
+                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Source Distribution</h6>
+                                                                                                                                                                                                                                                                    <canvas id="sourceChart"></canvas>
+                                                                                                                                                                                                                                                                </div>
                                                                                                                                                                                                                                                             </div>
-                                                                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                </div>
-
-                                                                                                                                                                                                                                                <div class="row g-3">
-
-                                                                                                                                                                                                                                                    <div class="col-xl-4">
-
-                                                                                                                                                                                                                                                        <div class="card shadow-sm staff-card">
-
-                                                                                                                                                                                                                                                            <div class="card-header">
-
-                                                                                                                                                                                                                                                                <b>Staff Performance (Orders)</b>
-
-                                                                                                                                                                                                                                                            </div>
-
-                                                                                                                                                                                                                                                            <div class="table-responsive">
-
-                                                                                                                                                                                                                                                                <table class="table table-sm align-middle">
-
-                                                                                                                                                                                                                                                                    <thead>
-
-                                                                                                                                                                                                                                                                        <tr>
-
-                                                                                                                                                                                                                                                                            <th>#</th>
-
-                                                                                                                                                                                                                                                                            <th>Staff</th>
-
-                                                                                                                                                                                                                                                                            <th>Total</th>
-
-                                                                                                                                                                                                                                                                            <th>Delivered</th>
-
-                                                                                                                                                                                                                                                                            <th>Success</th>
-
-                                                                                                                                                                                                                                                                        </tr>
-
-                                                                                                                                                                                                                                                                    </thead>
-
-                                                                                                                                                                                                                                                                    <tbody>
-
-                                                                                                                                                                                                                                                                        @foreach ($staffPerformance as $index => $staff)
-    <tr>
-
-                                                                                                                                                                                                                                                                                <td>{{ $index + 1 }}</td>
-
-                                                                                                                                                                                                                                                                                <td>{{ $staff->name }}</td>
-
-                                                                                                                                                                                                                                                                                <td>{{ $staff->total_orders }}</td>
-
-                                                                                                                                                                                                                                                                                <td>{{ $staff->delivered }}</td>
-
-                                                                                                                                                                                                                                                                                <td width="170">
-
-                                                                                                                                                                                                                                                                                    <div class="progress" style="height:8px;">
-
-                                                                                                                                                                                                                                                                                        <div class="progress-bar bg-success"
-                                                                                                                                                                                                                                                                                            style="width:{{ $staff->success }}%">
-
-                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                                                    <small>
-
-                                                                                                                                                                                                                                                                                        {{ $staff->success }}%
-
-                                                                                                                                                                                                                                                                                    </small>
-
-                                                                                                                                                                                                                                                                                </td>
-
-                                                                                                                                                                                                                                                                            </tr>
-    @endforeach
-
-                                                                                                                                                                                                                                                                    </tbody>
-
-                                                                                                                                                                                                                                                                </table>
-
-                                                                                                                                                                                                                                                            </div>
-
                                                                                                                                                                                                                                                         </div>
 
                                                                                                                                                                                                                                                     </div>
 
-                                                                                                                                                                                                                                                    <div class="col-xl-4">
+                                                                                                                                                                                                                                                    <div class="row g-3">
 
-                                                                                                                                                                                                                                                        <div class="card shadow-sm client-card">
+                                                                                                                                                                                                                                                        <div class="col-xl-4">
 
-                                                                                                                                                                                                                                                            <div class="card-header bg-white">
+                                                                                                                                                                                                                                                            <div class="card shadow-sm staff-card">
 
-                                                                                                                                                                                                                                                                <strong>🏆 Top Clients</strong>
+                                                                                                                                                                                                                                                                <div class="card-header">
 
-                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                    <b>Staff Performance (Orders)</b>
 
-                                                                                                                                                                                                                                                            <div class="table-responsive">
+                                                                                                                                                                                                                                                                </div>
 
-                                                                                                                                                                                                                                                                <table class="table table-hover align-middle mb-0">
+                                                                                                                                                                                                                                                                <div class="table-responsive">
 
-                                                                                                                                                                                                                                                                    <thead class="table-light">
+                                                                                                                                                                                                                                                                    <table class="table table-sm align-middle">
 
-                                                                                                                                                                                                                                                                        <tr>
-
-                                                                                                                                                                                                                                                                            <th>#</th>
-
-                                                                                                                                                                                                                                                                            <th>Client</th>
-
-                                                                                                                                                                                                                                                                            <th>Web</th>
-
-                                                                                                                                                                                                                                                                            <th>WhatsApp</th>
-
-                                                                                                                                                                                                                                                                            <th>Total</th>
-
-                                                                                                                                                                                                                                                                        </tr>
-
-                                                                                                                                                                                                                                                                    </thead>
-
-                                                                                                                                                                                                                                                                    <tbody>
-
-                                                                                                                                                                                                                                                                        @forelse($topClients as $index=>$client)
-    <tr>
-
-                                                                                                                                                                                                                                                                                <td>{{ $index + 1 }}</td>
-
-                                                                                                                                                                                                                                                                                <td>
-
-                                                                                                                                                                                                                                                                                    <strong>
-
-                                                                                                                                                                                                                                                                                        {{ $client->client_name }}
-
-                                                                                                                                                                                                                                                                                    </strong>
-
-                                                                                                                                                                                                                                                                                </td>
-
-                                                                                                                                                                                                                                                                                <td>
-
-                                                                                                                                                                                                                                                                                    <span class="badge bg-primary">
-
-                                                                                                                                                                                                                                                                                        {{ $client->web_orders }}
-
-                                                                                                                                                                                                                                                                                    </span>
-
-                                                                                                                                                                                                                                                                                </td>
-
-                                                                                                                                                                                                                                                                                <td>
-
-                                                                                                                                                                                                                                                                                    <span class="badge bg-success">
-
-                                                                                                                                                                                                                                                                                        {{ $client->whatsapp_orders }}
-
-                                                                                                                                                                                                                                                                                    </span>
-
-                                                                                                                                                                                                                                                                                </td>
-
-                                                                                                                                                                                                                                                                                <td>
-
-                                                                                                                                                                                                                                                                                    <strong>
-
-                                                                                                                                                                                                                                                                                        {{ $client->total_orders }}
-
-                                                                                                                                                                                                                                                                                    </strong>
-
-                                                                                                                                                                                                                                                                                </td>
-
-                                                                                                                                                                                                                                                                            </tr>
-
-                                        @empty
+                                                                                                                                                                                                                                                                        <thead>
 
                                                                                                                                                                                                                                                                             <tr>
 
-                                                                                                                                                                                                                                                                                <td colspan="5" class="text-center">
+                                                                                                                                                                                                                                                                                <th>#</th>
 
-                                                                                                                                                                                                                                                                                    No Record Found
+                                                                                                                                                                                                                                                                                <th>Staff</th>
 
-                                                                                                                                                                                                                                                                                </td>
+                                                                                                                                                                                                                                                                                <th>Total</th>
+
+                                                                                                                                                                                                                                                                                <th>Delivered</th>
+
+                                                                                                                                                                                                                                                                                <th>Success</th>
 
                                                                                                                                                                                                                                                                             </tr>
+
+                                                                                                                                                                                                                                                                        </thead>
+
+                                                                                                                                                                                                                                                                        <tbody>
+
+                                                                                                                                                                                                                                                                            @foreach ($staffPerformance as $index => $staff)
+    <tr>
+
+                                                                                                                                                                                                                                                                                    <td>{{ $index + 1 }}</td>
+
+                                                                                                                                                                                                                                                                                    <td>{{ $staff->name }}</td>
+
+                                                                                                                                                                                                                                                                                    <td>{{ $staff->total_orders }}</td>
+
+                                                                                                                                                                                                                                                                                    <td>{{ $staff->delivered }}</td>
+
+                                                                                                                                                                                                                                                                                    <td width="170">
+
+                                                                                                                                                                                                                                                                                        <div class="progress" style="height:8px;">
+
+                                                                                                                                                                                                                                                                                            <div class="progress-bar bg-success"
+                                                                                                                                                                                                                                                                                                style="width:{{ $staff->success }}%">
+
+                                                                                                                                                                                                                                                                                            </div>
+
+                                                                                                                                                                                                                                                                                        </div>
+
+                                                                                                                                                                                                                                                                                        <small>
+
+                                                                                                                                                                                                                                                                                            {{ $staff->success }}%
+
+                                                                                                                                                                                                                                                                                        </small>
+
+                                                                                                                                                                                                                                                                                    </td>
+
+                                                                                                                                                                                                                                                                                </tr>
+    @endforeach
+
+                                                                                                                                                                                                                                                                        </tbody>
+
+                                                                                                                                                                                                                                                                    </table>
+
+                                                                                                                                                                                                                                                                </div>
+
+                                                                                                                                                                                                                                                            </div>
+
+                                                                                                                                                                                                                                                        </div>
+
+                                                                                                                                                                                                                                                        <div class="col-xl-4">
+
+                                                                                                                                                                                                                                                            <div class="card shadow-sm client-card">
+
+                                                                                                                                                                                                                                                                <div class="card-header bg-white">
+
+                                                                                                                                                                                                                                                                    <strong>🏆 Top Clients</strong>
+
+                                                                                                                                                                                                                                                                </div>
+
+                                                                                                                                                                                                                                                                <div class="table-responsive">
+
+                                                                                                                                                                                                                                                                    <table class="table table-hover align-middle mb-0">
+
+                                                                                                                                                                                                                                                                        <thead class="table-light">
+
+                                                                                                                                                                                                                                                                            <tr>
+
+                                                                                                                                                                                                                                                                                <th>#</th>
+
+                                                                                                                                                                                                                                                                                <th>Client</th>
+
+                                                                                                                                                                                                                                                                                <th>Web</th>
+
+                                                                                                                                                                                                                                                                                <th>WhatsApp</th>
+
+                                                                                                                                                                                                                                                                                <th>Total</th>
+
+                                                                                                                                                                                                                                                                            </tr>
+
+                                                                                                                                                                                                                                                                        </thead>
+
+                                                                                                                                                                                                                                                                        <tbody>
+
+                                                                                                                                                                                                                                                                            @forelse($topClients as $index=>$client)
+    <tr>
+
+                                                                                                                                                                                                                                                                                    <td>{{ $index + 1 }}</td>
+
+                                                                                                                                                                                                                                                                                    <td>
+
+                                                                                                                                                                                                                                                                                        <strong>
+
+                                                                                                                                                                                                                                                                                            {{ $client->client_name }}
+
+                                                                                                                                                                                                                                                                                        </strong>
+
+                                                                                                                                                                                                                                                                                    </td>
+
+                                                                                                                                                                                                                                                                                    <td>
+
+                                                                                                                                                                                                                                                                                        <span class="badge bg-primary">
+
+                                                                                                                                                                                                                                                                                            {{ $client->web_orders }}
+
+                                                                                                                                                                                                                                                                                        </span>
+
+                                                                                                                                                                                                                                                                                    </td>
+
+                                                                                                                                                                                                                                                                                    <td>
+
+                                                                                                                                                                                                                                                                                        <span class="badge bg-success">
+
+                                                                                                                                                                                                                                                                                            {{ $client->whatsapp_orders }}
+
+                                                                                                                                                                                                                                                                                        </span>
+
+                                                                                                                                                                                                                                                                                    </td>
+
+                                                                                                                                                                                                                                                                                    <td>
+
+                                                                                                                                                                                                                                                                                        <strong>
+
+                                                                                                                                                                                                                                                                                            {{ $client->total_orders }}
+
+                                                                                                                                                                                                                                                                                        </strong>
+
+                                                                                                                                                                                                                                                                                    </td>
+
+                                                                                                                                                                                                                                                                                </tr>
+
+                                        @empty
+
+                                                                                                                                                                                                                                                                                <tr>
+
+                                                                                                                                                                                                                                                                                    <td colspan="5" class="text-center">
+
+                                                                                                                                                                                                                                                                                        No Record Found
+
+                                                                                                                                                                                                                                                                                    </td>
+
+                                                                                                                                                                                                                                                                                </tr>
     @endforelse
 
-                                                                                                                                                                                                                                                                    </tbody>
+                                                                                                                                                                                                                                                                        </tbody>
 
-                                                                                                                                                                                                                                                                </table>
+                                                                                                                                                                                                                                                                    </table>
+
+                                                                                                                                                                                                                                                                </div>
 
                                                                                                                                                                                                                                                             </div>
 
                                                                                                                                                                                                                                                         </div>
 
-                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                    <div class="col-xl-2">
-                                                                                                                                                                                                                                                        <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                            <div class="card-body">
-                                                                                                                                                                                                                                                                <h6 class="fw-bold">Order Status</h6>
-                                                                                                                                                                                                                                                                <canvas id="statusChart"></canvas>
+                                                                                                                                                                                                                                                        <div class="col-xl-2">
+                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
+                                                                                                                                                                                                                                                                <div class="card-body">
+                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Order Status</h6>
+                                                                                                                                                                                                                                                                    <canvas id="statusChart"></canvas>
+                                                                                                                                                                                                                                                                </div>
                                                                                                                                                                                                                                                             </div>
                                                                                                                                                                                                                                                         </div>
-                                                                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                                                                                                    <div class="col-xl-2">
+                                                                                                                                                                                                                                                        <div class="col-xl-2">
 
-                                                                                                                                                                                                                                                        <div class="card shadow-sm">
+                                                                                                                                                                                                                                                            <div class="card shadow-sm">
 
-                                                                                                                                                                                                                                                            <div class="card-header bg-white">
+                                                                                                                                                                                                                                                                <div class="card-header bg-white">
 
-                                                                                                                                                                                                                                                                <strong>💡 Quick Insights</strong>
-
-                                                                                                                                                                                                                                                            </div>
-
-                                                                                                                                                                                                                                                            <div class="card-body">
-
-                                                                                                                                                                                                                                                                <div class="mb-3">
-
-                                                                                                                                                                                                                                                                    <small class="text-muted">
-
-                                                                                                                                                                                                                                                                        Delivery Rate
-
-                                                                                                                                                                                                                                                                    </small>
-
-                                                                                                                                                                                                                                                                    <h5 class="text-success">
-
-                                                                                                                                                                                                                                                                        {{ $deliveryRate }}%
-
-                                                                                                                                                                                                                                                                    </h5>
+                                                                                                                                                                                                                                                                    <strong>💡 Quick Insights</strong>
 
                                                                                                                                                                                                                                                                 </div>
 
-                                                                                                                                                                                                                                                                <hr>
+                                                                                                                                                                                                                                                                <div class="card-body">
 
-                                                                                                                                                                                                                                                                <div class="mb-3">
+                                                                                                                                                                                                                                                                    <div class="mb-3">
 
-                                                                                                                                                                                                                                                                    <small class="text-muted">
+                                                                                                                                                                                                                                                                        <small class="text-muted">
 
-                                                                                                                                                                                                                                                                        RTO Rate
+                                                                                                                                                                                                                                                                            Delivery Rate
 
-                                                                                                                                                                                                                                                                    </small>
+                                                                                                                                                                                                                                                                        </small>
 
-                                                                                                                                                                                                                                                                    <h5 class="text-danger">
+                                                                                                                                                                                                                                                                        <h5 class="text-success">
 
-                                                                                                                                                                                                                                                                        {{ $rtoRate }}%
+                                                                                                                                                                                                                                                                            {{ $deliveryRate }}%
 
-                                                                                                                                                                                                                                                                    </h5>
+                                                                                                                                                                                                                                                                        </h5>
 
-                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                                                                                                                <hr>
+                                                                                                                                                                                                                                                                    <hr>
 
-                                                                                                                                                                                                                                                                <div class="mb-3">
+                                                                                                                                                                                                                                                                    <div class="mb-3">
 
-                                                                                                                                                                                                                                                                    <small class="text-muted">
+                                                                                                                                                                                                                                                                        <small class="text-muted">
 
-                                                                                                                                                                                                                                                                        Avg Orders / Day
+                                                                                                                                                                                                                                                                            RTO Rate
 
-                                                                                                                                                                                                                                                                    </small>
+                                                                                                                                                                                                                                                                        </small>
 
-                                                                                                                                                                                                                                                                    <h5>
+                                                                                                                                                                                                                                                                        <h5 class="text-danger">
 
-                                                                                                                                                                                                                                                                        {{ $averageOrders }}
+                                                                                                                                                                                                                                                                            {{ $rtoRate }}%
 
-                                                                                                                                                                                                                                                                    </h5>
+                                                                                                                                                                                                                                                                        </h5>
 
-                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                                                                                                                <hr>
+                                                                                                                                                                                                                                                                    <hr>
 
-                                                                                                                                                                                                                                                                <div class="mb-3">
+                                                                                                                                                                                                                                                                    <div class="mb-3">
 
-                                                                                                                                                                                                                                                                    <small class="text-muted">
+                                                                                                                                                                                                                                                                        <small class="text-muted">
 
-                                                                                                                                                                                                                                                                        Best Day
+                                                                                                                                                                                                                                                                            Avg Orders / Day
 
-                                                                                                                                                                                                                                                                    </small>
+                                                                                                                                                                                                                                                                        </small>
 
-                                                                                                                                                                                                                                                                    <h6>
+                                                                                                                                                                                                                                                                        <h5>
 
-                                                                                                                                                                                                                                                                        @if ($bestDay)
+                                                                                                                                                                                                                                                                            {{ $averageOrders }}
+
+                                                                                                                                                                                                                                                                        </h5>
+
+                                                                                                                                                                                                                                                                    </div>
+
+                                                                                                                                                                                                                                                                    <hr>
+
+                                                                                                                                                                                                                                                                    <div class="mb-3">
+
+                                                                                                                                                                                                                                                                        <small class="text-muted">
+
+                                                                                                                                                                                                                                                                            Best Day
+
+                                                                                                                                                                                                                                                                        </small>
+
+                                                                                                                                                                                                                                                                        <h6>
+
+                                                                                                                                                                                                                                                                            @if ($bestDay)
     {{ \Carbon\Carbon::parse($bestDay->day)->format('d M') }}
     @endif
 
-                                                                                                                                                                                                                                                                    </h6>
+                                                                                                                                                                                                                                                                        </h6>
 
-                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                                                                                                                <hr>
+                                                                                                                                                                                                                                                                    <hr>
 
-                                                                                                                                                                                                                                                                <div class="mb-3">
+                                                                                                                                                                                                                                                                    <div class="mb-3">
 
-                                                                                                                                                                                                                                                                    <small class="text-muted">
+                                                                                                                                                                                                                                                                        <small class="text-muted">
 
-                                                                                                                                                                                                                                                                        Highest Payment
+                                                                                                                                                                                                                                                                            Highest Payment
 
-                                                                                                                                                                                                                                                                    </small>
+                                                                                                                                                                                                                                                                        </small>
 
-                                                                                                                                                                                                                                                                    <h6 class="text-primary">
+                                                                                                                                                                                                                                                                        <h6 class="text-primary">
 
-                                                                                                                                                                                                                                                                        @if ($highestPayment)
+                                                                                                                                                                                                                                                                            @if ($highestPayment)
     ₹{{ number_format($highestPayment->amount, 2) }}
     @endif
 
-                                                                                                                                                                                                                                                                    </h6>
+                                                                                                                                                                                                                                                                        </h6>
 
-                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                    </div>
 
-                                                                                                                                                                                                                                                                <hr>
+                                                                                                                                                                                                                                                                    <hr>
 
-                                                                                                                                                                                                                                                                <div>
+                                                                                                                                                                                                                                                                    <div>
 
-                                                                                                                                                                                                                                                                    <small class="text-muted">
+                                                                                                                                                                                                                                                                        <small class="text-muted">
 
-                                                                                                                                                                                                                                                                        Best Staff
+                                                                                                                                                                                                                                                                            Best Staff
 
-                                                                                                                                                                                                                                                                    </small>
+                                                                                                                                                                                                                                                                        </small>
 
-                                                                                                                                                                                                                                                                    <h6>
+                                                                                                                                                                                                                                                                        <h6>
 
-                                                                                                                                                                                                                                                                        @if ($bestStaff)
+                                                                                                                                                                                                                                                                            @if ($bestStaff)
     {{ $bestStaff->name }}
-                                                                                                                                                                                                                                                                            <br>
-                                                                                                                                                                                                                                                                            <small class="text-success">
-                                                                                                                                                                                                                                                                                {{ $bestStaff->delivered }} Deliveries
-                                                                                                                                                                                                                                                                            </small>
+                                                                                                                                                                                                                                                                                <br>
+                                                                                                                                                                                                                                                                                <small class="text-success">
+                                                                                                                                                                                                                                                                                    {{ $bestStaff->delivered }} Deliveries
+                                                                                                                                                                                                                                                                                </small>
 @else
     N/A
     @endif
 
-                                                                                                                                                                                                                                                                    </h6>
+                                                                                                                                                                                                                                                                        </h6>
+
+                                                                                                                                                                                                                                                                    </div>
 
                                                                                                                                                                                                                                                                 </div>
 
@@ -1586,9 +1619,7 @@
 
                                                                                                                                                                                                                                                         </div>
 
-                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                </div>-->
+                                                                                                                                                                                                                                                    </div>-->
             @endif
             <div id="bulkActions" class="mb-3 d-none">
                 <button class="btn btn-danger" id="downloadInvoice">

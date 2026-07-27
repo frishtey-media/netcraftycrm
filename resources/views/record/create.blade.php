@@ -420,13 +420,13 @@
 
                 <!--  <div class="mb-3">
 
-                                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                                                    data-bs-target="#bulkImportModal">
-                                                    <i class="fas fa-upload"></i>
-                                                    Bulk Order Import
-                                                </button>
+                                                                                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                                                                                            data-bs-target="#bulkImportModal">
+                                                                                                            <i class="fas fa-upload"></i>
+                                                                                                            Bulk Order Import
+                                                                                                        </button>
 
-                                            </div>-->
+                                                                                                    </div>-->
 
                 <div class="card-header bg-success text-white">
 
@@ -681,7 +681,7 @@
                                 Remarks
                             </label>
 
-                            <textarea name="verified_remarks" class="form-control" rows="2" placeholder="Optional remarks"></textarea>
+                            <textarea name="remarks" class="form-control" rows="2" placeholder="Optional remarks"></textarea>
 
                         </div>
 
@@ -890,18 +890,20 @@
 
             function normalizePhone(phone) {
 
-                phone = String(phone || '')
-                    .replace(/\D/g, '');
+                phone = String(phone || '').trim();
 
-                // 91XXXXXXXXXX
-                if (
-                    phone.length === 12 &&
-                    phone.startsWith('91')
-                ) {
-                    phone = phone.substring(2);
+                // Keep digits only
+                phone = phone.replace(/\D/g, '');
+
+                // Indian local number: 0XXXXXXXXXX
+                if (phone.length < 7 || phone.length > 15) {
+
+                    alert(
+                        'Please enter a valid phone number.'
+                    );
+
+                    return;
                 }
-
-                // 0XXXXXXXXXX
                 if (
                     phone.length === 11 &&
                     phone.startsWith('0')
@@ -909,40 +911,24 @@
                     phone = phone.substring(1);
                 }
 
-                // Any extra prefix
-                if (phone.length > 10) {
-                    phone = phone.slice(-10);
-                }
-
                 return phone;
             }
 
 
 
+
             /* =====================================================
                CUSTOMER SEARCH
-            ====================================================== */
+            ===================================================== */
 
             $('#searchCustomer').on('click', function() {
 
-                let phone = normalizePhone(
-                    $('#customer_phone_search').val()
-                );
+                let phone = $('#customer_phone_search').val().trim();
 
-
-                if (phone.length !== 10) {
-
-                    alert(
-                        'Please enter valid 10 digit mobile number'
-                    );
-
+                if (!phone) {
+                    alert('Please enter customer mobile number.');
                     return;
                 }
-
-
-                $('#customer_phone_search')
-                    .val(phone);
-
 
                 $.ajax({
 
@@ -954,185 +940,169 @@
                         phone: phone
                     },
 
-
                     beforeSend: function() {
 
                         $('#searchCustomer')
                             .prop('disabled', true)
-                            .text('Searching...');
-
+                            .html('<i class="fas fa-spinner fa-spin"></i> Searching...');
                     },
 
+                    success: function(response) {
 
-                    success: function(rows) {
+                        console.log('SEARCH RESPONSE:', response);
 
+                        let rows = response.orders || [];
+                        let delivered = response.delivered_order || null;
+                        let searchedPhone = response.phone || phone;
 
-                        /* LOCK NUMBER */
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Lock searched number
+                        |--------------------------------------------------------------------------
+                        */
 
                         $('#customer_phone_search')
+                            .val(searchedPhone)
                             .prop('readonly', true);
 
+                        $('#changeNumberBox').removeClass('d-none');
 
-                        $('#changeNumberBox')
-                            .removeClass('d-none');
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Show Lead Section
+                        |--------------------------------------------------------------------------
+                        */
 
+                        $('#leadSection').removeClass('d-none');
 
-                        /* SET PHONE */
-
-                        $('#lead_customer_phone')
-                            .val(phone);
-
-
-                        /* SHOW LEAD */
-
-                        $('#leadSection')
-                            .removeClass('d-none');
+                        $('#lead_customer_phone').val(searchedPhone);
 
 
-                        /* RESET STATUS */
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Previous History
+                        |--------------------------------------------------------------------------
+                        */
 
-                        $('#call_status')
-                            .val('');
-
-
-                        $('#remarksSection')
-                            .addClass('d-none');
-
-
-                        $('#verifiedOrderSection')
-                            .addClass('d-none');
-
-
-                        $('.verified-required')
-                            .prop('required', false);
-
-
-                        $('#remarks')
-                            .prop('required', false);
-
-
-                        /* HISTORY COUNT */
-
-                        $('#historyCount')
-                            .text(rows.length + ' Orders');
-
+                        $('#historyCount').text(rows.length + ' Orders');
 
                         let html = '';
-
 
                         if (rows.length === 0) {
 
                             html = `
-                        <tr>
-                            <td
-                                colspan="8"
-                                class="text-center text-danger py-4"
-                            >
-                                No Previous Orders Found
-                            </td>
-                        </tr>
-                    `;
+                    <tr>
+                        <td colspan="8"
+                            class="text-center text-danger py-4">
+                            No Previous Orders Found
+                        </td>
+                    </tr>
+                `;
 
                         } else {
 
-
                             rows.forEach(function(row) {
+
+                                let deliveryStatus =
+                                    (row.delivery_status || '').trim();
 
                                 let status = '';
 
-
                                 if (
-                                    row.delivery_status === 'Delivered'
+                                    deliveryStatus.toLowerCase() === 'delivered'
                                 ) {
 
                                     status =
                                         '<span class="badge bg-success">Delivered</span>';
 
                                 } else if (
-                                    row.delivery_status === 'RTO'
+                                    deliveryStatus.toLowerCase() === 'rto'
                                 ) {
 
                                     status =
                                         '<span class="badge bg-danger">RTO</span>';
 
                                 } else if (
-                                    row.delivery_status === 'In Transit'
+                                    deliveryStatus.toLowerCase() === 'in transit'
                                 ) {
 
                                     status =
-                                        '<span class="badge bg-warning text-dark">Transit</span>';
+                                        '<span class="badge bg-warning text-dark">In Transit</span>';
 
                                 } else {
 
                                     status =
                                         '<span class="badge bg-secondary">' +
-                                        (row.delivery_status ?? '-') +
+                                        (deliveryStatus || '-') +
                                         '</span>';
-
                                 }
 
 
                                 html += `
+                        <tr>
+                            <td>${row.created_at ?? '-'}</td>
 
-                            <tr>
+                            <td>${row.order_id ?? '-'}</td>
 
-                                <td>
-                                    ${row.created_at ?? '-'}
-                                </td>
+                            <td>${row.barcode ?? '-'}</td>
 
-                                <td>
-                                    ${row.order_id ?? '-'}
-                                </td>
+                            <td>${row.client_name ?? '-'}</td>
 
-                                <td>
-                                    ${row.barcode ?? '-'}
-                                </td>
+                            <td>${row.product ?? '-'}</td>
 
-                                <td>
-                                    ${row.client_name ?? '-'}
-                                </td>
+                            <td>₹ ${row.amount ?? 0}</td>
 
-                                <td>
-                                    ${row.product ?? '-'}
-                                </td>
+                            <td>${status}</td>
 
-                                <td>
-                                    ₹ ${row.amount ?? 0}
-                                </td>
-
-                                <td>
-                                    ${status}
-                                </td>
-
-                                <td>
-                                    ${row.staff_name ?? '-'}
-                                </td>
-
-                            </tr>
-
-                        `;
-
+                            <td>${row.staff_name ?? '-'}</td>
+                        </tr>
+                    `;
                             });
-
                         }
 
+                        $('#historyTable').html(html);
 
-                        $('#historyTable')
-                            .html(html);
 
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Delivered Customer Auto Fill
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (delivered) {
+
+                            console.log(
+                                'Delivered order found:',
+                                delivered
+                            );
+
+                            fillDeliveredCustomer(delivered);
+
+                        } else {
+
+                            console.log(
+                                'No delivered order found.'
+                            );
+
+                            // Customer number still set
+                            $('#lead_customer_phone')
+                                .val(searchedPhone);
+                        }
                     },
-
 
                     error: function(xhr) {
 
+                        console.error(
+                            'SEARCH ERROR:',
+                            xhr.responseText
+                        );
+
                         let message =
-                            xhr.responseJSON?.message ??
-                            'Customer search failed.';
+                            xhr.responseJSON?.message ||
+                            'Customer search failed. Check console.';
 
                         alert(message);
-
                     },
-
 
                     complete: function() {
 
@@ -1141,7 +1111,6 @@
                             .html(
                                 '<i class="fas fa-search"></i> Search'
                             );
-
                     }
 
                 });
@@ -1284,26 +1253,103 @@
                             productOptions =
                                 '<option value="">Select Product</option>';
 
-
                             data.forEach(function(item) {
 
                                 productOptions += `
-
-                            <option
-                                value="${item.shopify_product_name}"
-                                data-weight="${item.weight_per_unit}"
-                            >
-                                ${item.shopify_product_name}
-                            </option>
-
-                        `;
-
+            <option
+                value="${item.shopify_product_name}"
+                data-weight="${item.weight_per_unit}"
+            >
+                ${item.shopify_product_name}
+            </option>
+        `;
                             });
 
 
                             $('.product-select')
                                 .html(productOptions);
 
+
+                            /* =====================================================
+                               AUTO SELECT PREVIOUS DELIVERED PRODUCT
+                            ===================================================== */
+
+                            if (window.previousDeliveredProduct) {
+
+                                let oldProduct =
+                                    String(
+                                        window.previousDeliveredProduct
+                                    )
+                                    .toLowerCase()
+                                    .trim();
+
+
+                                let found = false;
+
+
+                                $('.product-select')
+                                    .first()
+                                    .find('option')
+                                    .each(function() {
+
+                                        let value =
+                                            String($(this).val() || '')
+                                            .toLowerCase()
+                                            .trim();
+
+                                        let text =
+                                            String($(this).text() || '')
+                                            .toLowerCase()
+                                            .trim();
+
+
+                                        if (
+                                            value === oldProduct ||
+                                            text === oldProduct ||
+                                            value.includes(oldProduct) ||
+                                            oldProduct.includes(value)
+                                        ) {
+
+                                            $('.product-select')
+                                                .first()
+                                                .val($(this).val())
+                                                .trigger('change');
+
+                                            found = true;
+
+                                            return false;
+                                        }
+
+                                    });
+
+
+                                /* Quantity */
+
+                                $('.product-qty')
+                                    .first()
+                                    .val(
+                                        window.previousDeliveredQuantity || 1
+                                    );
+
+
+                                /* If exact product not found */
+
+                                if (!found) {
+
+                                    console.log(
+                                        'Previous product not found in current client products:',
+                                        window.previousDeliveredProduct
+                                    );
+                                }
+
+
+                                calculateTotalWeight();
+
+
+                                window.previousDeliveredProduct = null;
+                                window.previousDeliveredQuantity = null;
+                                window.previousDeliveredWeight = null;
+                            }
                         },
 
 
@@ -1876,6 +1922,127 @@
 
 
         });
+
+
+        function fillDeliveredCustomer(order) {
+
+            console.log(
+                'AUTO FILL ORDER:',
+                order
+            );
+
+
+            /* =====================================================
+               BASIC CUSTOMER DATA
+            ===================================================== */
+
+            $('input[name="customer_name"]')
+                .val(order.customer_name ?? '');
+
+            $('input[name="father_name"]')
+                .val(order.father_name ?? '');
+
+            $('input[name="age"]')
+                .val(order.age ?? '');
+
+            $('input[name="city"]')
+                .val(order.city ?? '');
+
+            $('input[name="state"]')
+                .val(order.state ?? '');
+
+            $('input[name="shipping_pincode"]')
+                .val(order.pincode ?? '');
+
+            $('textarea[name="shipping_address_line1"]')
+                .val(order.shipping_address ?? '');
+
+            $('textarea[name="shipping_address_line2"]')
+                .val('');
+
+
+            /* =====================================================
+               AMOUNT
+            ===================================================== */
+
+            $('input[name="amount"]')
+                .val(order.amount ?? '');
+
+
+            /* =====================================================
+               PAYMENT MODE
+            ===================================================== */
+
+            if (order.payment_mode) {
+
+                let payment =
+                    String(order.payment_mode).trim();
+
+                $('select[name="payment_mode"] option')
+                    .each(function() {
+
+                        if (
+                            $(this).val().toLowerCase() ===
+                            payment.toLowerCase()
+                        ) {
+
+                            $('select[name="payment_mode"]')
+                                .val($(this).val());
+
+                            return false;
+                        }
+                    });
+            }
+
+
+            /* =====================================================
+               SAVE OLD PRODUCT BEFORE CLIENT AJAX
+            ===================================================== */
+
+            window.previousDeliveredProduct =
+                order.product ?? '';
+
+            window.previousDeliveredQuantity =
+                order.quantity ?? 1;
+
+            window.previousDeliveredWeight =
+                order.weight ?? '';
+
+
+            /* =====================================================
+               CLIENT
+            ===================================================== */
+
+            if (order.client_id) {
+
+                $('#lead_client_id')
+                    .val(String(order.client_id))
+                    .trigger('change');
+            }
+
+
+            /* =====================================================
+               SHOW VERIFIED
+            ===================================================== */
+
+            $('#call_status')
+                .val('verified')
+                .trigger('change');
+
+
+            /* =====================================================
+               VERIFIED FIELDS EDITABLE
+            ===================================================== */
+
+            $('#verifiedOrderSection')
+                .find('input:not([readonly]), select, textarea')
+                .prop('disabled', false);
+
+
+            console.log(
+                'Auto fill completed.'
+            );
+        }
     </script>
 
 @endsection

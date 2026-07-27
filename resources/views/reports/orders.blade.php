@@ -166,6 +166,7 @@
                             <th>Phone</th>
 
                             <th>Product</th>
+                            <th>Payment Mode</th>
                             <th>created_at</th>
 
 
@@ -219,6 +220,11 @@
                                 <td>
 
                                     {{ $order->product }}
+
+                                </td>
+                                <td>
+
+                                    {{ $order->payment_mode }}
 
                                 </td>
                                 <td>

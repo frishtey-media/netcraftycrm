@@ -746,6 +746,15 @@
     <script>
         $(document).ready(function() {
 
+            /*
+            |--------------------------------------------------------------------------
+            | TEMP DELIVERED DATA
+            |--------------------------------------------------------------------------
+            */
+
+            let deliveredProduct = null;
+            let deliveredQuantity = 1;
+
 
             /*
             |--------------------------------------------------------------------------
@@ -755,28 +764,18 @@
 
             $('#searchCustomer').on('click', function() {
 
-                let phone =
-                    $('#customer_phone_search')
-                    .val()
-                    .trim();
-
+                let phone = $('#customer_phone_search').val().trim();
 
                 if (!phone) {
-
                     alert('Enter Mobile Number');
-
                     return;
                 }
 
-
                 let button = $(this);
-
 
                 button
                     .prop('disabled', true)
-                    .html(
-                        '<i class="fa fa-spinner fa-spin"></i> Searching...'
-                    );
+                    .html('<i class="fa fa-spinner fa-spin"></i> Searching...');
 
 
                 $.ajax({
@@ -794,7 +793,7 @@
 
                         /*
                         |--------------------------------------------------------------------------
-                        | Lock searched phone
+                        | LOCK SEARCH PHONE
                         |--------------------------------------------------------------------------
                         */
 
@@ -802,29 +801,22 @@
                             .val(res.phone)
                             .prop('readonly', true);
 
-
                         $('#customer_phone')
                             .val(res.phone);
 
-
-                        $('#changeNumber')
-                            .show();
+                        $('#changeNumber').show();
 
 
                         /*
                         |--------------------------------------------------------------------------
-                        | History
+                        | SHOW HISTORY
                         |--------------------------------------------------------------------------
                         */
 
-                        $('#historyCard')
-                            .slideDown();
-
+                        $('#historyCard').slideDown();
 
                         $('#historyCount')
-                            .text(
-                                res.orders.length + ' Orders'
-                            );
+                            .text(res.orders.length + ' Orders');
 
 
                         let html = '';
@@ -833,138 +825,116 @@
                         if (res.orders.length === 0) {
 
                             html = `
-
                         <tr>
-
-                            <td
-                                colspan="8"
+                            <td colspan="8"
                                 class="text-center text-danger py-4">
 
                                 No Previous Orders Found
 
                             </td>
-
                         </tr>
-
                     `;
 
                         } else {
 
+                            $.each(res.orders, function(i, row) {
 
-                            $.each(
-                                res.orders,
-                                function(i, row) {
+                                let badge = '';
 
-                                    let badge = '';
+                                if (
+                                    String(row.delivery_status)
+                                    .toLowerCase() === 'delivered'
+                                ) {
 
+                                    badge =
+                                        '<span class="badge bg-success">Delivered</span>';
 
-                                    if (
-                                        row.delivery_status ===
-                                        'Delivered'
-                                    ) {
+                                } else if (
+                                    String(row.delivery_status)
+                                    .toLowerCase() === 'rto'
+                                ) {
 
-                                        badge =
-                                            '<span class="badge bg-success">Delivered</span>';
+                                    badge =
+                                        '<span class="badge bg-danger">RTO</span>';
 
-                                    } else if (
-                                        row.delivery_status ===
-                                        'RTO'
-                                    ) {
+                                } else if (
+                                    String(row.delivery_status)
+                                    .toLowerCase() === 'in transit'
+                                ) {
 
-                                        badge =
-                                            '<span class="badge bg-danger">RTO</span>';
+                                    badge =
+                                        '<span class="badge bg-warning text-dark">In Transit</span>';
 
-                                    } else if (
-                                        row.delivery_status ===
-                                        'In Transit'
-                                    ) {
+                                } else {
 
-                                        badge =
-                                            '<span class="badge bg-warning text-dark">In Transit</span>';
-
-                                    } else {
-
-                                        badge =
-                                            '<span class="badge bg-secondary">' +
-                                            (
-                                                row.delivery_status ??
-                                                'No Status'
-                                            ) +
-                                            '</span>';
-
-                                    }
-
-
-                                    html += `
-
-                                <tr>
-
-                                    <td>
-                                        ${row.created_at ?? '-'}
-                                    </td>
-
-                                    <td>
-                                        ${row.order_id ?? '-'}
-                                    </td>
-
-                                    <td>
-                                        ${row.barcode ?? '-'}
-                                    </td>
-
-                                    <td>
-                                        ${row.client_name ?? '-'}
-                                    </td>
-
-                                    <td>
-                                        ${row.product ?? '-'}
-                                    </td>
-
-                                    <td>
-                                        ₹ ${row.amount ?? 0}
-                                    </td>
-
-                                    <td>
-                                        ${badge}
-                                    </td>
-
-                                    <td>
-                                        ${row.staff_name ?? '-'}
-                                    </td>
-
-                                </tr>
-
-                            `;
-
+                                    badge =
+                                        '<span class="badge bg-secondary">' +
+                                        (row.delivery_status ?? 'No Status') +
+                                        '</span>';
                                 }
-                            );
 
+
+                                html += `
+                            <tr>
+
+                                <td>${row.created_at ?? '-'}</td>
+
+                                <td>${row.order_id ?? '-'}</td>
+
+                                <td>${row.barcode ?? '-'}</td>
+
+                                <td>${row.client_name ?? '-'}</td>
+
+                                <td>${row.product ?? '-'}</td>
+
+                                <td>₹ ${row.amount ?? 0}</td>
+
+                                <td>${badge}</td>
+
+                                <td>${row.staff_name ?? '-'}</td>
+
+                            </tr>
+                        `;
+                            });
                         }
 
 
-                        $('#historyTable')
-                            .html(html);
+                        $('#historyTable').html(html);
 
 
                         /*
                         |--------------------------------------------------------------------------
-                        | Show call section
+                        | SHOW LEAD SECTION
                         |--------------------------------------------------------------------------
                         */
 
-                        $('#callSection')
-                            .slideDown();
+                        $('#callSection').slideDown();
 
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | DELIVERED CUSTOMER AUTO FILL
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (res.delivered_order) {
+
+                            fillDeliveredCustomer(
+                                res.delivered_order
+                            );
+                        }
                     },
 
 
                     error: function(xhr) {
+
+                        console.log(xhr.responseText);
 
                         let message =
                             xhr.responseJSON?.message ??
                             'Unable to search customer.';
 
                         alert(message);
-
                     },
 
 
@@ -975,13 +945,132 @@
                             .html(
                                 '<i class="fa fa-search"></i> Search'
                             );
-
                     }
 
                 });
 
             });
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | AUTO FILL DELIVERED CUSTOMER
+            |--------------------------------------------------------------------------
+            */
+
+            function fillDeliveredCustomer(order) {
+
+                console.log(
+                    'Delivered customer:',
+                    order
+                );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | CUSTOMER
+                |--------------------------------------------------------------------------
+                */
+
+                $('input[name="customer_name"]')
+                    .val(order.customer_name ?? '');
+
+                $('input[name="father_name"]')
+                    .val(order.father_name ?? '');
+
+                $('input[name="age"]')
+                    .val(order.age ?? '');
+
+                $('input[name="amount"]')
+                    .val(order.amount ?? '');
+
+                $('input[name="city"]')
+                    .val(order.city ?? '');
+
+                $('input[name="state"]')
+                    .val(order.state ?? '');
+
+                $('input[name="pincode"]')
+                    .val(order.pincode ?? '');
+
+                $('textarea[name="address"]')
+                    .val(order.shipping_address ?? '');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | PAYMENT MODE
+                |--------------------------------------------------------------------------
+                */
+
+                if (order.payment_mode) {
+
+                    let oldPayment =
+                        String(order.payment_mode)
+                        .trim()
+                        .toLowerCase();
+
+
+                    $('select[name="payment_mode"] option')
+                        .each(function() {
+
+                            let current =
+                                String($(this).val())
+                                .trim()
+                                .toLowerCase();
+
+
+                            if (current === oldPayment) {
+
+                                $('select[name="payment_mode"]')
+                                    .val($(this).val());
+
+                                return false;
+                            }
+                        });
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | SAVE PRODUCT TEMPORARILY
+                |--------------------------------------------------------------------------
+                */
+
+                deliveredProduct =
+                    order.product ?? null;
+
+                deliveredQuantity =
+                    parseInt(order.quantity) || 1;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | CLIENT
+                |--------------------------------------------------------------------------
+                |
+                | Trigger change will load client products.
+                |
+                */
+
+                if (order.client_id) {
+
+                    $('#client_id')
+                        .val(String(order.client_id))
+                        .trigger('change');
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | AUTO VERIFIED
+                |--------------------------------------------------------------------------
+                */
+
+                $('#call_status')
+                    .val('verified')
+                    .trigger('change');
+            }
 
 
             /*
@@ -990,45 +1079,30 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#changeNumber').on(
-                'click',
-                function() {
+            $('#changeNumber').on('click', function() {
 
-                    $('#customer_phone_search')
-                        .prop('readonly', false)
-                        .val('')
-                        .focus();
+                $('#customer_phone_search')
+                    .prop('readonly', false)
+                    .val('')
+                    .focus();
 
+                $('#customer_phone').val('');
 
-                    $('#customer_phone')
-                        .val('');
+                $('#historyCard').hide();
 
+                $('#callSection').hide();
 
-                    $('#historyCard')
-                        .hide();
+                $('#verifiedSection').hide();
 
+                $('#remarksSection').hide();
 
-                    $('#callSection')
-                        .hide();
+                $('#call_status').val('');
 
+                deliveredProduct = null;
+                deliveredQuantity = 1;
 
-                    $('#verifiedSection')
-                        .hide();
-
-
-                    $('#remarksSection')
-                        .hide();
-
-
-                    $('#call_status')
-                        .val('');
-
-
-                    $(this).hide();
-
-                }
-            );
-
+                $(this).hide();
+            });
 
 
             /*
@@ -1037,72 +1111,35 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#call_status').on(
-                'change',
-                function() {
+            $('#call_status').on('change', function() {
 
-                    let status =
-                        $(this).val();
+                let status = $(this).val();
 
+                $('#verifiedSection').hide();
+                $('#remarksSection').hide();
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Reset
-                    |--------------------------------------------------------------------------
-                    */
+                $('.verified-required')
+                    .prop('required', false);
 
-                    $('#verifiedSection')
-                        .hide();
+                $('#remarks')
+                    .prop('required', false);
 
 
-                    $('#remarksSection')
-                        .hide();
+                if (status === 'verified') {
 
+                    $('#verifiedSection').slideDown();
 
                     $('.verified-required')
-                        .prop('required', false);
+                        .prop('required', true);
 
+                } else if (status) {
+
+                    $('#remarksSection').slideDown();
 
                     $('#remarks')
-                        .prop('required', false);
-
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Verified
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if (status === 'verified') {
-
-                        $('#verifiedSection')
-                            .slideDown();
-
-
-                        $('.verified-required')
-                            .prop('required', true);
-
-                    }
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Other status
-                    |--------------------------------------------------------------------------
-                    */
-                    else if (status) {
-
-                        $('#remarksSection')
-                            .slideDown();
-
-
-                        $('#remarks')
-                            .prop('required', true);
-
-                    }
-
+                        .prop('required', true);
                 }
-            );
-
+            });
 
 
             /*
@@ -1111,78 +1148,164 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#client_id').on(
-                'change',
-                function() {
+            $('#client_id').on('change', function() {
 
-                    let clientId =
-                        $(this).val();
+                let clientId = $(this).val();
 
-
-                    $('#product_name')
-                        .html(
-                            '<option value="">Loading...</option>'
-                        );
+                $('#product_name').html(
+                    '<option value="">Loading...</option>'
+                );
 
 
-                    if (!clientId) {
+                if (!clientId) {
 
-                        $('#product_name')
-                            .html(
-                                '<option value="">Select Client First</option>'
-                            );
-
-                        return;
-                    }
-
-
-                    let url =
-                        "{{ route('calling.client.products', ':id') }}";
-
-                    url =
-                        url.replace(
-                            ':id',
-                            clientId
-                        );
-
-
-                    $.get(
-                        url,
-                        function(products) {
-
-                            let options =
-                                '<option value="">Select Product</option>';
-
-
-                            $.each(
-                                products,
-                                function(i, product) {
-
-                                    options += `
-
-                                <option
-                                    value="${product.shopify_product_name}"
-                                    data-weight="${product.weight_per_unit ?? 0}">
-
-                                    ${product.shopify_product_name}
-
-                                </option>
-
-                            `;
-
-                                }
-                            );
-
-
-                            $('#product_name')
-                                .html(options);
-
-                        }
+                    $('#product_name').html(
+                        '<option value="">Select Client First</option>'
                     );
 
+                    return;
                 }
-            );
 
+
+                let url =
+                    "{{ route('calling.client.products', ':id') }}";
+
+                url = url.replace(
+                    ':id',
+                    clientId
+                );
+
+
+                $.ajax({
+
+                    url: url,
+
+                    type: "GET",
+
+                    success: function(products) {
+
+                        let options =
+                            '<option value="">Select Product</option>';
+
+
+                        $.each(products, function(i, product) {
+
+                            options += `
+
+                        <option
+                            value="${product.shopify_product_name}"
+                            data-weight="${product.weight_per_unit ?? 0}">
+
+                            ${product.shopify_product_name}
+
+                        </option>
+                    `;
+                        });
+
+
+                        $('#product_name').html(options);
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | AUTO SELECT DELIVERED PRODUCT
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (deliveredProduct) {
+
+                            let oldProduct =
+                                String(deliveredProduct)
+                                .trim()
+                                .toLowerCase();
+
+
+                            let matched = false;
+
+
+                            $('#product_name option')
+                                .each(function() {
+
+                                    let optionValue =
+                                        String(
+                                            $(this).val() || ''
+                                        )
+                                        .trim()
+                                        .toLowerCase();
+
+
+                                    let optionText =
+                                        String(
+                                            $(this).text() || ''
+                                        )
+                                        .trim()
+                                        .toLowerCase();
+
+
+                                    if (
+                                        optionValue === oldProduct ||
+                                        optionText === oldProduct ||
+                                        (
+                                            optionValue &&
+                                            oldProduct.includes(optionValue)
+                                        ) ||
+                                        (
+                                            oldProduct &&
+                                            optionValue.includes(oldProduct)
+                                        )
+                                    ) {
+
+                                        $('#product_name')
+                                            .val($(this).val())
+                                            .trigger('change');
+
+                                        matched = true;
+
+                                        return false;
+                                    }
+                                });
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | QUANTITY
+                            |--------------------------------------------------------------------------
+                            */
+
+                            $('#quantity')
+                                .val(deliveredQuantity);
+
+
+                            calculateWeight();
+
+
+                            if (!matched) {
+
+                                console.log(
+                                    'Previous product not found:',
+                                    deliveredProduct
+                                );
+                            }
+
+
+                            deliveredProduct = null;
+                            deliveredQuantity = 1;
+                        }
+                    },
+
+
+                    error: function(xhr) {
+
+                        console.log(xhr.responseText);
+
+                        $('#product_name').html(
+                            '<option value="">Unable to load products</option>'
+                        );
+                    }
+
+                });
+
+            });
 
 
             /*
@@ -1191,29 +1314,20 @@
             |--------------------------------------------------------------------------
             */
 
-            $('#product_name').on(
-                'change',
-                function() {
+            $('#product_name').on('change', function() {
 
-                    let weight =
-
+                let weight =
+                    parseFloat(
                         $(this)
                         .find(':selected')
                         .data('weight')
-
-                        ??
-                        0;
+                    ) || 0;
 
 
-                    $('#weight')
-                        .val(weight);
+                $('#weight').val(weight);
 
-
-                    calculateWeight();
-
-                }
-            );
-
+                calculateWeight();
+            });
 
 
             /*
@@ -1227,12 +1341,12 @@
                 function() {
 
                     calculateWeight();
-
                 }
             );
 
 
             function calculateWeight() {
+
                 let quantity =
                     parseFloat(
                         $('#quantity').val()
@@ -1245,14 +1359,11 @@
                     ) || 0;
 
 
-                let total =
-                    quantity * weight;
-
-
                 $('#total_weight_display')
-                    .val(total);
+                    .val(
+                        quantity * weight
+                    );
             }
-
 
         });
     </script>

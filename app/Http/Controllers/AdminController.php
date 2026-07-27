@@ -793,9 +793,39 @@ class AdminController extends Controller
             ? Carbon::parse($request->to)->endOfDay()
             : now()->endOfDay();
 
-        $clientId = $this->isClient()
-            ? $this->clientId()
-            : null;
+        /*
+|--------------------------------------------------------------------------
+| CLIENT FILTER
+|--------------------------------------------------------------------------
+
+|
+*/
+
+        if ($this->isClient()) {
+
+            // Client user can only see own data
+            $clientId = $this->clientId();
+        } else {
+
+            // Super Admin selected client
+            $clientId = $request->filled('client_id')
+                ? (int) $request->client_id
+                : null;
+        }
+
+
+
+
+        if ($this->isClient()) {
+
+            $clients = Client::where('id', $this->clientId())
+                ->orderBy('client_name')
+                ->get();
+        } else {
+
+            $clients = Client::orderBy('client_name')
+                ->get();
+        }
 
         // =========================
         // STAFF PERFORMANCE
@@ -896,7 +926,7 @@ class AdminController extends Controller
             ->groupBy('assigned_to')
             ->get()
             ->keyBy('assigned_to');
-
+        $isClientUser = $this->isClient();
         foreach ($staffs as $staff) {
 
             $wa = $waData[$staff->id] ?? null;
@@ -994,6 +1024,9 @@ class AdminController extends Controller
             'staffs',
             'from',
             'to',
+            'clients',
+            'clientId',
+            'isClientUser',
             'clientWise',
             'allStaff',
             'totalOrders',
