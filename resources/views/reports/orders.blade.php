@@ -15,8 +15,11 @@
                 <h4 class="mb-0">
                     {{ $title }}
                 </h4>
-
-                <a href="{{ route('reports.export', $type) }}" class="btn btn-success">
+                <a href="{{ route('reports.export', [
+                    'type' => $type,
+                    'client_id' => $selectedClient,
+                ]) }}"
+                    class="btn btn-success">
 
                     <i class="fas fa-file-excel"></i>
 
@@ -80,19 +83,47 @@
 
                     <tbody>
 
-                        @forelse($clientSummary as $key=>$client)
-                            <tr>
+                        {{-- ALL CLIENTS --}}
+                        @if (auth()->user()->role != 'client')
+                            <tr style="cursor:pointer;"
+                                onclick="window.location='{{ route('reports.index', ['type' => $type]) }}'"
+                                class="{{ empty($selectedClient) ? 'table-primary' : '' }}">
 
                                 <td>
-
-                                    {{ $key + 1 }}
-
+                                    <strong>★</strong>
                                 </td>
 
                                 <td>
+                                    <strong>All Clients</strong>
+                                </td>
 
-                                    {{ $client->client_name }}
+                                <td>
+                                    <span class="badge bg-primary">
+                                        {{ $clientSummary->sum('total') }}
+                                    </span>
+                                </td>
 
+                            </tr>
+                        @endif
+
+
+                        {{-- CLIENTS --}}
+                        @forelse($clientSummary as $key => $client)
+                            <tr style="cursor:pointer;"
+                                onclick="window.location='{{ route('reports.index', [
+                                    'type' => $type,
+                                    'client_id' => $client->client_id,
+                                ]) }}'"
+                                class="{{ (string) $selectedClient === (string) $client->client_id ? 'table-warning' : '' }}">
+
+                                <td>
+                                    {{ $key + 1 }}
+                                </td>
+
+                                <td>
+                                    <strong>
+                                        {{ $client->client_name }}
+                                    </strong>
                                 </td>
 
                                 <td>
@@ -112,9 +143,7 @@
                             <tr>
 
                                 <td colspan="3" class="text-center">
-
                                     No Record Found
-
                                 </td>
 
                             </tr>

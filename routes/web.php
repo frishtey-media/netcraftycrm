@@ -203,80 +203,35 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/calling-users', [CallingUserController::class, 'index'])->name('calling.users');
     Route::post('/calling-users', [CallingUserController::class, 'store'])->name('calling.users.store');
     Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
-    Route::get('/performance', [AdminController::class, 'performance'])
-        ->name('performance.dashboard');
+    Route::get('/performance', [AdminController::class, 'performance'])->name('performance.dashboard');
 
-    Route::get('/get-products/{client}', [OrderController::class, 'getProducts'])
-        ->name('get.products');
+    Route::get('/get-products/{client}', [OrderController::class, 'getProducts'])->name('get.products');
 
-    Route::get(
-        '/performance/orders',
-        [AdminController::class, 'orderDetails']
-    )->name('performance.orders');
-    Route::get(
-        '/performance/orders/export',
-        [AdminController::class, 'exportOrderDetails']
-    )->name('performance.orders.export');
+    Route::get('/performance/orders', [AdminController::class, 'orderDetails'])->name('performance.orders');
+    Route::get('/performance/orders/export', [AdminController::class, 'exportOrderDetails'])->name('performance.orders.export');
+
+
     Route::prefix('reports')->group(function () {
-
-        Route::get(
-            '/repeat-rto',
-            [RepeatCustomerController::class, 'repeatRto']
-        )
-            ->name('reports.repeat.rto');
-
-
-        Route::get(
-            '/repeat-rto/{phone}',
-            [RepeatCustomerController::class, 'repeatRtoDetail']
-        )
-            ->name('reports.repeat.rto.detail');
+        Route::get('/repeat-rto', [RepeatCustomerController::class, 'repeatRto'])->name('reports.repeat.rto');
+        Route::get('/repeat-rto/{phone}', [RepeatCustomerController::class, 'repeatRtoDetail'])->name('reports.repeat.rto.detail');
     });
 
 
-    Route::get('/reports/{type}', [ReportController::class, 'index'])
-        ->name('reports.index');
-
-    Route::get('/reports/export/{type}', [ReportController::class, 'export'])
-        ->name('reports.export');
-    Route::get('/staff-report/{staff_id}', [ReportController::class, 'staffReport'])
-        ->name('staff.report');
-
-    Route::get('/delivery', [DeliveryController::class, 'index'])
-        ->name('delivery.index');
-
-    Route::post('/delivery/upload', [DeliveryController::class, 'upload'])
-        ->name('delivery.upload');
-
-    Route::post('/payment-upload', [DeliveryController::class, 'paymentupload'])
-        ->name('delivery.paymentupload');
+    Route::get('/reports/{type}', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export/{type}', [ReportController::class, 'export'])->name('reports.export');
+    Route::get('/staff-report/{staff_id}', [ReportController::class, 'staffReport'])->name('staff.report');
+    Route::get('/delivery', [DeliveryController::class, 'index'])->name('delivery.index');
+    Route::post('/delivery/upload', [DeliveryController::class, 'upload'])->name('delivery.upload');
+    Route::post('/payment-upload', [DeliveryController::class, 'paymentupload'])->name('delivery.paymentupload');
+    Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('/payments/export', [PaymentController::class, 'export'])->name('payments.export');
+    Route::get('/payments/pending', [PaymentController::class, 'pendingPayment'])->name('payments.pending');
+    Route::get('/payments/pending/export', [PaymentController::class, 'pendingPaymentExport'])->name('payments.pending.export');
 
 
-    Route::get('/payments', [PaymentController::class, 'index'])
-        ->name('payments.index');
-
-    Route::get('/payments/export', [PaymentController::class, 'export'])
-        ->name('payments.export');
-    Route::get(
-        '/payments/pending',
-        [PaymentController::class, 'pendingPayment']
-    )->name('payments.pending');
-
-    Route::get(
-        '/payments/pending/export',
-        [PaymentController::class, 'pendingPaymentExport']
-    )->name('payments.pending.export');
-
-
-    Route::post('/orders/export-selected', [OrderController::class, 'exportSelected'])
-        ->name('orders.export.selected');
-
-    Route::post('/rto-received-upload', [DeliveryController::class, 'rtoReceivedUpload'])
-        ->name('delivery.rtoReceivedUpload');
-
-    Route::get('/delivery/report/{type}', [DeliveryController::class, 'report'])
-        ->name('delivery.report');
-
+    Route::post('/orders/export-selected', [OrderController::class, 'exportSelected'])->name('orders.export.selected');
+    Route::post('/rto-received-upload', [DeliveryController::class, 'rtoReceivedUpload'])->name('delivery.rtoReceivedUpload');
+    Route::get('/delivery/report/{type}', [DeliveryController::class, 'report'])->name('delivery.report');
     Route::get(
         '/delivery-export/{type}',
         [DeliveryController::class, 'export']

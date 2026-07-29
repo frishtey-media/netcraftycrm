@@ -225,11 +225,6 @@
 
             @csrf
 
-
-            {{-- ========================================================= --}}
-            {{-- BASIC LEAD DETAILS --}}
-            {{-- ========================================================= --}}
-
             <div class="card shadow-sm section-card mb-4">
 
                 <div class="card-header bg-dark text-white">
@@ -476,261 +471,191 @@
 
                         {{-- NAME --}}
 
+                        {{-- CUSTOMER NAME --}}
                         <div class="col-md-4">
-
                             <label class="form-label">
-
-                                Customer Name
-
-                                <span class="required">*</span>
-
+                                Customer Name <span class="required">*</span>
                             </label>
 
-                            <input type="text" name="customer_name" class="form-control verified-required">
+                            <input type="text" name="customer_name"
+                                class="form-control verified-required english-only" maxlength="255">
 
+                            <div class="invalid-feedback"></div>
                         </div>
-
 
 
                         {{-- AGE --}}
-
                         <div class="col-md-4">
-
                             <label class="form-label">
-
-                                Age
-
-                                <span class="required">*</span>
-
+                                Age <span class="required">*</span>
                             </label>
 
-                            <input type="number" name="age" class="form-control verified-required">
+                            <input type="number" name="age" class="form-control verified-required" min="1"
+                                max="120">
 
+                            <div class="invalid-feedback"></div>
                         </div>
 
 
-
                         {{-- FATHER NAME --}}
-
                         <div class="col-md-4">
-
                             <label class="form-label">
                                 Father Name
                             </label>
 
-                            <input type="text" name="father_name" class="form-control">
+                            <input type="text" name="father_name" class="form-control english-only" maxlength="255">
+
 
                         </div>
-
 
 
                         {{-- PRODUCT --}}
-
                         <div class="col-md-6">
-
                             <label class="form-label">
-
-                                Product
-
-                                <span class="required">*</span>
-
+                                Product <span class="required">*</span>
                             </label>
-
 
                             <select name="product_name" id="product_name" class="form-select verified-required">
 
-                                <option value="">
-                                    Select Client First
-                                </option>
+                                <option value="">Select Client First</option>
 
                             </select>
 
+                            <div class="invalid-feedback"></div>
                         </div>
 
 
-
                         {{-- QUANTITY --}}
-
                         <div class="col-md-2">
-
                             <label class="form-label">
-
-                                Quantity
-
-                                <span class="required">*</span>
-
+                                Quantity <span class="required">*</span>
                             </label>
 
                             <input type="number" name="quantity" id="quantity" value="1" min="1"
                                 class="form-control verified-required">
 
+                            <div class="invalid-feedback"></div>
                         </div>
-
 
 
                         {{-- WEIGHT --}}
-
                         <div class="col-md-2">
-
                             <label class="form-label">
-                                Weight / Unit
+                                Weight / Unit <span class="required">*</span>
                             </label>
 
-                            <input type="number" step="0.01" name="weight" id="weight" class="form-control">
+                            <input type="number" step="0.01" min="0.01" name="weight" id="weight"
+                                class="form-control verified-required">
 
+                            <div class="invalid-feedback"></div>
                         </div>
 
 
-
                         {{-- TOTAL WEIGHT --}}
-
                         <div class="col-md-2">
-
                             <label class="form-label">
                                 Total Weight
                             </label>
 
                             <input type="text" id="total_weight_display" class="form-control" readonly>
-
                         </div>
-
 
 
                         {{-- AMOUNT --}}
-
                         <div class="col-md-4">
-
                             <label class="form-label">
-
-                                Amount
-
-                                <span class="required">*</span>
-
+                                Amount <span class="required">*</span>
                             </label>
 
-                            <input type="number" step="0.01" name="amount" class="form-control verified-required">
+                            <input type="number" step="0.01" min="0.01" name="amount"
+                                class="form-control verified-required">
 
+                            <div class="invalid-feedback"></div>
                         </div>
 
 
-
-                        {{-- PAYMENT --}}
-
+                        {{-- PAYMENT MODE --}}
                         <div class="col-md-4">
-
                             <label class="form-label">
-
-                                Payment Mode
-
-                                <span class="required">*</span>
-
+                                Payment Mode <span class="required">*</span>
                             </label>
 
                             <select name="payment_mode" class="form-select verified-required">
 
-                                <option value="">
-                                    Select
-                                </option>
-
-                                <option value="COD">
-                                    COD
-                                </option>
-
-                                <option value="VPP">
-                                    VPP
-                                </option>
-
-                                <option value="Prepaid">
-                                    Prepaid
-                                </option>
+                                <option value="">Select</option>
+                                <option value="COD">COD</option>
+                                <option value="VPP">VPP</option>
+                                <option value="Prepaid">Prepaid</option>
 
                             </select>
 
+                            <div class="invalid-feedback"></div>
                         </div>
-
 
 
                         {{-- PINCODE --}}
-
                         <div class="col-md-4">
-
                             <label class="form-label">
-
-                                Pincode
-
-                                <span class="required">*</span>
-
+                                Pincode <span class="required">*</span>
                             </label>
 
-                            <input type="text" name="pincode" class="form-control verified-required">
+                            <input type="text" name="pincode" class="form-control verified-required pincode-field"
+                                inputmode="numeric" maxlength="6">
 
+                            <div class="invalid-feedback"></div>
                         </div>
-
 
 
                         {{-- CITY --}}
-
                         <div class="col-md-6">
-
                             <label class="form-label">
-                                City
+                                City <span class="required">*</span>
                             </label>
 
-                            <input type="text" name="city" class="form-control">
+                            <input type="text" name="city" class="form-control verified-required english-only">
 
+                            <div class="invalid-feedback"></div>
                         </div>
-
 
 
                         {{-- STATE --}}
-
                         <div class="col-md-6">
-
                             <label class="form-label">
-                                State
+                                State <span class="required">*</span>
                             </label>
 
-                            <input type="text" name="state" class="form-control">
+                            <input type="text" name="state" class="form-control verified-required english-only">
 
+                            <div class="invalid-feedback"></div>
                         </div>
-
 
 
                         {{-- ADDRESS --}}
-
                         <div class="col-md-12">
-
                             <label class="form-label">
-
-                                Shipping Address
-
-                                <span class="required">*</span>
-
+                                Shipping Address <span class="required">*</span>
                             </label>
 
-                            <textarea name="address" class="form-control verified-required" rows="3"></textarea>
+                            <textarea name="address" class="form-control verified-required english-only" rows="3" maxlength="1000"></textarea>
 
+                            <div class="invalid-feedback"></div>
                         </div>
 
 
-                    </div>
+                        <div class="text-end mt-4">
 
+                            <button type="submit" id="verifiedSubmitBtn" class="btn btn-success btn-lg">
 
-                    <div class="text-end mt-4">
+                                <i class="fa fa-check"></i>
+                                Save Verified Order
 
-                        <button type="submit" class="btn btn-success btn-lg">
+                            </button>
 
-                            <i class="fa fa-check"></i>
-
-                            Save Verified Order
-
-                        </button>
+                        </div>
 
                     </div>
 
                 </div>
-
-            </div>
 
 
         </form>
@@ -742,7 +667,328 @@
     {{-- ========================================================= --}}
     {{-- JAVASCRIPT --}}
     {{-- ========================================================= --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
 
+            const verifiedSection = document.getElementById('verifiedSection');
+
+            if (!verifiedSection) {
+                return;
+            }
+
+            const fields = verifiedSection.querySelectorAll('.verified-required');
+
+
+            // ==============================
+            // ERROR
+            // ==============================
+            function showError(field, message) {
+
+                field.classList.add('is-invalid');
+                field.classList.remove('is-valid');
+
+                const feedback =
+                    field.parentElement.querySelector('.invalid-feedback');
+
+                if (feedback) {
+                    feedback.textContent = message;
+                }
+            }
+
+
+            // ==============================
+            // VALID
+            // ==============================
+            function showValid(field) {
+
+                field.classList.remove('is-invalid');
+                field.classList.add('is-valid');
+
+                const feedback =
+                    field.parentElement.querySelector('.invalid-feedback');
+
+                if (feedback) {
+                    feedback.textContent = '';
+                }
+            }
+
+
+            // ==============================
+            // VALIDATE FIELD
+            // ==============================
+            function validateField(field) {
+
+                const name = field.name;
+                const value = field.value.trim();
+
+
+                // Required
+                if (value === '') {
+
+                    showError(field, 'This field is required.');
+
+                    return false;
+                }
+
+
+                // ==============================
+                // ENGLISH ONLY
+                // ==============================
+                if (field.classList.contains('english-only')) {
+
+                    let englishRegex;
+
+                    if (name === 'address') {
+
+                        // English letters + numbers + normal address symbols
+                        englishRegex =
+                            /^[A-Za-z0-9\s.,\/\-#()]+$/;
+
+                    } else if (name === 'customer_name' ||
+                        name === 'father_name') {
+
+                        englishRegex =
+                            /^[A-Za-z0-9\s.,\/\-()]+$/;
+
+                    } else {
+
+                        englishRegex =
+                            /^[A-Za-z\s.\-]+$/;
+                    }
+
+
+                    if (!englishRegex.test(value)) {
+
+                        showError(
+                            field,
+                            'Only English characters are allowed.'
+                        );
+
+                        return false;
+                    }
+                }
+
+
+                // ==============================
+                // PINCODE
+                // ==============================
+                if (name === 'pincode') {
+
+                    if (!/^\d{6}$/.test(value)) {
+
+                        showError(
+                            field,
+                            'Pincode must be exactly 6 digits.'
+                        );
+
+                        return false;
+                    }
+                }
+
+
+                // ==============================
+                // AGE
+                // ==============================
+                if (name === 'age') {
+
+                    const age = Number(value);
+
+                    if (
+                        !Number.isInteger(age) ||
+                        age < 1 ||
+                        age > 120
+                    ) {
+
+                        showError(
+                            field,
+                            'Enter a valid age between 1 and 120.'
+                        );
+
+                        return false;
+                    }
+                }
+
+
+                // ==============================
+                // QUANTITY
+                // ==============================
+                if (name === 'quantity') {
+
+                    const quantity = Number(value);
+
+                    if (
+                        !Number.isInteger(quantity) ||
+                        quantity < 1
+                    ) {
+
+                        showError(
+                            field,
+                            'Quantity must be at least 1.'
+                        );
+
+                        return false;
+                    }
+                }
+
+
+                // ==============================
+                // WEIGHT
+                // ==============================
+                if (name === 'weight') {
+
+                    if (Number(value) <= 0) {
+
+                        showError(
+                            field,
+                            'Weight must be greater than 0.'
+                        );
+
+                        return false;
+                    }
+                }
+
+
+                // ==============================
+                // AMOUNT
+                // ==============================
+                if (name === 'amount') {
+
+                    if (Number(value) <= 0) {
+
+                        showError(
+                            field,
+                            'Amount must be greater than 0.'
+                        );
+
+                        return false;
+                    }
+                }
+
+
+                showValid(field);
+
+                return true;
+            }
+
+
+
+            // ==============================
+            // REAL TIME VALIDATION
+            // ==============================
+            fields.forEach(function(field) {
+
+                field.addEventListener('input', function() {
+
+                    validateField(field);
+
+                });
+
+                field.addEventListener('change', function() {
+
+                    validateField(field);
+
+                });
+
+                field.addEventListener('blur', function() {
+
+                    validateField(field);
+
+                });
+
+            });
+
+
+
+            // ==============================
+            // PINCODE NUMBERS ONLY
+            // ==============================
+            const pincode =
+                verifiedSection.querySelector(
+                    '[name="pincode"]'
+                );
+
+            if (pincode) {
+
+                pincode.addEventListener('input', function() {
+
+                    // Remove everything except numbers
+                    this.value =
+                        this.value.replace(/\D/g, '');
+
+                    // Maximum 6 digits
+                    this.value =
+                        this.value.substring(0, 6);
+
+                    validateField(this);
+
+                });
+            }
+
+
+
+            // ==============================
+            // FORM SUBMISSION
+            // ==============================
+            const form =
+                verifiedSection.closest('form');
+
+            if (form) {
+
+                form.addEventListener('submit', function(event) {
+
+                    /*
+                     * Only run verified validation
+                     * when verified section is visible.
+                     */
+                    if (
+                        verifiedSection.style.display === 'none'
+                    ) {
+                        return;
+                    }
+
+
+                    let formValid = true;
+                    let firstInvalidField = null;
+
+
+                    fields.forEach(function(field) {
+
+                        const valid =
+                            validateField(field);
+
+                        if (!valid) {
+
+                            formValid = false;
+
+                            if (!firstInvalidField) {
+                                firstInvalidField = field;
+                            }
+                        }
+                    });
+
+
+                    if (!formValid) {
+
+                        event.preventDefault();
+
+                        if (firstInvalidField) {
+
+                            firstInvalidField.focus();
+
+                            firstInvalidField.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center'
+                            });
+                        }
+
+                        return false;
+                    }
+
+                });
+            }
+
+        });
+    </script>
     <script>
         $(document).ready(function() {
 

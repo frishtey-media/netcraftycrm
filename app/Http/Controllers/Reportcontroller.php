@@ -141,8 +141,13 @@ class ReportController extends Controller
     }
 
 
-    public function index($type)
+    public function index(Request $request, $type)
     {
+        /*
+    |--------------------------------------------------------------------------
+    | Base Query - Last 30 Days
+    |--------------------------------------------------------------------------
+    */
 
         $query = Order::query()
             ->whereDate(
@@ -152,10 +157,10 @@ class ReportController extends Controller
             );
 
         /*
-        |--------------------------------------------------------------------------
-        | Client Login
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Client Login Restriction
+    |--------------------------------------------------------------------------
+    */
 
         if (auth()->check() && auth()->user()->role == 'client') {
 
@@ -166,18 +171,12 @@ class ReportController extends Controller
         }
 
         /*
-        |--------------------------------------------------------------------------
-        | Report Type
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Report Type
+    |--------------------------------------------------------------------------
+    */
 
         switch ($type) {
-
-            /*
-            |--------------------------------------------------------------------------
-            | Not Book India Post
-            |--------------------------------------------------------------------------
-            */
 
             case 'not_booked':
 
@@ -186,27 +185,21 @@ class ReportController extends Controller
                 $query->where(function ($q) {
 
                     $q->whereNull('orders.delivery_status')
-
                         ->orWhere('orders.delivery_status', '');
                 });
 
                 break;
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | 7 Days In Transit
-            |--------------------------------------------------------------------------
-            */
-
             case 'transit7':
 
                 $title = '7 Days In Transit';
 
-                $query->where('orders.delivery_status', 'In Transit')
-
+                $query->where(
+                    'orders.delivery_status',
+                    'In Transit'
+                )
                     ->whereNotNull('orders.intransitdate')
-
                     ->whereDate(
                         'orders.intransitdate',
                         '<=',
@@ -216,22 +209,19 @@ class ReportController extends Controller
                 break;
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | RTO Not Received
-            |--------------------------------------------------------------------------
-            */
-
             case 'rto5':
 
                 $title = 'RTO Not Received';
 
-                $query->where('orders.delivery_status', 'RTO')
-
-                    ->where('orders.rtorecivedsts', 0)
-
+                $query->where(
+                    'orders.delivery_status',
+                    'RTO'
+                )
+                    ->where(
+                        'orders.rtorecivedsts',
+                        0
+                    )
                     ->whereNotNull('orders.rtodate')
-
                     ->whereDate(
                         'orders.rtodate',
                         '<=',
@@ -240,70 +230,93 @@ class ReportController extends Controller
 
                 break;
 
+
             default:
 
                 abort(404);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Total Orders
-        |--------------------------------------------------------------------------
-        */
-
-        $totalOrders = (clone $query)->count();
 
         /*
-        |--------------------------------------------------------------------------
-        | Client Wise Summary
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | IMPORTANT:
+    | Client Summary BEFORE selected client filter
+    |--------------------------------------------------------------------------
+    |
+    | Isliye selected client ke baad bhi sidebar/summary me
+    | saare clients visible rahenge.
+    |
+    */
 
         $clientSummary = (clone $query)
-
             ->join(
                 'clients',
                 'clients.id',
                 '=',
                 'orders.client_id'
             )
-
             ->select(
-
+                'orders.client_id',
                 'clients.client_name',
-
                 DB::raw('COUNT(*) as total')
-
             )
-
             ->groupBy(
-
+                'orders.client_id',
                 'clients.client_name'
-
             )
-
             ->orderByDesc('total')
-
             ->get();
 
+
         /*
-        |--------------------------------------------------------------------------
-        | Orders
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Selected Client Filter
+    |--------------------------------------------------------------------------
+    */
+
+        $selectedClient = null;
+
+        if (
+            auth()->check() &&
+            auth()->user()->role != 'client' &&
+            $request->filled('client_id')
+        ) {
+
+            $selectedClient = $request->client_id;
+
+            $query->where(
+                'orders.client_id',
+                $selectedClient
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Total Orders - AFTER client filter
+    |--------------------------------------------------------------------------
+    */
+
+        $totalOrders = (clone $query)->count();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Orders
+    |--------------------------------------------------------------------------
+    */
 
         $orders = (clone $query)
-
             ->with('client')
-
-            ->latest()
-
+            ->orderByDesc('orders.created_at')
             ->get();
+
+
         /*
-        |--------------------------------------------------------------------------
-        | Return View
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Return
+    |--------------------------------------------------------------------------
+    */
 
         return view(
             'reports.orders',
@@ -312,7 +325,8 @@ class ReportController extends Controller
                 'type',
                 'totalOrders',
                 'clientSummary',
-                'orders'
+                'orders',
+                'selectedClient'
             )
         );
     }
@@ -323,8 +337,14 @@ class ReportController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function export($type)
+    public function export(Request $request, $type)
     {
+        /*
+    |--------------------------------------------------------------------------
+    | Base Query
+    |--------------------------------------------------------------------------
+    */
+
         $query = Order::query()
             ->whereDate(
                 'orders.created_at',
@@ -332,11 +352,12 @@ class ReportController extends Controller
                 now()->subDays(30)
             );
 
+
         /*
-        |--------------------------------------------------------------------------
-        | Client Login
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Client Login Restriction
+    |--------------------------------------------------------------------------
+    */
 
         if (auth()->check() && auth()->user()->role == 'client') {
 
@@ -345,6 +366,13 @@ class ReportController extends Controller
                 auth()->user()->client_id
             );
         }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Report Type
+    |--------------------------------------------------------------------------
+    */
 
         switch ($type) {
 
@@ -358,9 +386,13 @@ class ReportController extends Controller
 
                 break;
 
+
             case 'transit7':
 
-                $query->where('orders.delivery_status', 'In Transit')
+                $query->where(
+                    'orders.delivery_status',
+                    'In Transit'
+                )
                     ->whereNotNull('orders.intransitdate')
                     ->whereDate(
                         'orders.intransitdate',
@@ -370,10 +402,17 @@ class ReportController extends Controller
 
                 break;
 
-            case 'rto_not_received':
 
-                $query->where('orders.delivery_status', 'RTO')
-                    ->where('orders.rtorecivedsts', 0)
+            case 'rto5':
+
+                $query->where(
+                    'orders.delivery_status',
+                    'RTO'
+                )
+                    ->where(
+                        'orders.rtorecivedsts',
+                        0
+                    )
                     ->whereNotNull('orders.rtodate')
                     ->whereDate(
                         'orders.rtodate',
@@ -383,19 +422,77 @@ class ReportController extends Controller
 
                 break;
 
+
             default:
 
                 abort(404);
         }
 
+
+        /*
+    |--------------------------------------------------------------------------
+    | Selected Client
+    |--------------------------------------------------------------------------
+    */
+
+        if (
+            auth()->check() &&
+            auth()->user()->role != 'client' &&
+            $request->filled('client_id')
+        ) {
+
+            $query->where(
+                'orders.client_id',
+                $request->client_id
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Get Orders
+    |--------------------------------------------------------------------------
+    */
+
         $orders = $query
             ->with('client')
-            ->latest()
+            ->orderByDesc('orders.created_at')
             ->get();
 
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\OrdersReportExport($orders),
-            $type . '_' . now()->format('Ymd_His') . '.xlsx'
+
+        /*
+    |--------------------------------------------------------------------------
+    | File Name
+    |--------------------------------------------------------------------------
+    */
+
+        $fileName = $type;
+
+        if ($request->filled('client_id')) {
+
+            $client = Client::find($request->client_id);
+
+            if ($client) {
+
+                $fileName .= '_' . \Illuminate\Support\Str::slug(
+                    $client->client_name,
+                    '_'
+                );
+            }
+        }
+
+        $fileName .= '_' . now()->format('Ymd_His') . '.xlsx';
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Export
+    |--------------------------------------------------------------------------
+    */
+
+        return Excel::download(
+            new OrdersReportExport($orders),
+            $fileName
         );
     }
 }

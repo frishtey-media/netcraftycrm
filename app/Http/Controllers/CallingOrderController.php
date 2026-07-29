@@ -448,13 +448,6 @@ class CallingOrderController extends Controller
             abort(403);
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | COMMON VALIDATION
-    |--------------------------------------------------------------------------
-    */
-
         $request->validate([
 
             'created_at' =>
@@ -472,48 +465,119 @@ class CallingOrderController extends Controller
         ]);
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | VERIFIED VALIDATION
-    |--------------------------------------------------------------------------
-    */
-
         if ($request->status === 'verified') {
 
             $request->validate([
 
-                'customer_name' =>
-                'required|string|max:255',
+                'customer_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'regex:/^[A-Za-z0-9\s.,\/\-()]+$/'
+                ],
 
-                'product_name' =>
-                'required|string',
 
-                'quantity' =>
-                'required|integer|min:1',
 
-                'age' =>
-                'required',
 
-                'amount' =>
-                'required|numeric',
+                'product_name' => [
+                    'required',
+                    'string',
+                ],
 
-                'payment_mode' =>
-                'required',
+                'quantity' => [
+                    'required',
+                    'integer',
+                    'min:1',
+                ],
 
-                'pincode' =>
-                'required',
+                'weight' => [
+                    'required',
+                    'numeric',
+                    'gt:0',
+                ],
 
-                'address' =>
-                'required',
+                'age' => [
+                    'required',
+                    'integer',
+                    'min:1',
+                    'max:120',
+                ],
+
+                'amount' => [
+                    'required',
+                    'numeric',
+                    'gt:0',
+                ],
+
+                'payment_mode' => [
+                    'required',
+                    'in:COD,VPP,Prepaid',
+                ],
+
+                'pincode' => [
+                    'required',
+                    'regex:/^[0-9]{6}$/',
+                ],
+
+                'city' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'regex:/^[A-Za-z\s.\-]+$/',
+                ],
+
+                'state' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'regex:/^[A-Za-z\s.\-]+$/',
+                ],
+
+                'address' => [
+                    'required',
+                    'string',
+                    'max:1000',
+                    'regex:/^[A-Za-z0-9\s.,\/\-#()]+$/',
+                ],
+
+            ], [
+
+                'customer_name.required' => 'Customer name is required.',
+                'customer_name.regex' => 'Customer name must be entered in English only.',
+
+
+
+
+                'product_name.required' => 'Please select a product.',
+
+                'quantity.required' => 'Quantity is required.',
+                'quantity.min' => 'Quantity must be at least 1.',
+
+                'weight.required' => 'Weight is required.',
+                'weight.gt' => 'Weight must be greater than 0.',
+
+                'age.required' => 'Age is required.',
+                'age.max' => 'Please enter a valid age.',
+
+                'amount.required' => 'Amount is required.',
+                'amount.gt' => 'Amount must be greater than 0.',
+
+                'payment_mode.required' => 'Please select payment mode.',
+
+                'pincode.required' => 'Pincode is required.',
+                'pincode.regex' => 'Pincode must contain exactly 6 digits.',
+
+                'city.required' => 'City is required.',
+                'city.regex' => 'City must be entered in English only.',
+
+                'state.required' => 'State is required.',
+                'state.regex' => 'State must be entered in English only.',
+
+                'address.required' => 'Shipping address is required.',
+                'address.regex' => 'Shipping address must be entered in English only.',
 
             ]);
         } else {
-
-            /*
-        |--------------------------------------------------------------------------
-        | NON VERIFIED
-        |--------------------------------------------------------------------------
-        */
 
             $request->validate([
 
@@ -523,24 +587,10 @@ class CallingOrderController extends Controller
             ]);
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | DATE
-    |--------------------------------------------------------------------------
-    */
-
         $selectedDate =
             Carbon::parse(
                 $request->created_at
             );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | GENERATE ORDER ID
-    |--------------------------------------------------------------------------
-    */
 
         $orderId =
             $this->generateOrderId(
@@ -548,24 +598,10 @@ class CallingOrderController extends Controller
                 $selectedDate
             );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | NORMALIZE PHONE
-    |--------------------------------------------------------------------------
-    */
-
         $phone =
             $this->normalizePhone(
                 $request->customer_phone
             );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | VERIFIED
-    |--------------------------------------------------------------------------
-    */
 
         if ($request->status === 'verified') {
 
@@ -655,12 +691,6 @@ class CallingOrderController extends Controller
             ]);
         } else {
 
-            /*
-        |--------------------------------------------------------------------------
-        | NON VERIFIED LEAD
-        |--------------------------------------------------------------------------
-        */
-
             CallingOrder::create([
 
                 'client_id' =>
@@ -703,13 +733,6 @@ class CallingOrderController extends Controller
                 'Lead saved successfully. Order ID: ' . $orderId
             );
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | My WhatsApp Orders
-    |--------------------------------------------------------------------------
-    */
 
     public function whatsappOrders(Request $request)
     {
