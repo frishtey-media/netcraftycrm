@@ -171,7 +171,11 @@ Route::middleware(['auth'])->group(function () {
 
 
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
+    Route::get('/rto/details', [RTOController::class, 'details'])
+        ->name('rto.details');
 
+    Route::get('/rto/details/export', [RTOController::class, 'detailsExport'])
+        ->name('rto.details.export');
 
 
 

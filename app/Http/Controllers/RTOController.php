@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\CallingUser;
 use App\Models\Client;
 use Carbon\Carbon;
+use App\Exports\RTODetailExport;
+
 
 class RTOController extends Controller
 {
@@ -171,7 +173,99 @@ class RTOController extends Controller
             )
         );
     }
+    public function details(Request $request)
+    {
+        $query = Order::query()
+            ->leftJoin('callingorder', 'orders.order_id', '=', 'callingorder.order_id')
+            ->leftJoin('calling_users', 'callingorder.assigned_to', '=', 'calling_users.id')
+            ->leftJoin('clients', 'orders.client_id', '=', 'clients.id')
+            ->where('orders.delivery_status', 'RTO');
 
+        //Client Filter
+
+        if ($request->client_id) {
+            $query->where('orders.client_id', $request->client_id);
+        }
+
+        //Staff
+
+        if ($request->staff_id) {
+
+            if ($request->staff_id == "other") {
+                $query->whereNull('callingorder.assigned_to');
+            } else {
+                $query->where('callingorder.assigned_to', $request->staff_id);
+            }
+        }
+
+        //Date
+
+        if ($request->from_date) {
+            $query->whereDate('orders.created_at', '>=', $request->from_date);
+        }
+
+        if ($request->to_date) {
+            $query->whereDate('orders.created_at', '<=', $request->to_date);
+        }
+
+        switch ($request->status) {
+
+            case 'received':
+
+                $query->where('orders.rtorecivedsts', 1);
+
+                break;
+
+            case 'pending':
+
+                $query->where('orders.rtorecivedsts', 0);
+
+                break;
+
+            case 'web':
+
+                $query->whereNull('callingorder.order_source');
+
+                break;
+
+            case 'whatsapp':
+
+                $query->where('callingorder.order_source', 'whatsapp');
+
+                break;
+            case 'total':
+            default:
+
+                break;
+        }
+        $headings = [
+            'total' => 'Total RTO Orders',
+            'web' => 'Web RTO Orders',
+            'whatsapp' => 'WhatsApp RTO Orders',
+            'received' => 'RTO Received Orders',
+            'pending' => 'Pending RTO Orders',
+        ];
+
+        $heading = $headings[$request->status] ?? 'RTO Orders';
+        $orders = $query
+            ->select(
+                'orders.*',
+                'clients.client_name',
+                'calling_users.name as staff_name'
+            )
+            ->latest()
+            ->paginate(100);
+
+        return view('rto.received_details', compact('orders', 'heading'));
+    }
+
+    public function detailsExport(Request $request)
+    {
+        return Excel::download(
+            new RTODetailExport($request),
+            'RTO_' . $request->status . '_' . now()->format('d-m-Y') . '.xlsx'
+        );
+    }
     public function search(Request $request)
     {
         $request->validate([

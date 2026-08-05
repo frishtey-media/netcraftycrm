@@ -169,28 +169,90 @@
                                     <td>{{ $row->client_name }}</td>
                                     <td>{{ $row->staff_name }}</td>
                                     <td>{{ $row->total_rto }}</td>
-
                                     <td>{{ $row->web_rto }}</td>
-
                                     <td>{{ $row->whatsapp_rto }}</td>
-
                                     <td>{{ $row->rto_received }}</td>
-
                                     <td>{{ $row->pending_rto }}</td>
+
+
+
+
+
                                 </tr>
                             @endforeach
 
                             <tr class="table-success">
                                 <th colspan="3">Grand Total</th>
-                                <td>{{ $grandTotal }}</td>
 
-                                <td>{{ $grandWeb }}</td>
+                                {{-- Total RTO --}}
+                                <td>
+                                    <a
+                                        href="{{ route('rto.details', [
+                                            'status' => 'total',
+                                            'client_id' => request('client_id'),
+                                            'staff_id' => request('staff_id'),
+                                            'from_date' => request('from_date'),
+                                            'to_date' => request('to_date'),
+                                        ]) }}">
+                                        {{ $grandTotal }}
+                                    </a>
+                                </td>
 
-                                <td>{{ $grandWhatsapp }}</td>
+                                {{-- Web RTO --}}
+                                <td>
+                                    <a
+                                        href="{{ route('rto.details', [
+                                            'status' => 'web',
+                                            'client_id' => request('client_id'),
+                                            'staff_id' => request('staff_id'),
+                                            'from_date' => request('from_date'),
+                                            'to_date' => request('to_date'),
+                                        ]) }}">
+                                        {{ $grandWeb }}
+                                    </a>
+                                </td>
 
-                                <td>{{ $grandReceived }}</td>
+                                {{-- WhatsApp RTO --}}
+                                <td>
+                                    <a
+                                        href="{{ route('rto.details', [
+                                            'status' => 'whatsapp',
+                                            'client_id' => request('client_id'),
+                                            'staff_id' => request('staff_id'),
+                                            'from_date' => request('from_date'),
+                                            'to_date' => request('to_date'),
+                                        ]) }}">
+                                        {{ $grandWhatsapp }}
+                                    </a>
+                                </td>
 
-                                <td>{{ $grandPending }}</td>
+                                {{-- Received --}}
+                                <td>
+                                    <a
+                                        href="{{ route('rto.details', [
+                                            'status' => 'received',
+                                            'client_id' => request('client_id'),
+                                            'staff_id' => request('staff_id'),
+                                            'from_date' => request('from_date'),
+                                            'to_date' => request('to_date'),
+                                        ]) }}">
+                                        {{ $grandReceived }}
+                                    </a>
+                                </td>
+
+                                {{-- Pending --}}
+                                <td>
+                                    <a
+                                        href="{{ route('rto.details', [
+                                            'status' => 'pending',
+                                            'client_id' => request('client_id'),
+                                            'staff_id' => request('staff_id'),
+                                            'from_date' => request('from_date'),
+                                            'to_date' => request('to_date'),
+                                        ]) }}">
+                                        {{ $grandPending }}
+                                    </a>
+                                </td>
                             </tr>
                         </tbody>
 
