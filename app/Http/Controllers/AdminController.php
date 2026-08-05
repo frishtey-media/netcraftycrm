@@ -18,8 +18,9 @@ use App\Exports\VerifiedOrdersExport;
 use Illuminate\Support\Facades\DB;
 use App\Models\conversation;
 use App\Models\Payment;
-
+use App\Exports\StaffPerformanceExport;
 use App\Exports\StaffPerformanceOrdersExport;
+use App\Exports\SelectedStaffExport;
 
 class AdminController extends Controller
 {
@@ -34,6 +35,9 @@ class AdminController extends Controller
     {
         return auth()->user()?->client_id;
     }
+
+
+
 
     public function dashboard()
     {
@@ -247,8 +251,8 @@ class AdminController extends Controller
 
         // Product Wise Sort
         $orders = $query
-            ->orderBy('product_name', 'ASC') // Same product ek sath
-            ->orderBy('id', 'ASC')           // Same product ke andar sequence
+            ->orderBy('product_name', 'ASC')
+            ->orderBy('id', 'ASC')
             ->get();
 
         // Mark Exported
@@ -264,7 +268,67 @@ class AdminController extends Controller
             'staff_verified_' . now()->format('d_m_Y_H_i') . '.xlsx'
         );
     }
+    public function exportSelected1(Request $request)
+    {
+        $staffIds = is_array($request->staff_ids)
+            ? $request->staff_ids
+            : explode(',', $request->staff_ids);
 
+        $query = CallingOrder::whereIn('assigned_to', $staffIds)
+
+            ->where('status', 'verified')
+
+            ->where('is_exported', 0)
+
+            ->whereBetween('updated_at', [
+                Carbon::parse($request->from)->startOfDay(),
+                Carbon::parse($request->to)->endOfDay()
+            ]);
+
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->get();
+
+        if ($orders->isEmpty()) {
+
+            return back()->with(
+                'error',
+                'No new verified orders available for export.'
+            );
+        }
+
+        // Mark exported
+        CallingOrder::whereIn('id', $orders->pluck('id'))
+            ->update([
+                'is_exported' => 1,
+
+            ]);
+
+        return Excel::download(
+            new VerifiedOrdersExport($orders),
+            'Verified_Orders_' . now()->format('Ymd_His') . '.xlsx'
+        );
+    }
+
+    public function verifySelected(Request $request)
+    {
+        $from = \Carbon\Carbon::parse($request->from)->startOfDay();
+        $to   = \Carbon\Carbon::parse($request->to)->endOfDay();
+
+        $updated = CallingOrder::whereIn('assigned_to', $request->staff_ids)
+            ->where('status', 'pending')
+            ->whereBetween('updated_at', [$from, $to])
+            ->update([
+                'status' => 'verified'
+            ]);
+
+        return response()->json([
+            'updated' => $updated,
+            'message' => "$updated Orders Verified Successfully"
+        ]);
+    }
     public function orderDetails(Request $request)
     {
         /*

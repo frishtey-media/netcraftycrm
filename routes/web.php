@@ -167,6 +167,9 @@ Route::middleware(['auth'])->group(function () {
         [PostOfficeExportController::class, 'export']
     )->name('postoffice.export');
     Route::post('/whatsapp-excel-import', [ShopifyOrderController::class, 'whatsappExcelImport'])->name('whatsapp.excel.import');
+
+
+
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
 
 
@@ -205,6 +208,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
     Route::get('/performance', [AdminController::class, 'performance'])->name('performance.dashboard');
 
+
+
+    Route::get(
+        '/performance/export-selected',
+        [AdminController::class, 'exportSelected1']
+    )->name('performance.export.selected');
+
+    Route::post(
+        '/performance/verify-selected',
+        [AdminController::class, 'verifySelected']
+    )->name('performance.verify.selected');
+
+
     Route::get('/get-products/{client}', [OrderController::class, 'getProducts'])->name('get.products');
 
     Route::get('/performance/orders', [AdminController::class, 'orderDetails'])->name('performance.orders');
@@ -222,6 +238,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/staff-report/{staff_id}', [ReportController::class, 'staffReport'])->name('staff.report');
     Route::get('/delivery', [DeliveryController::class, 'index'])->name('delivery.index');
     Route::post('/delivery/upload', [DeliveryController::class, 'upload'])->name('delivery.upload');
+
     Route::post('/payment-upload', [DeliveryController::class, 'paymentupload'])->name('delivery.paymentupload');
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::get('/payments/export', [PaymentController::class, 'export'])->name('payments.export');
@@ -298,8 +315,6 @@ Route::middleware('calling_user')->group(function () {
     Route::get('/calling/orders', [CallingUserAuthController::class, 'orders'])
         ->name('calling.orders');
 
-
-
     Route::get(
         '/calling/customer-history',
         [RepeatCustomerController::class, 'customerHistory']
@@ -329,6 +344,11 @@ Route::middleware('calling_user')->group(function () {
     Route::get('/calling/not-reachable', [CallingUserAuthController::class, 'notReachable'])->name('calling.not.reachable');
     Route::post('/calling/update/{id}', [CallingUserAuthController::class, 'update'])
         ->middleware('calling_user');
+
+    Route::post('/calling/update1/{id}', [CallingUserAuthController::class, 'update1'])
+        ->middleware('calling_user');
+
+
     Route::post('/calling/statusupdate/{id}', [CallingUserAuthController::class, 'statusupdate'])
         ->middleware('calling_user');
 

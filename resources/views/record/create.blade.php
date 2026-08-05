@@ -292,7 +292,7 @@
                             </label>
 
                             <input type="text" name="order_id" id="lead_order_id" class="form-control"
-                                value="Auto Generate" readonly required>
+                                value="Auto Generate" required>
 
                         </div>
 
@@ -420,13 +420,13 @@
 
                 <!--  <div class="mb-3">
 
-                                                                                                        <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                                                                                                            data-bs-target="#bulkImportModal">
-                                                                                                            <i class="fas fa-upload"></i>
-                                                                                                            Bulk Order Import
-                                                                                                        </button>
+                                                                                                                            <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                                                                                                                data-bs-target="#bulkImportModal">
+                                                                                                                                <i class="fas fa-upload"></i>
+                                                                                                                                Bulk Order Import
+                                                                                                                            </button>
 
-                                                                                                    </div>-->
+                                                                                                                        </div>-->
 
                 <div class="card-header bg-success text-white">
 

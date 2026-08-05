@@ -52,7 +52,7 @@
 
 
                     {{-- CLIENT --}}
-                    <div class="col-md-4 col-12">
+                    <div class="col-md-2 col-12">
 
                         <label class="form-label">
                             Client
@@ -103,6 +103,20 @@
                         </a>
 
                     </div>
+
+                    <div class="col-md-2 col-6">
+
+                        <button type="button" class="btn btn-success" id="exportSelected">
+
+                            <i class="fas fa-file-excel"></i>
+                            Export Verify Selected
+
+                        </button>
+
+
+
+                    </div>
+
 
                 </form>
 
@@ -166,7 +180,15 @@
                 <table class="table table-hover align-middle">
 
                     <thead class="table-dark">
+
                         <tr>
+
+                            <th width="50">
+
+                                <input type="checkbox" id="checkAll">
+
+                            </th>
+
                             <th>Staff</th>
                             <th>Clients</th>
                             <th>Total</th>
@@ -176,10 +198,10 @@
                             <th>Not Reachable</th>
                             <th>Cancel</th>
                             <th>Same Order</th>
-                            <th>WA Total</th>
-                            <!--  <th>WA Verified</th>-->
-                            <th>WA Pending</th>
-                            <th>Combined %</th>
+                            <!--  <th>WA Total</th>
+                                                                                                                                                                                          <th>WA Verified</th>
+                                                                                                                                                                                           <th>WA Pending</th>
+                                                                                                                                                                                           <th>Combined %</th>-->
                             <th>Order %</th>
                         </tr>
                     </thead>
@@ -208,93 +230,90 @@
                                     $combinedTotal > 0 ? round(($combinedVerified / $combinedTotal) * 100, 1) : 0;
                             @endphp
 
-                            <tr>
+                            <td>
+                                <input type="checkbox" class="staff-checkbox" value="{{ $staff->id }}">
+                            </td>
 
-                                <!-- <td>
-                                                                                                            <a href="{{ route('staff.report', $staff->id) }}">
-                                                                                                                {{ $staff->name }}
-                                                                                                            </a>
-                                                                                                        </td>-->
-                                <td>
+                            <td>
 
-                                    {{ $staff->name }}
+                                {{ $staff->name }}
 
-                                </td>
-                                <td>
-                                    @if (isset($clientWise[$staff->id]))
-                                        @foreach ($clientWise[$staff->id] as $c)
-                                            <div class="badge bg-light text-dark mb-1">
-                                                {{ $c['client'] }} ({{ $c['total'] }})
-                                            </div>
-                                        @endforeach
-                                    @endif
-                                </td>
+                            </td>
+                            <td>
+                                @if (isset($clientWise[$staff->id]))
+                                    @foreach ($clientWise[$staff->id] as $c)
+                                        <div class="badge bg-light text-dark mb-1">
+                                            {{ $c['client'] }} ({{ $c['total'] }})
+                                        </div>
+                                    @endforeach
+                                @endif
+                            </td>
 
-                                <td>
-                                    <a href="{{ route('performance.orders', [
-                                        'staff_id' => $staff->id,
-                                        'from' => request('from'),
-                                        'to' => request('to'),
-                                    ]) }}"
-                                        class="badge bg-secondary text-decoration-none">
-                                        {{ $staff->total_orders }}
-                                    </a>
-                                </td>
+                            <td>
+                                <a href="{{ route('performance.orders', [
+                                    'staff_id' => $staff->id,
+                                    'from' => request('from'),
+                                    'to' => request('to'),
+                                ]) }}"
+                                    class="badge bg-secondary text-decoration-none">
+                                    {{ $staff->total_orders }}
+                                </a>
+                            </td>
 
-                                <!-- WEB VERIFIED -->
-                                <td>
+                            <!-- WEB VERIFIED -->
+                            <td>
 
-                                    <a href="{{ route('admin.staff.verified', [
-                                        'staff_id' => $staff->id,
-                                        'type' => 'web',
-                                        'from' => request('from'),
-                                        'to' => request('to'),
-                                    ]) }}"
-                                        class="badge bg-success text-decoration-none">
+                                <a href="{{ route('admin.staff.verified', [
+                                    'staff_id' => $staff->id,
+                                    'type' => 'web',
+                                    'from' => request('from'),
+                                    'to' => request('to'),
+                                ]) }}"
+                                    class="badge bg-success text-decoration-none">
 
-                                        {{ $staff->web_verified_orders }}
+                                    {{ $staff->web_verified_orders }}
 
-                                    </a>
+                                </a>
 
-                                </td>
+                            </td>
 
-                                <!-- WHATSAPP VERIFIED -->
-                                <td>
+                            <!-- WHATSAPP VERIFIED -->
+                            <td>
 
-                                    <a href="{{ route('admin.staff.verified', [
-                                        'staff_id' => $staff->id,
-                                        'type' => 'whatsapp',
-                                        'from' => request('from'),
-                                        'to' => request('to'),
-                                    ]) }}"
-                                        class="badge bg-primary text-decoration-none">
+                                <a href="{{ route('admin.staff.verified', [
+                                    'staff_id' => $staff->id,
+                                    'type' => 'whatsapp',
+                                    'from' => request('from'),
+                                    'to' => request('to'),
+                                ]) }}"
+                                    class="badge bg-primary text-decoration-none">
 
-                                        {{ $staff->whatsapp_verified_orders }}
+                                    {{ $staff->whatsapp_verified_orders }}
 
-                                    </a>
+                                </a>
 
-                                </td>
+                            </td>
 
-                                <td>
-                                    <span class="badge bg-warning text-dark" style="cursor:pointer"
-                                        onclick="openShiftModal({{ $staff->id }})">
-                                        {{ $staff->pending_orders }}
-                                    </span>
-                                </td>
+                            <td>
+                                <span class="badge bg-warning text-dark" style="cursor:pointer"
+                                    onclick="openShiftModal({{ $staff->id }})">
+                                    {{ $staff->pending_orders }}
+                                </span>
+                            </td>
 
-                                <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
-                                <td><span class="badge bg-danger">{{ $staff->cancel }}</span></td>
-                                <td><span class="badge bg-danger">{{ $staff->same_order }}</span></td>
+                            <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
+                            <td><span class="badge bg-danger">{{ $staff->cancel }}</span></td>
+                            <td><span class="badge bg-danger">{{ $staff->same_order }}</span></td>
 
-                                <td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
+                            <!--<td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
 
-                                <!-- <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>-->
+                                                                                                                                                                                                    <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
 
-                                <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
+                                                                                                                                                                                                        <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
 
-                                <td><strong>{{ $combinedRate }}%</strong></td>
+                                                                                                                                                                                                        <td><strong>{{ $combinedRate }}%</strong></td>-->
 
-                                <td><small>{{ $success }}%</small></td>
+                            <td><small>{{ $success }}%</small></td>
 
                             </tr>
                         @endforeach
@@ -350,6 +369,57 @@
                 let modal = new bootstrap.Modal(document.getElementById('shiftModal'));
                 modal.show();
             }
+        </script>
+        <script>
+            $('#checkAll').on('change', function() {
+
+                $('.staff-checkbox').prop('checked', this.checked);
+
+            });
+
+            $(document).on('change', '.staff-checkbox', function() {
+
+                $('#checkAll').prop(
+
+                    'checked',
+
+                    $('.staff-checkbox').length == $('.staff-checkbox:checked').length
+
+                );
+
+            });
+
+
+
+
+
+
+
+            $('#exportSelected').click(function() {
+
+                let ids = [];
+
+                $('.staff-checkbox:checked').each(function() {
+                    ids.push($(this).val());
+                });
+
+                if (ids.length == 0) {
+                    alert('Please select staff');
+                    return;
+                }
+
+                let url = "{{ route('performance.export.selected') }}?";
+
+                ids.forEach(function(id) {
+                    url += "staff_ids[]=" + id + "&";
+                });
+
+                url += "from={{ request('from') }}";
+                url += "&to={{ request('to') }}";
+                url += "&client_id={{ request('client_id') }}";
+
+                window.location.href = url;
+            });
         </script>
     </div>
 @endsection

@@ -50,26 +50,26 @@ class CallingUserAuthController extends Controller
         $userId = Auth::guard('calling_user')->id();
         $year = now()->year;
 
-        // 🔥 ALL ORDERS (single query)
+
         $allOrders = CallingOrder::where('assigned_to', $userId)->get();
 
-        // 🔥 Pending Orders
+
         $orders = $allOrders->where('status', 'pending')->sortByDesc('created_at');
 
-        // 🔥 COUNTS
+
         $total = $allOrders->where('order_source', '!=', 'whatsapp')->count();
         $verified = $allOrders->where('status', 'verified')->count();
         $pending = $allOrders->where('status', 'pending')->count();
         $notReachable = $allOrders->where('status', 'not_reachable')->count();
         $whatsappOrders = $allOrders->where('order_source', 'whatsapp')->count();
 
-        // 🎯 SUCCESS RATE
+
         $successRate = $total > 0 ? round(($verified / $total) * 100, 1) : 0;
 
-        // 🔥 MONTH NAMES
+
         $months = collect(range(1, 12))->map(fn($m) => date('M', mktime(0, 0, 0, $m, 1)));
 
-        // 🔥 GROUPED DATA (FAST QUERY)
+
         $monthly = CallingOrder::select(
             DB::raw('MONTH(created_at) as month'),
             DB::raw("SUM(CASE WHEN order_source != 'whatsapp' THEN 1 ELSE 0 END) as web"),
@@ -110,7 +110,7 @@ class CallingUserAuthController extends Controller
             ->groupBy('month')
             ->pluck('total', 'month');
 
-        // 🔥 FINAL ARRAY (12 months fix)
+
         $webData = [];
         $waData = [];
         $verifiedData = [];
@@ -172,28 +172,52 @@ class CallingUserAuthController extends Controller
     {
         $userId = Auth::guard('calling_user')->id();
 
-        $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
+        if (!$userId) {
+            abort(403);
+        }
+
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
             ->where('assigned_to', $userId)
             ->where('status', 'verified')
             ->groupBy('client_id')
             ->with('client')
             ->get();
 
+
         $query = CallingOrder::where('assigned_to', $userId)
             ->where('status', 'verified');
 
-        if ($request->client_id) {
-            $query->where('client_id', $request->client_id);
+
+        // Client Filter
+        if ($request->filled('client_id')) {
+
+            $query->where(
+                'client_id',
+                $request->client_id
+            );
         }
 
-        $orders = $query->latest()->get();
+
+        $orders = $query
+            ->latest('created_at')
+            ->get();
+
 
         return view('calling.verified', [
+
             'orders' => $orders,
+
             'clients' => $clients,
+
             'statusLabel' => 'Verified',
+
             'statusClass' => 'success',
+
             'statusCount' => $orders->count()
+
         ]);
     }
 
@@ -284,26 +308,228 @@ class CallingUserAuthController extends Controller
     }
     public function update(Request $request, $id)
     {
-        $order = CallingOrder::findOrFail($id);
+        $request->validate([
 
-        $order->update([
-            'customer_name'   => $request->customer_name,
-            'father_name'   => $request->father_name,
-            'product_name'   => $request->product_name,
-            'customer_phone'  => $request->customer_phone,
-            'city'            => $request->city,
-            'state'           => $request->state,
-            'quantity'           => $request->quantity,
-            'age'           => $request->age,
-            'amount'           => $request->amount,
-            'pincode'         => $request->pincode,
-            'shipping_address' => $request->shipping_address,
-            'status'          => $request->status ?? $order->status,
+            'customer_name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-Za-z0-9\s.,\/\-()]+$/'
+            ],
+            'payment_mode' => [
+                'required',
+                'in:COD,Prepaid'
+            ],
+            'customer_phone' => [
+                'required',
+                'regex:/^[0-9]{10}$/'
+            ],
+
+            'product_name' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            // OPTIONAL
+            'father_name' => [
+                'nullable',
+                'string',
+                'max:255',
+                'regex:/^[A-Za-z0-9\s.,\/\-()]+$/'
+            ],
+
+            'quantity' => [
+                'required',
+                'integer',
+                'min:1'
+            ],
+
+            'amount' => [
+                'required',
+                'numeric',
+                'min:0.01'
+            ],
+
+            'age' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:120'
+            ],
+
+            'city' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-Za-z\s.\-]+$/'
+            ],
+
+            'state' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-Za-z\s.\-]+$/'
+            ],
+
+            'pincode' => [
+                'required',
+                'regex:/^[0-9]{6}$/'
+            ],
+
+            'shipping_address' => [
+                'required',
+                'string',
+                'max:1000',
+                'regex:/^[A-Za-z0-9\s.,\/\-#()]+$/'
+            ],
+
+        ], [
+
+            'customer_name.regex' =>
+            'Customer name must be in English only.',
+
+            'customer_phone.regex' =>
+            'Phone number must contain exactly 10 digits.',
+
+            'father_name.regex' =>
+            'Father name must be in English only.',
+
+            'city.regex' =>
+            'City must be in English only.',
+
+            'state.regex' =>
+            'State must be in English only.',
+
+            'pincode.regex' =>
+            'Pincode must contain exactly 6 digits.',
+
+            'shipping_address.regex' =>
+            'Shipping address must be in English only.',
+
         ]);
 
-        return back()->with('success', 'Order Updated');
-    }
 
+        $order = CallingOrder::findOrFail($id);
+
+
+        $order->update([
+
+            'customer_name' =>
+            $request->customer_name,
+
+            'father_name' =>
+            $request->father_name,
+
+            'product_name' =>
+            $request->product_name,
+
+            'customer_phone' =>
+            $request->customer_phone,
+
+            'quantity' =>
+            $request->quantity,
+            'payment_mode' => $request->payment_mode,
+            'amount' =>
+            $request->amount,
+
+            'age' =>
+            $request->age,
+
+            'city' =>
+            $request->city,
+
+            'state' =>
+            $request->state,
+
+            'pincode' =>
+            $request->pincode,
+
+            'shipping_address' =>
+            $request->shipping_address,
+
+            'status' =>
+            $request->status ?? $order->status,
+        ]);
+
+
+        return back()->with(
+            'success',
+            'Order Updated Successfully'
+        );
+    }
+    public function update1(Request $request, $id)
+    {
+        $request->validate([
+
+            'quantity' => [
+                'required',
+                'integer',
+                'min:1'
+            ],
+
+            'payment_mode' => [
+                'required',
+                'in:COD,Prepaid'
+            ],
+
+            'amount' => [
+                'required',
+                'numeric',
+                'gt:0'
+            ],
+
+        ], [
+
+            'quantity.required' =>
+            'Quantity is required.',
+
+            'quantity.integer' =>
+            'Quantity must be a number.',
+
+            'quantity.min' =>
+            'Quantity must be at least 1.',
+
+            'payment_mode.required' =>
+            'Please select payment mode.',
+
+            'payment_mode.in' =>
+            'Please select COD or Prepaid.',
+
+            'amount.required' =>
+            'Price is required.',
+
+            'amount.numeric' =>
+            'Price must be a valid number.',
+
+            'amount.gt' =>
+            'Price must be greater than 0.',
+
+        ]);
+
+
+        $order = CallingOrder::findOrFail($id);
+
+
+        $order->update([
+
+            'quantity' =>
+            $request->quantity,
+
+            'payment_mode' =>
+            $request->payment_mode,
+
+            'amount' =>
+            $request->amount,
+
+        ]);
+
+
+        return back()->with(
+            'success',
+            'Order Updated Successfully'
+        );
+    }
     public function statusupdate(Request $request, $id)
     {
         $order = CallingOrder::findOrFail($id);

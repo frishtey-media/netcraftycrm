@@ -328,7 +328,7 @@ class PostOfficeExportController extends Controller
 
             ])->post(
 
-                "https://{$client->shopify_store_url}/admin/api/2024-04/fulfillments.json",
+                "https://{$client->shopify_store_url}/admin/api/2025-10/fulfillments.json",
 
                 [
 
@@ -410,7 +410,7 @@ class PostOfficeExportController extends Controller
 
         ])->get(
 
-            "https://{$client->shopify_store_url}/admin/api/2024-04/orders/{$shopifyOrderId}/fulfillment_orders.json"
+            "https://{$client->shopify_store_url}/admin/api/2025-10/orders/{$shopifyOrderId}/fulfillment_orders.json"
 
         );
 
@@ -456,7 +456,7 @@ class PostOfficeExportController extends Controller
 
         ])->post(
 
-            "https://{$client->shopify_store_url}/admin/api/2024-04/fulfillments.json",
+            "https://{$client->shopify_store_url}/admin/api/2025-10/fulfillments.json",
 
             [
 
@@ -515,7 +515,7 @@ class PostOfficeExportController extends Controller
 
         ])->put(
 
-            "https://{$client->shopify_store_url}/admin/api/2024-04/fulfillments/{$fulfillmentId}/update_tracking.json",
+            "https://{$client->shopify_store_url}/admin/api/2025-10/fulfillments/{$fulfillmentId}/update_tracking.json",
 
             [
 
@@ -560,7 +560,7 @@ class PostOfficeExportController extends Controller
 
         ])->post(
 
-            "https://{$client->shopify_store_url}/admin/api/2024-04/fulfillments/{$fulfillmentId}/cancel.json"
+            "https://{$client->shopify_store_url}/admin/api/2025-10/fulfillments/{$fulfillmentId}/cancel.json"
 
         );
 

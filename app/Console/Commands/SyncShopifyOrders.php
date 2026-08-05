@@ -13,7 +13,37 @@ class SyncShopifyOrders extends Command
 {
     protected $signature = 'sync:shopify-orders';
     protected $description = 'Fetch Shopify Orders and Save to DB';
+    private function normalizePhone($phone)
+    {
+        if (empty($phone)) {
+            return '';
+        }
 
+        // Remove everything except digits
+        $phone = preg_replace('/[^0-9]/', '', (string)$phone);
+
+        // India Number
+        if (preg_match('/^91\d{10}$/', $phone)) {
+            return substr($phone, 2);
+        }
+
+        // Starts with 0
+        if (preg_match('/^0\d{10}$/', $phone)) {
+            return substr($phone, 1);
+        }
+
+        // Already 10 digits
+        if (preg_match('/^\d{10}$/', $phone)) {
+            return $phone;
+        }
+
+        // Fallback: last 10 digits
+        if (strlen($phone) > 10) {
+            return substr($phone, -10);
+        }
+
+        return $phone;
+    }
     public function handle()
     {
         Log::info("🚀 Shopify Sync START: " . now());
@@ -69,9 +99,7 @@ class SyncShopifyOrders extends Command
 
                 foreach ($orders as $order) {
 
-                    // -----------------------------
-                    // Read Note Attributes
-                    // -----------------------------
+
                     $fullName = '';
                     $mobile = '';
                     $noteAddress = [];
@@ -101,9 +129,7 @@ class SyncShopifyOrders extends Command
                         }
                     }
 
-                    // -----------------------------
-                    // Build Full Address
-                    // -----------------------------
+
                     $fullAddress = implode(', ', array_filter([
                         $order['shipping_address']['address1'] ?? null,
                         $order['shipping_address']['address2'] ?? null,
@@ -128,11 +154,6 @@ class SyncShopifyOrders extends Command
                         continue;
                     }
 
-                    /*
-|--------------------------------------------------------------------------
-| Collect All Products
-|--------------------------------------------------------------------------
-*/
                     $productNames = [];
                     $totalQty = 0;
 
@@ -147,11 +168,17 @@ class SyncShopifyOrders extends Command
 
                     $productNames = implode(', ', $productNames);
 
-                    /*
-|--------------------------------------------------------------------------
-| Save Single Record Per Order
-|--------------------------------------------------------------------------
-*/
+
+                    $rawPhone = $mobile
+                        ?: ($order['phone']
+                            ?? ($order['shipping_address']['phone']
+                                ?? ($order['customer']['phone'] ?? '')));
+
+                    $customerPhone = $this->normalizePhone($rawPhone);
+                    Log::info([
+                        'raw_phone' => $rawPhone,
+                        'normalized_phone' => $customerPhone
+                    ]);
                     CallingOrder::create([
 
                         'client_id' => $client->id,
@@ -166,15 +193,13 @@ class SyncShopifyOrders extends Command
 
                         'quantity' => $totalQty,
 
+                        'customer_phone' => $customerPhone,
                         'customer_name' => $fullName
                             ?: ($order['shipping_address']['name']
                                 ?? ($order['customer']['first_name'] ?? 'Guest')),
-
                         'father_name' => $order['shipping_address']['company'] ?? '',
 
-                        'customer_phone' => $mobile
-                            ?: ($order['phone']
-                                ?? ($order['shipping_address']['phone'] ?? '')),
+
 
                         'shipping_address' => $fullAddress,
 
