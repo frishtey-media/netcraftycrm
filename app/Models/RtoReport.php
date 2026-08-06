@@ -17,7 +17,10 @@ class RtoReport extends Model
         'product',
         'quantity',
         'weight',
-        'order_date'
+        'order_date',
+        'is_exported',
+        'assign_staff',
+        'assigndate'
     ];
     public function callingOrder()
     {

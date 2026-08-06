@@ -118,32 +118,32 @@ class CallingOrderController extends Controller
     */
 
         $cleanOrderPhone = "
+REPLACE(
+    REPLACE(
         REPLACE(
             REPLACE(
                 REPLACE(
                     REPLACE(
-                        REPLACE(
-                            REPLACE(
-                                orders.customer_phone,
-                                ' ',
-                                ''
-                            ),
-                            '+',
-                            ''
-                        ),
-                        '-',
+                        callingorder.customer_phone,
+                        ' ',
                         ''
                     ),
-                    '(',
+                    '+',
                     ''
                 ),
-                ')',
+                '-',
                 ''
             ),
-            '.',
+            '(',
             ''
-        )
-    ";
+        ),
+        ')',
+        ''
+    ),
+    '.',
+    ''
+)
+";
 
 
         /*
@@ -152,29 +152,14 @@ class CallingOrderController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        $orders = DB::table('orders')
+        $orders = DB::table('callingorder')
 
             ->leftJoin(
                 'clients',
                 'clients.id',
                 '=',
-                'orders.client_id'
+                'callingorder.client_id'
             )
-
-            ->leftJoin('callingorder', function ($join) {
-
-                $join->on(
-                    'callingorder.order_id',
-                    '=',
-                    'orders.order_id'
-                );
-
-                $join->on(
-                    'callingorder.client_id',
-                    '=',
-                    'orders.client_id'
-                );
-            })
 
             ->leftJoin(
                 'calling_users',
@@ -183,34 +168,17 @@ class CallingOrderController extends Controller
                 'callingorder.assigned_to'
             )
 
-            /*
-        |--------------------------------------------------------------------------
-        | Phone Search
-        |--------------------------------------------------------------------------
-        */
-
             ->where(function ($query) use ($cleanOrderPhone, $phone) {
 
-                // Exact match
                 $query->whereRaw(
                     "{$cleanOrderPhone} = ?",
                     [$phone]
                 );
 
-                /*
-             * Indian compatibility
-             *
-             * 9803456598
-             * +91 9803456598
-             * 919803456598
-             *
-             * all will match.
-             */
-
                 if (strlen($phone) === 10) {
 
                     $query->orWhereRaw(
-                        "RIGHT({$cleanOrderPhone}, 10) = ?",
+                        "RIGHT({$cleanOrderPhone},10)=?",
                         [$phone]
                     );
                 }
@@ -218,28 +186,24 @@ class CallingOrderController extends Controller
 
             ->select([
 
-                'orders.order_id',
+                'callingorder.order_id',
 
-                'orders.barcode',
+                'callingorder.barcode',
 
-                'orders.product',
+                DB::raw('callingorder.product_name as product'),
 
-                'orders.amount',
+                'callingorder.amount',
 
-                'orders.delivery_status',
+                DB::raw('callingorder.status as delivery_status'),
 
-                'orders.created_at',
+                'callingorder.created_at',
 
                 'clients.client_name',
 
-                DB::raw(
-                    'calling_users.name as staff_name'
-                ),
+                DB::raw('calling_users.name as staff_name'),
             ])
 
-            ->orderByDesc(
-                'orders.created_at'
-            )
+            ->orderByDesc('callingorder.created_at')
 
             ->get();
 
@@ -254,7 +218,7 @@ class CallingOrderController extends Controller
     |
     */
 
-        $deliveredOrder = DB::table('orders')
+        $deliveredOrder = DB::table('callingorder')
 
             ->where(function ($query) use ($cleanOrderPhone, $phone) {
 
@@ -266,54 +230,47 @@ class CallingOrderController extends Controller
                 if (strlen($phone) === 10) {
 
                     $query->orWhereRaw(
-                        "RIGHT({$cleanOrderPhone}, 10) = ?",
+                        "RIGHT({$cleanOrderPhone},10)=?",
                         [$phone]
                     );
                 }
             })
 
-            ->whereRaw(
-                "LOWER(TRIM(orders.delivery_status)) = ?",
-                ['delivered']
-            )
-
-            ->orderByDesc(
-                'orders.created_at'
-            )
+            ->orderByDesc('callingorder.created_at')
 
             ->select([
 
-                'orders.client_id',
+                'callingorder.client_id',
 
-                'orders.order_id',
+                'callingorder.order_id',
 
-                'orders.customer_name',
+                'callingorder.customer_name',
 
-                'orders.father_name',
+                'callingorder.father_name',
 
-                'orders.age',
+                'callingorder.age',
 
-                'orders.customer_phone',
+                'callingorder.customer_phone',
 
-                'orders.shipping_address',
+                'callingorder.shipping_address',
 
-                'orders.city',
+                'callingorder.city',
 
-                'orders.state',
+                'callingorder.state',
 
-                'orders.pincode',
+                'callingorder.pincode',
 
-                'orders.product',
+                DB::raw('callingorder.product_name as product'),
 
-                'orders.quantity',
+                'callingorder.quantity',
 
-                'orders.amount',
+                'callingorder.amount',
 
-                'orders.payment_mode',
+                'callingorder.payment_mode',
 
-                'orders.delivery_status',
+                DB::raw('callingorder.status as delivery_status'),
 
-                'orders.created_at',
+                'callingorder.created_at',
             ])
 
             ->first();

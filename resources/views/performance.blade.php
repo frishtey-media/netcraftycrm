@@ -104,18 +104,18 @@
 
                     </div>
 
-                    <div class="col-md-2 col-6">
+                    <!-- <div class="col-md-2 col-6">
 
-                        <button type="button" class="btn btn-success" id="exportSelected">
+                            <button type="button" class="btn btn-success" id="exportSelected">
 
-                            <i class="fas fa-file-excel"></i>
-                            Export Verify Selected
+                                <i class="fas fa-file-excel"></i>
+                                Export Verify Selected
 
-                        </button>
+                            </button>
 
 
 
-                    </div>
+                        </div>-->
 
 
                 </form>
@@ -199,9 +199,9 @@
                             <th>Cancel</th>
                             <th>Same Order</th>
                             <!--  <th>WA Total</th>
-                                                                                                                                                                                          <th>WA Verified</th>
-                                                                                                                                                                                           <th>WA Pending</th>
-                                                                                                                                                                                           <th>Combined %</th>-->
+                                                                                                                                                                                              <th>WA Verified</th>
+                                                                                                                                                                                               <th>WA Pending</th>
+                                                                                                                                                                                               <th>Combined %</th>-->
                             <th>Order %</th>
                         </tr>
                     </thead>
@@ -307,11 +307,11 @@
 
                             <!--<td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
 
-                                                                                                                                                                                                    <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
+                                                                                                                                                                                                        <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
 
-                                                                                                                                                                                                        <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
+                                                                                                                                                                                                            <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
 
-                                                                                                                                                                                                        <td><strong>{{ $combinedRate }}%</strong></td>-->
+                                                                                                                                                                                                            <td><strong>{{ $combinedRate }}%</strong></td>-->
 
                             <td><small>{{ $success }}%</small></td>
 

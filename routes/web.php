@@ -81,7 +81,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/generate-order-id', [RecordController::class, 'generateOrderId'])
         ->name('generate.order.id');
 
-    Route::get('/ordersdashboard', [AdminController::class, 'ordersdashboard'])->name('ordersdashboard');
+
+    Route::get('/ordersdashboard/{client_id?}', [AdminController::class, 'ordersdashboard'])
+        ->name('ordersdashboard');
+
+    Route::get('/clientsorders', [AdminController::class, 'clientsorders'])->name('clientsorders');
+
+
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])->name('labelsenders');
     Route::post('/labelsenders', [AdminController::class, 'storeLabelSenders'])->name('labelsenders.store');
     Route::get('/labelgenrate', [AdminController::class, 'labelgenrate'])->name('labelgenrate');
@@ -205,7 +211,14 @@ Route::middleware(['auth'])->group(function () {
     //Route::get('orders/label-pdf', [OrderController::class, 'labelPdf'])->name('orders.label.pdf');
     Route::get('orders/postoffice-excel', [PostOfficeExportController::class, 'postOfficeExcel'])->name('orders.postoffice.excel');
     Route::post('orders/moneyorder-pdf', [MoneyorderExportController::class, 'Moneyorder'])->name('orders.Moneyorder.pdf');
+
     Route::post('/assign-orders', [AdminController::class, 'assignOrders'])->name('assign.orders');
+
+    Route::post('/assign-rto-orders', [AdminController::class, 'assignRtoOrders'])
+        ->name('assign.rto.orders');
+
+
+
     Route::get('/assign', [AdminController::class, 'assignPage']);
     Route::get('/calling-users', [CallingUserController::class, 'index'])->name('calling.users');
     Route::post('/calling-users', [CallingUserController::class, 'store'])->name('calling.users.store');
@@ -316,8 +329,15 @@ Route::post('/calling/login', [CallingUserAuthController::class, 'login'])->name
 Route::middleware('calling_user')->group(function () {
     Route::get('/calling/dashboard', [CallingUserAuthController::class, 'dashboard'])
         ->name('calling.dashboard');
+
+
+
     Route::get('/calling/orders', [CallingUserAuthController::class, 'orders'])
         ->name('calling.orders');
+
+
+    Route::get('/calling/rtoorders', [CallingUserAuthController::class, 'rtoorders'])
+        ->name('calling.rtoorders');
 
     Route::get(
         '/calling/customer-history',

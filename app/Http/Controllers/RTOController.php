@@ -399,6 +399,7 @@ class RTOController extends Controller
                     'quantity' => $order->quantity,
                     'weight' => $order->weight,
                     'order_date' => $order->date,
+                    'is_exported' => '0',
                 ]);
             }
         }

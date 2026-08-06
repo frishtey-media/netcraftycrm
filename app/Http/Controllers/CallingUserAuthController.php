@@ -144,13 +144,13 @@ class CallingUserAuthController extends Controller
 
         $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
             ->where('assigned_to', $userId)
-            ->where('status', 'pending')
+            ->whereNull('order_source')   // Shopify Orders Only
             ->groupBy('client_id')
             ->with('client')
             ->get();
 
         $query = CallingOrder::where('assigned_to', $userId)
-            ->where('status', 'pending');
+            ->whereNull('order_source');  // Shopify Orders Only
 
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
@@ -161,11 +161,42 @@ class CallingUserAuthController extends Controller
         return view('calling.orders', [
             'orders' => $orders,
             'clients' => $clients,
-            'statusLabel' => 'Pending',
-            'statusClass' => 'danger',
+            'statusLabel' => 'Shopify Orders',
+            'statusClass' => 'primary',
             'statusCount' => $orders->count()
         ]);
     }
+
+    public function rtoorders(Request $request)
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
+            ->where('assigned_to', $userId)
+            ->where('order_source', 'RTO')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
+
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('order_source', 'RTO');
+
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->latest()->get();
+
+        return view('calling.rtoorders', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'RTO Orders',
+            'statusClass' => 'warning',
+            'statusCount' => $orders->count()
+        ]);
+    }
+
+
 
 
     public function verified(Request $request)

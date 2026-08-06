@@ -70,7 +70,7 @@
             border-bottom: 1px solid #ddd;
         }
 
-        /* 🔥 OVERLAY */
+
         #overlay {
             position: fixed;
             top: 0;
@@ -126,34 +126,37 @@
         <a href="{{ route('calling.dashboard') }}" class="menu-link">
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
-
+        <a href="{{ route('calling.manual') }}" class="menu-link">
+            <i class="bi bi-whatsapp text-success"></i> Add WhatsApp Order
+        </a>
         <a href="{{ route('calling.orders') }}" class="menu-link">
-            <i class="bi bi-list-check"></i> My Orders
+            <i class="bi bi-list-check"></i> Web Orders
         </a>
 
+        <a href="{{ route('calling.rtoorders') }}" class="menu-link">
+            <i class="bi bi-list-check"></i> RTO Orders
+        </a>
         <a href="{{ route('calling.verified') }}" class="menu-link">
-            <i class="bi bi-check-circle"></i> Verified
+            <i class="bi bi-check-circle"></i> All Verified
         </a>
 
         <a href="{{ route('calling.same_order') }}" class="menu-link">
-            <i class="bi bi-telephone-x"></i> Same Order
+            <i class="bi bi-telephone-x"></i> All Same Order
         </a>
 
         <a href="{{ route('calling.cancel') }}" class="menu-link">
-            <i class="bi bi-telephone-x"></i> Cancel Order
+            <i class="bi bi-telephone-x"></i> All Cancel Order
         </a>
 
         <a href="{{ route('calling.not.reachable') }}" class="menu-link">
             <i class="bi bi-telephone-x"></i> Not Reachable
         </a>
 
-        <a href="{{ route('calling.inbox') }}" class="menu-link">
+        <!-- <a href="{{ route('calling.inbox') }}" class="menu-link">
             <i class="bi bi-whatsapp text-success"></i> Whatsapp Inbox
-        </a>
+        </a>-->
 
-        <a href="{{ route('calling.manual') }}" class="menu-link">
-            <i class="bi bi-whatsapp text-success"></i> Add WhatsApp Order
-        </a>
+
 
         <a href="{{ route('calling.whatsapp') }}" class="menu-link">
             <i class="bi bi-whatsapp text-success"></i> WhatsApp Orders

@@ -21,6 +21,9 @@ use App\Models\Payment;
 use App\Exports\StaffPerformanceExport;
 use App\Exports\StaffPerformanceOrdersExport;
 use App\Exports\SelectedStaffExport;
+use Illuminate\Support\Facades\Log;
+
+use App\Models\RtoReport;
 
 class AdminController extends Controller
 {
@@ -188,6 +191,8 @@ class AdminController extends Controller
 
         );
     }
+
+
     public function staffVerified(Request $request)
     {
         $staffId = $request->staff_id;
@@ -751,7 +756,14 @@ class AdminController extends Controller
             'Orders shifted successfully'
         );
     }
-    public function ordersdashboard()
+
+    public function clientsorders()
+    {
+        $clients = Client::orderBy('client_name')->get();
+
+        return view('clientsorders', compact('clients'));
+    }
+    public function ordersdashboard($client_id = null)
     {
         $from = Carbon::yesterday()->startOfDay();
         $to   = Carbon::now();
@@ -764,19 +776,15 @@ class AdminController extends Controller
             $ordersData = Client::where('id', $clientId)
                 ->withCount([
                     'orders as total_orders' => function ($q) use ($from, $to) {
-
                         $q->whereNull('assigned_to')
                             ->where('status', 'pending')
                             ->whereBetween('order_date', [$from, $to]);
                     }
-                ])
-                ->get()
-                ->map(function ($client) {
-
+                ])->get()->map(function ($client) {
                     return [
                         'client_name'  => $client->client_name,
                         'client_id'    => $client->id,
-                        'total_orders' => $client->total_orders
+                        'total_orders' => $client->total_orders,
                     ];
                 });
 
@@ -790,41 +798,50 @@ class AdminController extends Controller
                 ->with('client')
                 ->get();
 
-            // client can assign orders
-            $allStaff = CallingUser::where('status', '1')->get();
-            //   dd($allStaff->pluck('name', 'status'));
             return view('ordersdashboard', [
                 'ordersData' => $ordersData,
                 'waClients'  => $waClients,
                 'staff'      => collect(),
-                'allStaff'   => $allStaff
+                'allStaff'   => CallingUser::where('status', 1)->get(),
             ]);
         }
 
         // ================= SUPER ADMIN =================
 
-        $ordersData = Client::withCount([
-            'orders as total_orders' => function ($q) use ($from, $to) {
+        $query = Client::query();
 
+        if ($client_id) {
+            $query->where('id', $client_id);
+        }
+
+        $ordersData = $query->withCount([
+            'orders as total_orders' => function ($q) use ($from, $to) {
                 $q->whereNull('assigned_to')
                     ->where('status', 'pending')
                     ->whereBetween('order_date', [$from, $to]);
             }
-        ])
-            ->get()
-            ->map(function ($client) {
+        ])->get()->map(function ($client) {
 
-                return [
-                    'client_name'  => $client->client_name,
-                    'client_id'    => $client->id,
-                    'total_orders' => $client->total_orders
-                ];
-            });
+            $rtoPending = DB::table('rto_reports')
+                ->join('orders', 'orders.order_id', '=', 'rto_reports.order_id')
+                ->where('orders.client_id', $client->id)
+                ->where('rto_reports.is_exported', 0)
+                ->count();
+            return [
+                'client_name'  => $client->client_name,
+                'client_id'    => $client->id,
+                'total_orders' => $client->total_orders,
+                'rto_pending'    => $rtoPending,
+            ];
+        });
 
         $waClients = Conversation::select(
             'client_id',
             DB::raw('COUNT(*) as total')
         )
+            ->when($client_id, function ($q) use ($client_id) {
+                $q->where('client_id', $client_id);
+            })
             ->whereBetween('updated_at', [$from, $to])
             ->groupBy('client_id')
             ->with('client')
@@ -843,10 +860,147 @@ class AdminController extends Controller
             'ordersData' => $ordersData,
             'waClients'  => $waClients,
             'staff'      => $staff,
-            'allStaff'   => CallingUser::all()
+            'allStaff'   => CallingUser::all(),
         ]);
     }
 
+    public function assignRtoOrders(Request $request)
+    {
+        DB::beginTransaction();
+
+        try {
+
+            // Get all pending RTO orders
+            $rtoOrders = DB::table('rto_reports')
+                ->join('orders', 'orders.order_id', '=', 'rto_reports.order_id')
+                ->where('orders.client_id', $request->client_id)
+                ->where('rto_reports.is_exported', 0)
+                ->orderBy('rto_reports.id')
+                ->select(
+                    'rto_reports.*',
+
+                    'orders.client_id',
+                    'orders.city',
+                    'orders.state',
+                    'orders.pincode',
+                    'orders.father_name'
+                )
+                ->get();
+
+            foreach ($request->assign as $staffId => $qty) {
+
+                if (empty($qty) || $qty <= 0) {
+                    continue;
+                }
+
+                // Get selected orders
+                $selectedOrders = $rtoOrders->splice(0, $qty);
+
+                // Staff Details
+                $staff = CallingUser::findOrFail($staffId);
+
+                $name = strtoupper(trim($staff->name));
+
+                // First + Last Letter
+                $prefix = substr($name, 0, 1) . substr($name, -1, 1);
+
+                $date = now()->format('d-m-y');
+
+                // Last Serial Number of Today
+                $lastSerial = CallingOrder::where('assigned_to', $staffId)
+                    ->whereDate('created_at', today())
+                    ->count();
+
+                foreach ($selectedOrders as $order) {
+
+                    // Increment Serial
+                    $lastSerial++;
+
+                    // Generate Order ID
+                    $callingOrderId = $prefix . '-' . $date . '-' . $lastSerial;
+
+                    CallingOrder::create([
+
+                        'client_id'          => $order->client_id,
+
+                        // Auto Generated Calling Order ID
+                        'order_id'           => $callingOrderId,
+
+
+                        'order_date'         => $order->order_date,
+
+
+
+                        'product_name'       => $order->product,
+
+                        'quantity'           => $order->quantity,
+
+                        'weight'             => $order->weight,
+
+                        'customer_name'      => $order->customer_name,
+
+                        'father_name'        => $order->father_name,
+
+                        'city'               => $order->city,
+
+                        'state'              => $order->state,
+
+                        'pincode'            => $order->pincode,
+
+                        'customer_phone'     => $order->customer_phone,
+
+                        'shipping_address'   => $order->shipping_address,
+
+                        'payment_mode'       => $order->payment_mode,
+
+                        'amount'             => $order->amount,
+
+                        'assigned_to'        => $staffId,
+
+                        'status'             => 'pending',
+
+                        'order_source'       => 'RTO',
+
+
+
+                    ]);
+
+                    // Update RTO Report
+                    $updated = DB::table('rto_reports')
+                        ->where('order_id', $order->order_id)
+                        ->update([
+                            'is_exported'  => 1,
+                            'assign_staff' => $staffId,
+                            'assigndate'   => now(),
+                        ]);
+
+                    if (!$updated) {
+                        throw new \Exception(
+                            'Unable to update RTO Report. Order ID: ' . $order->order_id
+                        );
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return back()->with('success', 'RTO Orders Assigned Successfully.');
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            Log::error('RTO Assignment Error', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+                'trace'   => $e->getTraceAsString(),
+            ]);
+
+            return back()->withErrors([
+                'error' => $e->getMessage() . ' | Line : ' . $e->getLine()
+            ]);
+        }
+    }
     public function performance(Request $request)
     {
         $from = $request->filled('from')
@@ -876,9 +1030,6 @@ class AdminController extends Controller
                 ? (int) $request->client_id
                 : null;
         }
-
-
-
 
         if ($this->isClient()) {
 

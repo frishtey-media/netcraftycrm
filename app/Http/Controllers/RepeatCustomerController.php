@@ -451,20 +451,36 @@ class RepeatCustomerController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Reusable phone condition
+    | Previous Calling Order History
     |--------------------------------------------------------------------------
     */
 
-        $phoneFilter = function ($query) use ($phone, $last10) {
+        $orders = DB::table('callingorder')
 
-            $cleanPhone = "
+            ->leftJoin(
+                'clients',
+                'clients.id',
+                '=',
+                'callingorder.client_id'
+            )
+
+            ->leftJoin(
+                'calling_users',
+                'calling_users.id',
+                '=',
+                'callingorder.assigned_to'
+            )
+
+            ->where(function ($query) use ($phone, $last10) {
+
+                $cleanPhone = "
             REPLACE(
                 REPLACE(
                     REPLACE(
                         REPLACE(
                             REPLACE(
                                 REPLACE(
-                                    customer_phone,
+                                    callingorder.customer_phone,
                                     ' ',
                                     ''
                                 ),
@@ -483,142 +499,79 @@ class RepeatCustomerController extends Controller
                 '.',
                 ''
             )
-        ";
-
-            $query->whereRaw("{$cleanPhone} = ?", [$phone]);
-
-            if (strlen($last10) === 10) {
-                $query->orWhereRaw(
-                    "RIGHT({$cleanPhone}, 10) = ?",
-                    [$last10]
-                );
-            }
-        };
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Previous Order History
-    |--------------------------------------------------------------------------
-    */
-
-        $orders = DB::table('orders')
-
-            ->leftJoin(
-                'clients',
-                'clients.id',
-                '=',
-                'orders.client_id'
-            )
-
-            ->leftJoin('callingorder', function ($join) {
-
-                $join->on(
-                    'callingorder.order_id',
-                    '=',
-                    'orders.order_id'
-                );
-
-                $join->on(
-                    'callingorder.client_id',
-                    '=',
-                    'orders.client_id'
-                );
-            })
-
-            ->leftJoin(
-                'calling_users',
-                'calling_users.id',
-                '=',
-                'callingorder.assigned_to'
-            )
-
-            ->where(function ($query) use ($phone, $last10) {
-
-                $cleanPhone = "
-                REPLACE(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(
-                                    REPLACE(
-                                        orders.customer_phone,
-                                        ' ',
-                                        ''
-                                    ),
-                                    '+',
-                                    ''
-                                ),
-                                '-',
-                                ''
-                            ),
-                            '(',
-                            ''
-                        ),
-                        ')',
-                        ''
-                    ),
-                    '.',
-                    ''
-                )
             ";
 
-                $query->whereRaw(
-                    "{$cleanPhone} = ?",
-                    [$phone]
-                );
+                $query->whereRaw("{$cleanPhone} = ?", [$phone]);
 
                 if (strlen($last10) === 10) {
                     $query->orWhereRaw(
-                        "RIGHT({$cleanPhone}, 10) = ?",
+                        "RIGHT({$cleanPhone},10)=?",
                         [$last10]
                     );
                 }
             })
 
             ->select([
-                'orders.id',
-                'orders.order_id',
-                'orders.barcode',
-                'orders.client_id',
-                'orders.product',
-                'orders.quantity',
-                'orders.weight',
-                'orders.amount',
-                'orders.payment_mode',
-                'orders.customer_name',
-                'orders.father_name',
-                'orders.age',
-                'orders.customer_phone',
-                'orders.shipping_address',
-                'orders.city',
-                'orders.state',
-                'orders.pincode',
-                'orders.delivery_status',
-                'orders.created_at',
+
+                'callingorder.id',
+
+                'callingorder.order_id',
+
+                'callingorder.barcode',
+
+                'callingorder.client_id',
+
+                DB::raw('callingorder.product_name as product'),
+
+                'callingorder.quantity',
+
+                'callingorder.weight',
+
+                'callingorder.amount',
+
+                'callingorder.payment_mode',
+
+                'callingorder.customer_name',
+
+                'callingorder.father_name',
+
+                'callingorder.age',
+
+                'callingorder.customer_phone',
+
+                'callingorder.shipping_address',
+
+                'callingorder.city',
+
+                'callingorder.state',
+
+                'callingorder.pincode',
+
+                DB::raw('callingorder.status as delivery_status'),
+
+                'callingorder.created_at',
 
                 'clients.client_name',
 
-                DB::raw(
-                    'calling_users.name as staff_name'
-                )
+                DB::raw('calling_users.name as staff_name')
+
             ])
 
-            ->orderByDesc('orders.created_at')
+            ->orderByDesc('callingorder.created_at')
+
             ->get();
 
 
         /*
     |--------------------------------------------------------------------------
-    | Find Latest Delivered Order
+    | Latest Delivered Order
     |--------------------------------------------------------------------------
     */
 
         $deliveredOrder = $orders
             ->filter(function ($order) {
-                return strtolower(
-                    trim($order->delivery_status ?? '')
-                ) === 'delivered';
+
+                return strtolower(trim($order->delivery_status ?? '')) == 'delivered';
             })
             ->first();
 

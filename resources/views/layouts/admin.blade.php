@@ -184,7 +184,7 @@
                 </a>
             @endif
 
-            <a href="{{ route('ordersdashboard') }}">
+            <a href="{{ route('clientsorders') }}">
                 <i class="bi bi-speedometer2"></i> Orders Dashboard
             </a>
 
