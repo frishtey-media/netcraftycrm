@@ -4,7 +4,6 @@
 <head>
     <title>@yield('title')</title>
 
-    <!-- ✅ MOBILE FIX -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Bootstrap -->
@@ -70,7 +69,7 @@
             border-bottom: 1px solid #ddd;
         }
 
-
+        /* 🔥 OVERLAY */
         #overlay {
             position: fixed;
             top: 0;
@@ -126,26 +125,26 @@
         <a href="{{ route('calling.dashboard') }}" class="menu-link">
             <i class="bi bi-speedometer2"></i> Dashboard
         </a>
-        <a href="{{ route('calling.manual') }}" class="menu-link">
-            <i class="bi bi-whatsapp text-success"></i> Add WhatsApp Order
-        </a>
-        <a href="{{ route('calling.orders') }}" class="menu-link">
-            <i class="bi bi-list-check"></i> Web Orders
-        </a>
 
+        <a href="{{ route('calling.orders') }}" class="menu-link">
+            <i class="bi bi-list-check"></i> My Orders
+        </a>
         <a href="{{ route('calling.rtoorders') }}" class="menu-link">
             <i class="bi bi-list-check"></i> RTO Orders
         </a>
+        <a href="{{ route('calling.deliverorders') }}" class="menu-link">
+            <i class="bi bi-list-check"></i> Deliver Orders
+        </a>
         <a href="{{ route('calling.verified') }}" class="menu-link">
-            <i class="bi bi-check-circle"></i> All Verified
+            <i class="bi bi-check-circle"></i> Verified
         </a>
 
         <a href="{{ route('calling.same_order') }}" class="menu-link">
-            <i class="bi bi-telephone-x"></i> All Same Order
+            <i class="bi bi-telephone-x"></i> Same Order
         </a>
 
         <a href="{{ route('calling.cancel') }}" class="menu-link">
-            <i class="bi bi-telephone-x"></i> All Cancel Order
+            <i class="bi bi-telephone-x"></i> Cancel Order
         </a>
 
         <a href="{{ route('calling.not.reachable') }}" class="menu-link">
@@ -156,7 +155,9 @@
             <i class="bi bi-whatsapp text-success"></i> Whatsapp Inbox
         </a>-->
 
-
+        <a href="{{ route('calling.manual') }}" class="menu-link">
+            <i class="bi bi-whatsapp text-success"></i> Add WhatsApp Order
+        </a>
 
         <a href="{{ route('calling.whatsapp') }}" class="menu-link">
             <i class="bi bi-whatsapp text-success"></i> WhatsApp Orders

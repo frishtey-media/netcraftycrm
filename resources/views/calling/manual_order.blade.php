@@ -1002,27 +1002,64 @@
             let deliveredQuantity = 1;
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | SEARCH CUSTOMER
-            |--------------------------------------------------------------------------
-            */
+
+
 
             $('#searchCustomer').on('click', function() {
 
-                let phone = $('#customer_phone_search').val().trim();
+                let phone =
+                    $('#customer_phone_search')
+                    .val()
+                    .trim();
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | VALIDATE PHONE
+                |--------------------------------------------------------------------------
+                */
 
                 if (!phone) {
+
                     alert('Enter Mobile Number');
+
                     return;
                 }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | RESET OLD SECTIONS
+                |--------------------------------------------------------------------------
+                */
+
+                $('#callSection').hide();
+
+                $('#verifiedSection').hide();
+
+                $('#remarksSection').hide();
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | SEARCH BUTTON
+                |--------------------------------------------------------------------------
+                */
 
                 let button = $(this);
 
                 button
                     .prop('disabled', true)
-                    .html('<i class="fa fa-spinner fa-spin"></i> Searching...');
+                    .html(
+                        '<i class="fa fa-spinner fa-spin"></i> Searching...'
+                    );
 
+
+                /*
+                |--------------------------------------------------------------------------
+                | AJAX
+                |--------------------------------------------------------------------------
+                */
 
                 $.ajax({
 
@@ -1035,11 +1072,18 @@
                     },
 
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | SUCCESS
+                    |--------------------------------------------------------------------------
+                    */
+
                     success: function(res) {
+
 
                         /*
                         |--------------------------------------------------------------------------
-                        | LOCK SEARCH PHONE
+                        | LOCK PHONE
                         |--------------------------------------------------------------------------
                         */
 
@@ -1047,150 +1091,493 @@
                             .val(res.phone)
                             .prop('readonly', true);
 
+
                         $('#customer_phone')
                             .val(res.phone);
 
-                        $('#changeNumber').show();
+
+                        $('#changeNumber')
+                            .show();
 
 
                         /*
                         |--------------------------------------------------------------------------
-                        | SHOW HISTORY
+                        | SHOW HISTORY CARD
                         |--------------------------------------------------------------------------
                         */
 
-                        $('#historyCard').slideDown();
+                        $('#historyCard')
+                            .slideDown();
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | HISTORY COUNT
+                        |--------------------------------------------------------------------------
+                        */
 
                         $('#historyCount')
-                            .text(res.orders.length + ' Orders');
+                            .text(
+                                res.orders.length +
+                                ' Orders'
+                            );
 
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | BUILD HISTORY
+                        |--------------------------------------------------------------------------
+                        */
 
                         let html = '';
 
 
-                        if (res.orders.length === 0) {
+                        /*
+                        |--------------------------------------------------------------------------
+                        | NO HISTORY
+                        |--------------------------------------------------------------------------
+                        */
+
+                        if (
+                            !res.orders ||
+                            res.orders.length === 0
+                        ) {
 
                             html = `
-                        <tr>
-                            <td colspan="8"
-                                class="text-center text-danger py-4">
 
-                                No Previous Orders Found
+                    <tr>
 
-                            </td>
-                        </tr>
-                    `;
+                        <td
+                            colspan="8"
+                            class="text-center text-danger py-4"
+                        >
 
-                        } else {
+                            No Previous Orders Found
 
-                            $.each(res.orders, function(i, row) {
+                        </td>
 
-                                let badge = '';
+                    </tr>
 
-                                if (
-                                    String(row.delivery_status)
-                                    .toLowerCase() === 'delivered'
-                                ) {
+                `;
 
-                                    badge =
-                                        '<span class="badge bg-success">Delivered</span>';
+                        }
 
-                                } else if (
-                                    String(row.delivery_status)
-                                    .toLowerCase() === 'rto'
-                                ) {
+                        /*
+                        |--------------------------------------------------------------------------
+                        | HISTORY FOUND
+                        |--------------------------------------------------------------------------
+                        */
+                        else {
 
-                                    badge =
-                                        '<span class="badge bg-danger">RTO</span>';
-
-                                } else if (
-                                    String(row.delivery_status)
-                                    .toLowerCase() === 'in transit'
-                                ) {
-
-                                    badge =
-                                        '<span class="badge bg-warning text-dark">In Transit</span>';
-
-                                } else {
-
-                                    badge =
-                                        '<span class="badge bg-secondary">' +
-                                        (row.delivery_status ?? 'No Status') +
-                                        '</span>';
-                                }
+                            $.each(
+                                res.orders,
+                                function(i, row) {
 
 
-                                html += `
+                                    /*
+                                    |--------------------------------------------------------------------------
+                                    | STATUS
+                                    |--------------------------------------------------------------------------
+                                    */
+
+                                    let status =
+                                        String(
+                                            row.delivery_status ?? ''
+                                        )
+                                        .trim()
+                                        .toLowerCase()
+                                        .replace(
+                                            /_/g,
+                                            ' '
+                                        );
+
+
+                                    /*
+                                    |--------------------------------------------------------------------------
+                                    | STATUS BADGE
+                                    |--------------------------------------------------------------------------
+                                    */
+
+                                    let badge = '';
+
+
+                                    /*
+                                    | VERIFIED
+                                    */
+
+                                    if (
+                                        status === 'verified'
+                                    ) {
+
+                                        badge =
+
+                                            '<span class="badge bg-success">' +
+
+                                            'Verified' +
+
+                                            '</span>';
+
+                                    }
+
+
+                                    /*
+                                    | DELIVERED
+                                    */
+                                    else if (
+                                        status === 'delivered'
+                                    ) {
+
+                                        badge =
+
+                                            '<span class="badge bg-success">' +
+
+                                            'Delivered' +
+
+                                            '</span>';
+
+                                    }
+
+
+                                    /*
+                                    | RTO
+                                    */
+                                    else if (
+                                        status === 'rto' ||
+                                        status === 'returned' ||
+                                        status === 'return'
+                                    ) {
+
+                                        badge =
+
+                                            '<span class="badge bg-danger">' +
+
+                                            'RTO' +
+
+                                            '</span>';
+
+                                    }
+
+
+                                    /*
+                                    | IN TRANSIT
+                                    */
+                                    else if (
+                                        status === 'in transit' ||
+                                        status === 'transit' ||
+                                        status === 'shipped'
+                                    ) {
+
+                                        badge =
+
+                                            '<span class="badge bg-warning text-dark">' +
+
+                                            'In Transit' +
+
+                                            '</span>';
+
+                                    }
+
+
+                                    /*
+                                    | OUT FOR DELIVERY
+                                    */
+                                    else if (
+                                        status ===
+                                        'out for delivery'
+                                    ) {
+
+                                        badge =
+
+                                            '<span class="badge bg-info text-dark">' +
+
+                                            'Out for Delivery' +
+
+                                            '</span>';
+
+                                    }
+
+
+                                    /*
+                                    | DISPATCHED
+                                    */
+                                    else if (
+                                        status === 'dispatched'
+                                    ) {
+
+                                        badge =
+
+                                            '<span class="badge bg-primary">' +
+
+                                            'Dispatched' +
+
+                                            '</span>';
+
+                                    }
+
+
+                                    /*
+                                    | PENDING
+                                    */
+                                    else if (
+                                        status === 'pending'
+                                    ) {
+
+                                        badge =
+
+                                            '<span class="badge bg-warning text-dark">' +
+
+                                            'Pending' +
+
+                                            '</span>';
+
+                                    }
+
+
+                                    /*
+                                    | NOT REACHABLE
+                                    */
+                                    else if (
+                                        status === 'not reachable'
+                                    ) {
+
+                                        badge =
+
+                                            '<span class="badge bg-danger">' +
+
+                                            'Not Reachable' +
+
+                                            '</span>';
+
+                                    }
+
+
+                                    /*
+                                    | CANCEL
+                                    */
+                                    else if (
+                                        status === 'cancel' ||
+                                        status === 'cancelled'
+                                    ) {
+
+                                        badge =
+
+                                            '<span class="badge bg-danger">' +
+
+                                            'Cancelled' +
+
+                                            '</span>';
+
+                                    }
+
+
+                                    /*
+                                    | OTHER
+                                    */
+                                    else {
+
+                                        badge =
+
+                                            '<span class="badge bg-secondary">' +
+
+                                            (
+                                                row.delivery_status ??
+                                                'No Status'
+                                            ) +
+
+                                            '</span>';
+                                    }
+
+
+                                    /*
+                                    |--------------------------------------------------------------------------
+                                    | SOURCE
+                                    |--------------------------------------------------------------------------
+                                    */
+
+                                    let sourceBadge = '';
+
+
+                                    if (
+                                        row.source ===
+                                        'orders'
+                                    ) {
+
+                                        sourceBadge =
+
+                                            '<small class="text-muted d-block">' +
+
+                                            'India Post' +
+
+                                            '</small>';
+
+                                    }
+
+
+                                    /*
+                                    |--------------------------------------------------------------------------
+                                    | CREATE ROW
+                                    |--------------------------------------------------------------------------
+                                    */
+
+                                    html += `
+
                             <tr>
 
-                                <td>${row.created_at ?? '-'}</td>
+                                <td>
+                                    ${row.created_at ?? '-'}
+                                </td>
 
-                                <td>${row.order_id ?? '-'}</td>
+                                <td>
+                                    ${row.order_id ?? '-'}
+                                </td>
 
-                                <td>${row.barcode ?? '-'}</td>
+                                <td>
+                                    ${row.barcode ?? '-'}
+                                </td>
 
-                                <td>${row.client_name ?? '-'}</td>
+                                <td>
+                                    ${row.client_name ?? '-'}
+                                </td>
 
-                                <td>${row.product ?? '-'}</td>
+                                <td>
 
-                                <td>₹ ${row.amount ?? 0}</td>
+                                    ${row.product ?? '-'}
 
-                                <td>${badge}</td>
+                                    ${sourceBadge}
 
-                                <td>${row.staff_name ?? '-'}</td>
+                                </td>
+
+                                <td>
+                                    ₹ ${row.amount ?? 0}
+                                </td>
+
+                                <td>
+                                    ${badge}
+                                </td>
+
+                                <td>
+                                    ${row.staff_name ?? '-'}
+                                </td>
 
                             </tr>
+
                         `;
-                            });
+                                }
+                            );
                         }
 
 
-                        $('#historyTable').html(html);
+                        /*
+                        |--------------------------------------------------------------------------
+                        | PUT HISTORY IN TABLE
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $('#historyTable')
+                            .html(html);
 
 
                         /*
                         |--------------------------------------------------------------------------
-                        | SHOW LEAD SECTION
+                        | SHOW / HIDE NEW ORDER FORM
                         |--------------------------------------------------------------------------
                         */
 
-                        $('#callSection').slideDown();
+                        if (
+                            res.hide_call_form === true
+                        ) {
+
+                            /*
+                            | VERIFIED ONLY
+                            | NO INDIA POST ORDER
+                            */
+
+                            $('#callSection')
+                                .hide();
+
+                            $('#verifiedSection')
+                                .hide();
+
+                            $('#remarksSection')
+                                .hide();
+
+
+                        } else {
+
+                            /*
+                            | INDIA POST EXISTS
+                            | OR NO VERIFIED CASE
+                            */
+
+                            $('#callSection')
+                                .slideDown();
+
+                        }
 
 
                         /*
                         |--------------------------------------------------------------------------
-                        | DELIVERED CUSTOMER AUTO FILL
+                        | AUTO FILL CUSTOMER
                         |--------------------------------------------------------------------------
                         */
 
-                        if (res.delivered_order) {
+                        if (
+                            res.delivered_order
+                        ) {
 
                             fillDeliveredCustomer(
                                 res.delivered_order
                             );
+
                         }
+
                     },
 
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | ERROR
+                    |--------------------------------------------------------------------------
+                    */
 
                     error: function(xhr) {
 
-                        console.log(xhr.responseText);
+                        console.log(
+                            xhr.responseText
+                        );
+
 
                         let message =
+
                             xhr.responseJSON?.message ??
+
                             'Unable to search customer.';
 
+
                         alert(message);
+
                     },
 
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | COMPLETE
+                    |--------------------------------------------------------------------------
+                    */
 
                     complete: function() {
 
                         button
-                            .prop('disabled', false)
+
+                            .prop(
+                                'disabled',
+                                false
+                            )
+
                             .html(
                                 '<i class="fa fa-search"></i> Search'
                             );
+
                     }
 
                 });
@@ -1203,41 +1590,41 @@
             | AUTO FILL DELIVERED CUSTOMER
             |--------------------------------------------------------------------------
             */
-
             function fillDeliveredCustomer(order) {
 
                 console.log(
-                    'Delivered customer:',
+                    'Customer data:',
                     order
                 );
 
 
-                /*
-                |--------------------------------------------------------------------------
-                | CUSTOMER
-                |--------------------------------------------------------------------------
-                */
-
                 $('input[name="customer_name"]')
                     .val(order.customer_name ?? '');
+
 
                 $('input[name="father_name"]')
                     .val(order.father_name ?? '');
 
+
                 $('input[name="age"]')
                     .val(order.age ?? '');
+
 
                 $('input[name="amount"]')
                     .val(order.amount ?? '');
 
+
                 $('input[name="city"]')
                     .val(order.city ?? '');
+
 
                 $('input[name="state"]')
                     .val(order.state ?? '');
 
+
                 $('input[name="pincode"]')
                     .val(order.pincode ?? '');
+
 
                 $('textarea[name="address"]')
                     .val(order.shipping_address ?? '');
@@ -1252,7 +1639,10 @@
                 if (order.payment_mode) {
 
                     let oldPayment =
-                        String(order.payment_mode)
+
+                        String(
+                            order.payment_mode
+                        )
                         .trim()
                         .toLowerCase();
 
@@ -1261,18 +1651,27 @@
                         .each(function() {
 
                             let current =
-                                String($(this).val())
+
+                                String(
+                                    $(this).val()
+                                )
                                 .trim()
                                 .toLowerCase();
 
 
-                            if (current === oldPayment) {
+                            if (
+                                current ===
+                                oldPayment
+                            ) {
 
                                 $('select[name="payment_mode"]')
-                                    .val($(this).val());
+                                    .val(
+                                        $(this).val()
+                                    );
 
                                 return false;
                             }
+
                         });
                 }
 
@@ -1286,24 +1685,29 @@
                 deliveredProduct =
                     order.product ?? null;
 
+
                 deliveredQuantity =
-                    parseInt(order.quantity) || 1;
+                    parseInt(
+                        order.quantity
+                    ) || 1;
 
 
                 /*
                 |--------------------------------------------------------------------------
                 | CLIENT
                 |--------------------------------------------------------------------------
-                |
-                | Trigger change will load client products.
-                |
                 */
 
                 if (order.client_id) {
 
                     $('#client_id')
-                        .val(String(order.client_id))
+                        .val(
+                            String(
+                                order.client_id
+                            )
+                        )
                         .trigger('change');
+
                 }
 
 
@@ -1311,11 +1715,21 @@
                 |--------------------------------------------------------------------------
                 | AUTO VERIFIED
                 |--------------------------------------------------------------------------
+                |
+                | Only set verified if the form is actually allowed.
+                |
                 */
 
-                $('#call_status')
-                    .val('verified')
-                    .trigger('change');
+                if (
+                    !window.customerHistoryHideForm
+                ) {
+
+                    $('#call_status')
+                        .val('verified')
+                        .trigger('change');
+
+                }
+
             }
 
 
@@ -1327,27 +1741,80 @@
 
             $('#changeNumber').on('click', function() {
 
+                /*
+                |--------------------------------------------------------------------------
+                | UNLOCK PHONE
+                |--------------------------------------------------------------------------
+                */
+
                 $('#customer_phone_search')
                     .prop('readonly', false)
                     .val('')
                     .focus();
 
-                $('#customer_phone').val('');
 
-                $('#historyCard').hide();
+                $('#customer_phone')
+                    .val('');
 
-                $('#callSection').hide();
 
-                $('#verifiedSection').hide();
+                /*
+                |--------------------------------------------------------------------------
+                | HIDE HISTORY
+                |--------------------------------------------------------------------------
+                */
 
-                $('#remarksSection').hide();
+                $('#historyCard')
+                    .hide();
 
-                $('#call_status').val('');
+
+                /*
+                |--------------------------------------------------------------------------
+                | HIDE FORM SECTIONS
+                |--------------------------------------------------------------------------
+                */
+
+                $('#callSection')
+                    .hide();
+
+
+                $('#verifiedSection')
+                    .hide();
+
+
+                $('#remarksSection')
+                    .hide();
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | RESET STATUS
+                |--------------------------------------------------------------------------
+                */
+
+                $('#call_status')
+                    .val('');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | RESET TEMP DATA
+                |--------------------------------------------------------------------------
+                */
 
                 deliveredProduct = null;
+
                 deliveredQuantity = 1;
 
-                $(this).hide();
+
+                /*
+                |--------------------------------------------------------------------------
+                | RESET CHANGE BUTTON
+                |--------------------------------------------------------------------------
+                */
+
+                $(this)
+                    .hide();
+
             });
 
 
@@ -1359,32 +1826,71 @@
 
             $('#call_status').on('change', function() {
 
-                let status = $(this).val();
+                let status =
+                    $(this).val();
 
-                $('#verifiedSection').hide();
-                $('#remarksSection').hide();
+
+                /*
+                |--------------------------------------------------------------------------
+                | HIDE BOTH
+                |--------------------------------------------------------------------------
+                */
+
+                $('#verifiedSection')
+                    .hide();
+
+
+                $('#remarksSection')
+                    .hide();
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | REMOVE REQUIRED
+                |--------------------------------------------------------------------------
+                */
 
                 $('.verified-required')
-                    .prop('required', false);
+                    .prop(
+                        'required',
+                        false
+                    );
+
 
                 $('#remarks')
-                    .prop('required', false);
+                    .prop(
+                        'required',
+                        false
+                    );
 
+                if (
+                    status === 'verified'
+                ) {
 
-                if (status === 'verified') {
+                    $('#verifiedSection')
+                        .slideDown();
 
-                    $('#verifiedSection').slideDown();
 
                     $('.verified-required')
-                        .prop('required', true);
+                        .prop(
+                            'required',
+                            true
+                        );
 
                 } else if (status) {
 
-                    $('#remarksSection').slideDown();
+                    $('#remarksSection')
+                        .slideDown();
+
 
                     $('#remarks')
-                        .prop('required', true);
+                        .prop(
+                            'required',
+                            true
+                        );
+
                 }
+
             });
 
 

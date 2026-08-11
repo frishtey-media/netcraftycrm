@@ -73,7 +73,9 @@
 
                             <select name="order_source" class="form-select">
 
-                                <option value="">All Sources</option>
+                                <option value="">
+                                    All Sources
+                                </option>
 
                                 <option value="web" {{ request('order_source') == 'web' ? 'selected' : '' }}>
                                     Web
@@ -81,6 +83,10 @@
 
                                 <option value="whatsapp" {{ request('order_source') == 'whatsapp' ? 'selected' : '' }}>
                                     WhatsApp
+                                </option>
+
+                                <option value="RTO" {{ request('order_source') == 'RTO' ? 'selected' : '' }}>
+                                    RTO
                                 </option>
 
                             </select>
@@ -172,12 +178,16 @@
 
                 <div class="row g-3">
 
-                    {{-- STAFF --}}
+                    {{-- =========================================================
+         STAFF
+    ========================================================== --}}
                     <div class="col">
                         <div class="card h-100 border-primary">
                             <div class="card-body text-center">
 
-                                <h6 class="fw-bold">Staff</h6>
+                                <h6 class="fw-bold">
+                                    Staff
+                                </h6>
 
                                 <h3 class="mb-0">
                                     {{ $staff->name }}
@@ -188,23 +198,42 @@
                     </div>
 
 
-                    {{-- TOTAL --}}
+                    {{-- =========================================================
+         TOTAL ORDERS
+    ========================================================== --}}
                     <div class="col">
                         <div class="card h-100 bg-primary text-white">
                             <div class="card-body text-center">
 
-                                <h6 class="fw-bold">Total Orders</h6>
+                                <h6 class="fw-bold">
+                                    Total Orders
+                                </h6>
 
-                                <h2>{{ $totalOrders }}</h2>
+                                <h2>
+                                    {{ $totalOrders }}
+                                </h2>
 
                                 <div class="small">
+
                                     Web:
-                                    <strong>{{ $webOrders }}</strong>
+                                    <strong>
+                                        {{ $webOrders }}
+                                    </strong>
 
                                     <span class="mx-2">|</span>
 
                                     WhatsApp:
-                                    <strong>{{ $whatsappOrders }}</strong>
+                                    <strong>
+                                        {{ $whatsappOrders }}
+                                    </strong>
+
+                                    <span class="mx-2">|</span>
+
+                                    RTO:
+                                    <strong>
+                                        {{ $rtoOrders }}
+                                    </strong>
+
                                 </div>
 
                             </div>
@@ -212,23 +241,42 @@
                     </div>
 
 
-                    {{-- PENDING --}}
+                    {{-- =========================================================
+         PENDING
+    ========================================================== --}}
                     <div class="col">
                         <div class="card h-100 bg-warning">
                             <div class="card-body text-center">
 
-                                <h6 class="fw-bold">Pending</h6>
+                                <h6 class="fw-bold">
+                                    Pending
+                                </h6>
 
-                                <h2>{{ $pendingOrders }}</h2>
+                                <h2>
+                                    {{ $pendingOrders }}
+                                </h2>
 
                                 <div class="small">
+
                                     Web:
-                                    <strong>{{ $pendingWeb }}</strong>
+                                    <strong>
+                                        {{ $pendingWeb }}
+                                    </strong>
 
                                     <span class="mx-2">|</span>
 
                                     WhatsApp:
-                                    <strong>{{ $pendingWhatsapp }}</strong>
+                                    <strong>
+                                        {{ $pendingWhatsapp }}
+                                    </strong>
+
+                                    <span class="mx-2">|</span>
+
+                                    RTO:
+                                    <strong>
+                                        {{ $rtoPending }}
+                                    </strong>
+
                                 </div>
 
                             </div>
@@ -236,23 +284,42 @@
                     </div>
 
 
-                    {{-- VERIFIED --}}
+                    {{-- =========================================================
+         VERIFIED
+    ========================================================== --}}
                     <div class="col">
                         <div class="card h-100 bg-success text-white">
                             <div class="card-body text-center">
 
-                                <h6 class="fw-bold">Verified</h6>
+                                <h6 class="fw-bold">
+                                    Verified
+                                </h6>
 
-                                <h2>{{ $verifiedOrders }}</h2>
+                                <h2>
+                                    {{ $verifiedOrders }}
+                                </h2>
 
                                 <div class="small">
+
                                     Web:
-                                    <strong>{{ $verifiedWeb }}</strong>
+                                    <strong>
+                                        {{ $verifiedWeb }}
+                                    </strong>
 
                                     <span class="mx-2">|</span>
 
                                     WhatsApp:
-                                    <strong>{{ $verifiedWhatsapp }}</strong>
+                                    <strong>
+                                        {{ $verifiedWhatsapp }}
+                                    </strong>
+
+                                    <span class="mx-2">|</span>
+
+                                    RTO:
+                                    <strong>
+                                        {{ $rtoVerified }}
+                                    </strong>
+
                                 </div>
 
                             </div>
@@ -260,23 +327,42 @@
                     </div>
 
 
-                    {{-- CANCEL --}}
+                    {{-- =========================================================
+         CANCEL
+    ========================================================== --}}
                     <div class="col">
                         <div class="card h-100 bg-danger text-white">
                             <div class="card-body text-center">
 
-                                <h6 class="fw-bold">Cancel</h6>
+                                <h6 class="fw-bold">
+                                    Cancel
+                                </h6>
 
-                                <h2>{{ $cancelOrders }}</h2>
+                                <h2>
+                                    {{ $cancelOrders }}
+                                </h2>
 
                                 <div class="small">
+
                                     Web:
-                                    <strong>{{ $cancelWeb }}</strong>
+                                    <strong>
+                                        {{ $cancelWeb }}
+                                    </strong>
 
                                     <span class="mx-2">|</span>
 
                                     WhatsApp:
-                                    <strong>{{ $cancelWhatsapp }}</strong>
+                                    <strong>
+                                        {{ $cancelWhatsapp }}
+                                    </strong>
+
+                                    <span class="mx-2">|</span>
+
+                                    RTO:
+                                    <strong>
+                                        {{ $rtoCancel }}
+                                    </strong>
+
                                 </div>
 
                             </div>
@@ -284,7 +370,9 @@
                     </div>
 
 
-                    {{-- NOT REACHABLE --}}
+                    {{-- =========================================================
+         NOT REACHABLE
+    ========================================================== --}}
                     <div class="col">
                         <div class="card h-100 bg-dark text-white">
                             <div class="card-body text-center">
@@ -293,16 +381,31 @@
                                     Not Reachable
                                 </h6>
 
-                                <h2>{{ $notReachableOrders }}</h2>
+                                <h2>
+                                    {{ $notReachableOrders }}
+                                </h2>
 
                                 <div class="small">
+
                                     Web:
-                                    <strong>{{ $notReachableWeb }}</strong>
+                                    <strong>
+                                        {{ $notReachableWeb }}
+                                    </strong>
 
                                     <span class="mx-2">|</span>
 
                                     WhatsApp:
-                                    <strong>{{ $notReachableWhatsapp }}</strong>
+                                    <strong>
+                                        {{ $notReachableWhatsapp }}
+                                    </strong>
+
+                                    <span class="mx-2">|</span>
+
+                                    RTO:
+                                    <strong>
+                                        {{ $rtoNotReachable }}
+                                    </strong>
+
                                 </div>
 
                             </div>
@@ -310,7 +413,9 @@
                     </div>
 
 
-                    {{-- SAME ORDER --}}
+                    {{-- =========================================================
+         SAME ORDER
+    ========================================================== --}}
                     <div class="col">
                         <div class="card h-100 bg-secondary text-white">
                             <div class="card-body text-center">
@@ -319,16 +424,31 @@
                                     Same Order
                                 </h6>
 
-                                <h2>{{ $sameOrderOrders }}</h2>
+                                <h2>
+                                    {{ $sameOrderOrders }}
+                                </h2>
 
                                 <div class="small">
+
                                     Web:
-                                    <strong>{{ $sameOrderWeb }}</strong>
+                                    <strong>
+                                        {{ $sameOrderWeb }}
+                                    </strong>
 
                                     <span class="mx-2">|</span>
 
                                     WhatsApp:
-                                    <strong>{{ $sameOrderWhatsapp }}</strong>
+                                    <strong>
+                                        {{ $sameOrderWhatsapp }}
+                                    </strong>
+
+                                    <span class="mx-2">|</span>
+
+                                    RTO:
+                                    <strong>
+                                        {{ $rtoSameOrder }}
+                                    </strong>
+
                                 </div>
 
                             </div>
@@ -336,7 +456,9 @@
                     </div>
 
 
-                    {{-- OTHER --}}
+                    {{-- =========================================================
+         OTHER
+    ========================================================== --}}
                     <div class="col">
                         <div class="card h-100 border-info">
                             <div class="card-body text-center">
@@ -345,16 +467,31 @@
                                     Other
                                 </h6>
 
-                                <h2>{{ $otherOrders }}</h2>
+                                <h2>
+                                    {{ $otherOrders }}
+                                </h2>
 
                                 <div class="small">
+
                                     Web:
-                                    <strong>{{ $otherWeb }}</strong>
+                                    <strong>
+                                        {{ $otherWeb }}
+                                    </strong>
 
                                     <span class="mx-2">|</span>
 
                                     WhatsApp:
-                                    <strong>{{ $otherWhatsapp }}</strong>
+                                    <strong>
+                                        {{ $otherWhatsapp }}
+                                    </strong>
+
+                                    <span class="mx-2">|</span>
+
+                                    RTO:
+                                    <strong>
+                                        {{ $rtoOther }}
+                                    </strong>
+
                                 </div>
 
                             </div>
@@ -362,267 +499,273 @@
                     </div>
 
                 </div>
-            </div>
 
 
 
 
-            <div class="card-body">
+                <div class="card-body">
 
-                {{-- =================================================
+                    {{-- =================================================
                 TABLE
             ================================================== --}}
-                <div class="table-responsive">
+                    <div class="table-responsive">
 
-                    <table class="table table-bordered
+                        <table class="table table-bordered
                               table-striped align-middle">
 
-                        <thead class="table-dark">
-
-                            <tr>
-
-                                <th>#</th>
-
-                                <th>Order ID</th>
-
-                                <th>Client</th>
-
-                                <th>Customer</th>
-
-                                <th>Phone</th>
-
-                                <th>Product</th>
-
-                                <th>Qty</th>
-
-                                <th>Amount</th>
-
-                                <th>Source</th>
-
-                                <th>Payment</th>
-
-                                <th>Status</th>
-
-                                <th>Remarks</th>
-
-                                <th>Updated Date</th>
-
-                            </tr>
-
-                        </thead>
-
-
-                        <tbody>
-
-                            @forelse($orders as $order)
-                                <tr>
-
-
-                                    {{-- SERIAL --}}
-                                    <td>
-
-                                        {{ $orders->firstItem() + $loop->index }}
-
-                                    </td>
-
-
-                                    {{-- ORDER --}}
-                                    <td>
-
-                                        <strong>
-                                            {{ $order->order_id }}
-                                        </strong>
-
-                                    </td>
-
-
-                                    {{-- CLIENT --}}
-                                    <td>
-
-                                        {{ $order->client->client_name ?? 'N/A' }}
-
-                                    </td>
-
-
-                                    {{-- CUSTOMER --}}
-                                    <td>
-
-                                        {{ $order->customer_name ?: '-' }}
-
-                                    </td>
-
-
-                                    {{-- PHONE --}}
-                                    <td>
-
-                                        {{ $order->customer_phone ?: '-' }}
-
-                                    </td>
-
-
-                                    {{-- PRODUCT --}}
-                                    <td>
-
-                                        {{ $order->product_name ?: '-' }}
-
-                                    </td>
-
-
-                                    {{-- QTY --}}
-                                    <td>
-
-                                        {{ $order->quantity ?? 0 }}
-
-                                    </td>
-
-
-                                    {{-- AMOUNT --}}
-                                    <td>
-
-                                        ₹{{ number_format((float) $order->amount, 2) }}
-
-                                    </td>
-
-
-                                    {{-- SOURCE --}}
-                                    <td>
-
-                                        @if (strtolower(trim($order->order_source ?? '')) === 'whatsapp')
-                                            <span class="badge bg-success">
-                                                WhatsApp
-                                            </span>
-                                        @else
-                                            <span class="badge bg-primary">
-                                                Web
-                                            </span>
-                                        @endif
-
-                                    </td>
-
-
-                                    {{-- PAYMENT --}}
-                                    <td>
-
-                                        @php
-
-                                            $payment = strtolower(trim($order->payment_mode ?? ''));
-
-                                        @endphp
-
-
-                                        @if (in_array($payment, ['prepaid', 'paid']))
-                                            <span class="badge bg-success">
-
-                                                Prepaid
-
-                                            </span>
-                                        @elseif(in_array($payment, ['cod', 'vpp']))
-                                            <span class="badge bg-warning text-dark">
-
-                                                COD
-
-                                            </span>
-                                        @else
-                                            <span class="badge bg-secondary">
-
-                                                {{ $order->payment_mode ?: '-' }}
-
-                                            </span>
-                                        @endif
-
-                                    </td>
-
-
-                                    {{-- STATUS --}}
-                                    <td>
-
-                                        @if ($order->status === 'verified')
-                                            <span class="badge bg-success">
-                                                Verified
-                                            </span>
-                                        @elseif($order->status === 'pending')
-                                            <span class="badge bg-warning text-dark">
-                                                Pending
-                                            </span>
-                                        @elseif($order->status === 'cancel')
-                                            <span class="badge bg-danger">
-                                                Cancel
-                                            </span>
-                                        @elseif($order->status === 'same_order')
-                                            <span class="badge bg-secondary">
-                                                Same Order
-                                            </span>
-                                        @elseif($order->status === 'not_reachable')
-                                            <span class="badge bg-dark">
-                                                Not Reachable
-                                            </span>
-                                        @else
-                                            <span class="badge bg-info text-dark">
-
-                                                Other
-
-                                            </span>
-                                        @endif
-
-                                    </td>
-
-
-                                    {{-- REMARKS --}}
-                                    <td>
-
-                                        {{ $order->remarks ?: '-' }}
-
-                                    </td>
-
-
-                                    {{-- DATE --}}
-                                    <td>
-
-                                        @if ($order->updated_at)
-                                            {{ $order->updated_at->format('d-m-Y h:i A') }}
-                                        @else
-                                            -
-                                        @endif
-
-                                    </td>
-
-
-                                </tr>
-
-                            @empty
+                            <thead class="table-dark">
 
                                 <tr>
 
-                                    <td colspan="13" class="text-center text-danger py-4">
+                                    <th>#</th>
 
-                                        No Orders Found
+                                    <th>Order ID</th>
 
-                                    </td>
+                                    <th>Client</th>
+
+                                    <th>Customer</th>
+
+                                    <th>Phone</th>
+
+                                    <th>Product</th>
+
+                                    <th>Qty</th>
+
+                                    <th>Amount</th>
+
+                                    <th>Source</th>
+
+                                    <th>Payment</th>
+
+                                    <th>Status</th>
+
+                                    <th>Remarks</th>
+
+                                    <th>Updated Date</th>
 
                                 </tr>
-                            @endforelse
 
-                        </tbody>
-
-                    </table>
-
-                </div>
+                            </thead>
 
 
+                            <tbody>
 
-                {{-- =================================================
+                                @forelse($orders as $order)
+                                    <tr>
+
+
+                                        {{-- SERIAL --}}
+                                        <td>
+
+                                            {{ $orders->firstItem() + $loop->index }}
+
+                                        </td>
+
+
+                                        {{-- ORDER --}}
+                                        <td>
+
+                                            <strong>
+                                                {{ $order->order_id }}
+                                            </strong>
+
+                                        </td>
+
+
+                                        {{-- CLIENT --}}
+                                        <td>
+
+                                            {{ $order->client->client_name ?? 'N/A' }}
+
+                                        </td>
+
+
+                                        {{-- CUSTOMER --}}
+                                        <td>
+
+                                            {{ $order->customer_name ?: '-' }}
+
+                                        </td>
+
+
+                                        {{-- PHONE --}}
+                                        <td>
+
+                                            {{ $order->customer_phone ?: '-' }}
+
+                                        </td>
+
+
+                                        {{-- PRODUCT --}}
+                                        <td>
+
+                                            {{ $order->product_name ?: '-' }}
+
+                                        </td>
+
+
+                                        {{-- QTY --}}
+                                        <td>
+
+                                            {{ $order->quantity ?? 0 }}
+
+                                        </td>
+
+
+                                        {{-- AMOUNT --}}
+                                        <td>
+
+                                            ₹{{ number_format((float) $order->amount, 2) }}
+
+                                        </td>
+
+
+                                        {{-- SOURCE --}}
+                                        <td>
+                                            @php
+                                                $source = strtolower(trim($order->order_source ?? ''));
+                                            @endphp
+
+                                            @if ($source === 'rto')
+                                                <span class="badge bg-danger">
+                                                    RTO
+                                                </span>
+                                            @elseif ($source === 'whatsapp')
+                                                <span class="badge bg-success">
+                                                    WhatsApp
+                                                </span>
+                                            @else
+                                                <span class="badge bg-primary">
+                                                    Web
+                                                </span>
+                                            @endif
+
+                                        </td>
+
+
+                                        {{-- PAYMENT --}}
+                                        <td>
+
+                                            @php
+
+                                                $payment = strtolower(trim($order->payment_mode ?? ''));
+
+                                            @endphp
+
+
+                                            @if (in_array($payment, ['prepaid', 'paid']))
+                                                <span class="badge bg-success">
+
+                                                    Prepaid
+
+                                                </span>
+                                            @elseif(in_array($payment, ['cod', 'vpp']))
+                                                <span class="badge bg-warning text-dark">
+
+                                                    COD
+
+                                                </span>
+                                            @else
+                                                <span class="badge bg-secondary">
+
+                                                    {{ $order->payment_mode ?: '-' }}
+
+                                                </span>
+                                            @endif
+
+                                        </td>
+
+
+                                        {{-- STATUS --}}
+                                        <td>
+
+                                            @if ($order->status === 'verified')
+                                                <span class="badge bg-success">
+                                                    Verified
+                                                </span>
+                                            @elseif($order->status === 'pending')
+                                                <span class="badge bg-warning text-dark">
+                                                    Pending
+                                                </span>
+                                            @elseif($order->status === 'cancel')
+                                                <span class="badge bg-danger">
+                                                    Cancel
+                                                </span>
+                                            @elseif($order->status === 'same_order')
+                                                <span class="badge bg-secondary">
+                                                    Same Order
+                                                </span>
+                                            @elseif($order->status === 'not_reachable')
+                                                <span class="badge bg-dark">
+                                                    Not Reachable
+                                                </span>
+                                            @else
+                                                <span class="badge bg-info text-dark">
+
+                                                    Other
+
+                                                </span>
+                                            @endif
+
+                                        </td>
+
+
+                                        {{-- REMARKS --}}
+                                        <td>
+
+                                            {{ $order->remarks ?: '-' }}
+
+                                        </td>
+
+
+                                        {{-- DATE --}}
+                                        <td>
+
+                                            @if ($order->updated_at)
+                                                {{ $order->updated_at->format('d-m-Y h:i A') }}
+                                            @else
+                                                -
+                                            @endif
+
+                                        </td>
+
+
+                                    </tr>
+
+                                @empty
+
+                                    <tr>
+
+                                        <td colspan="13" class="text-center text-danger py-4">
+
+                                            No Orders Found
+
+                                        </td>
+
+                                    </tr>
+                                @endforelse
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+
+
+                    {{-- =================================================
                 PAGINATION
             ================================================== --}}
-                <div class="mt-3">
+                    <div class="mt-3">
 
-                    {{ $orders->links() }}
+                        {{ $orders->links() }}
+
+                    </div>
+
 
                 </div>
-
 
             </div>
 
         </div>
-
-    </div>
-@endsection
+    @endsection

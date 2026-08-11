@@ -118,7 +118,27 @@
                             </select>
 
                         </div>
+                        <div class="col-md-2">
 
+                            <label>Payment Mode</label>
+
+                            <select name="payment_mode" class="form-control">
+
+                                <option value="">
+                                    All Payment Modes
+                                </option>
+
+                                <option value="COD" {{ request('payment_mode') == 'COD' ? 'selected' : '' }}>
+                                    COD
+                                </option>
+
+                                <option value="Prepaid" {{ request('payment_mode') == 'Prepaid' ? 'selected' : '' }}>
+                                    Prepaid
+                                </option>
+
+                            </select>
+
+                        </div>
 
                         <div class="col-md-2">
 

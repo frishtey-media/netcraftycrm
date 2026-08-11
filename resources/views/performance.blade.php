@@ -106,16 +106,16 @@
 
                     <!-- <div class="col-md-2 col-6">
 
-                            <button type="button" class="btn btn-success" id="exportSelected">
+                                                                                                                                                                                                                        <button type="button" class="btn btn-success" id="exportSelected">
 
-                                <i class="fas fa-file-excel"></i>
-                                Export Verify Selected
+                                                                                                                                                                                                                            <i class="fas fa-file-excel"></i>
+                                                                                                                                                                                                                            Export Verify Selected
 
-                            </button>
+                                                                                                                                                                                                                        </button>
 
 
 
-                        </div>-->
+                                                                                                                                                                                                                    </div>-->
 
 
                 </form>
@@ -128,47 +128,168 @@
 
         <div class="row mb-4">
 
-            <div class="col-md-2 col-6 mb-3">
-                <div class="card bg-primary text-white p-3">
-                    <h6>Total Orders</h6>
-                    <h3>{{ $totalOrders }}</h3>
-                </div>
-            </div>
+            <div class="row g-3">
 
-            <div class="col-md-2 col-6 mb-3">
-                <div class="card bg-success text-white p-3">
-                    <h6>Web Verified</h6>
-                    <h3>{{ $totalWebVerified }}</h3>
-                </div>
-            </div>
+                {{-- TOTAL ORDERS --}}
+                <div class="col-md-2 col-6 mb-2">
+                    <div class="card bg-primary text-white p-3 text-center h-100">
+                        <h6>Total Orders</h6>
+                        <h3>{{ $totalOrders }}</h3>
 
-            <div class="col-md-2 col-6 mb-3">
-                <div class="card bg-success text-white p-3">
-                    <h6>WA Verified</h6>
-                    <h3>{{ $totalWhatsappVerified }}</h3>
-                </div>
-            </div>
+                        <small>
+                            Web: {{ $totalWeb }}
+                            &nbsp; | &nbsp;
+                            WhatsApp: {{ $totalWhatsapp }}
+                        </small>
 
-            <div class="col-md-2 col-6 mb-3">
-                <div class="card bg-warning text-dark p-3">
-                    <h6>Pending</h6>
-                    <h3>{{ $totalPending }}</h3>
+                        <small class="d-block">
+                            RTO: {{ $totalRtoAll }}
+                            &nbsp; | &nbsp;
+                            Deliver Re-Order: {{ $totalDeliveredReorder }}
+                        </small>
+                    </div>
                 </div>
-            </div>
 
-            <div class="col-md-2 col-6 mb-3">
-                <div class="card bg-dark text-white p-3">
-                    <h6>WA Leads</h6>
-                    <h3>{{ $totalWA }}</h3>
-                </div>
-            </div>
 
-            <div class="col-md-2 col-6 mb-3">
-                <div class="card bg-info text-white p-3">
-                    <h6>WA Verified</h6>
-                    <h3>{{ $verifiedWA }}</h3>
+                {{-- PENDING --}}
+                <div class="col-md-2 col-6 mb-2">
+                    <div class="card bg-warning text-dark p-3 text-center h-100">
+                        <h6>Pending</h6>
+                        <h3>{{ $totalPending }}</h3>
+
+                        <small>
+                            Web: {{ $pendingWeb }}
+                            &nbsp; | &nbsp;
+                            WhatsApp: {{ $pendingWhatsapp }}
+                        </small>
+
+                        <small class="d-block">
+                            RTO: {{ $pendingRto }}
+                            &nbsp; | &nbsp;
+                            Deliver Re-Order: {{ $pendingDeliveredReorder }}
+                        </small>
+                    </div>
                 </div>
+
+
+                {{-- VERIFIED --}}
+                <div class="col-md-2 col-6 mb-2">
+                    <div class="card bg-success text-white p-3 text-center h-100">
+                        <h6>Verified</h6>
+                        <h3>{{ $totalVerified }}</h3>
+
+                        <small>
+                            Web: {{ $verifiedWeb }}
+                            &nbsp; | &nbsp;
+                            WhatsApp: {{ $verifiedWhatsapp }}
+                        </small>
+
+                        <small class="d-block">
+                            RTO: {{ $verifiedRto }}
+                            &nbsp; | &nbsp;
+                            Deliver Re-Order: {{ $verifiedDeliveredReorder }}
+                        </small>
+                    </div>
+                </div>
+
+
+                {{-- CANCEL --}}
+                <div class="col-md-2 col-6 mb-2">
+                    <div class="card bg-danger text-white p-3 text-center h-100">
+                        <h6>Cancel</h6>
+                        <h3>{{ $totalCancel }}</h3>
+
+                        <small>
+                            Web: {{ $cancelWeb }}
+                            &nbsp; | &nbsp;
+                            WhatsApp: {{ $cancelWhatsapp }}
+                        </small>
+
+                        <small class="d-block">
+                            RTO: {{ $cancelRto }}
+                            &nbsp; | &nbsp;
+                            Deliver Re-Order: {{ $cancelDeliveredReorder }}
+                        </small>
+                    </div>
+                </div>
+
+
+                {{-- NOT REACHABLE --}}
+                <div class="col-md-2 col-6 mb-2">
+                    <div class="card bg-dark text-white p-3 text-center h-100">
+                        <h6>Not Reachable</h6>
+                        <h3>{{ $totalNotReachable }}</h3>
+
+                        <small>
+                            Web: {{ $notReachableWeb }}
+                            &nbsp; | &nbsp;
+                            WhatsApp: {{ $notReachableWhatsapp }}
+                        </small>
+
+                        <small class="d-block">
+                            RTO: {{ $notReachableRto }}
+                            &nbsp; | &nbsp;
+                            Deliver Re-Order: {{ $notReachableDeliveredReorder }}
+                        </small>
+                    </div>
+                </div>
+
+
+                {{-- SAME ORDER --}}
+                <div class="col-md-2 col-6 mb-2">
+                    <div class="card bg-secondary text-white p-3 text-center h-100">
+                        <h6>Same Order</h6>
+                        <h3>{{ $totalSameOrder }}</h3>
+
+                        <small>
+                            Web: {{ $sameOrderWeb }}
+                            &nbsp; | &nbsp;
+                            WhatsApp: {{ $sameOrderWhatsapp }}
+                        </small>
+
+                        <small class="d-block">
+                            RTO: {{ $sameOrderRto }}
+                            &nbsp; | &nbsp;
+                            Deliver Re-Order: {{ $sameOrderDeliveredReorder }}
+                        </small>
+                    </div>
+                </div>
+
+
+                {{-- OTHER --}}
+                <div class="col-md-2 col-6 mb-2">
+                    <div class="card bg-white border-primary p-3 text-center h-100">
+                        <h6>Other</h6>
+                        <h3>{{ $totalOther }}</h3>
+
+                        <small>
+                            Web: {{ $otherWeb }}
+                            &nbsp; | &nbsp;
+                            WhatsApp: {{ $otherWhatsapp }}
+                        </small>
+
+                        <small class="d-block">
+                            RTO: {{ $otherRto }}
+                            &nbsp; | &nbsp;
+                            Deliver Re-Order: {{ $otherDeliveredReorder }}
+                        </small>
+                    </div>
+                </div>
+
             </div>
+            <!--  <div class="col-md-2 col-6 mb-2">
+                                                                                                                                <div class="card bg-dark text-white p-3">
+                                                                                                                                    <h6>WA Leads</h6>
+                                                                                                                                    <h3>{{ $totalWA }}</h3>
+                                                                                                                                </div>
+                                                                                                                            </div>
+
+                                                                                                                            <div class="col-md-2 col-6 mb-2">
+                                                                                                                                <div class="card bg-info text-white p-3">
+                                                                                                                                    <h6>WA Verified</h6>
+                                                                                                                                    <h3>{{ $verifiedWA }}</h3>
+                                                                                                                                </div>
+                                                                                                                            </div>-->
 
         </div>
 
@@ -194,14 +315,18 @@
                             <th>Total</th>
                             <th>Web Verified</th>
                             <th>WA Verified</th>
+                            <th>RTO Verified</th>
+                            <th>Re-Order Verified</th>
                             <th>Pending</th>
+                            <!-- <th>RTO</th>-->
                             <th>Not Reachable</th>
                             <th>Cancel</th>
                             <th>Same Order</th>
+                            <th>Other</th>
                             <!--  <th>WA Total</th>
-                                                                                                                                                                                              <th>WA Verified</th>
-                                                                                                                                                                                               <th>WA Pending</th>
-                                                                                                                                                                                               <th>Combined %</th>-->
+                                                                                                                                                                                                                                                                                                                                                                                          <th>WA Verified</th>
+                                                                                                                                                                                                                                                                                                                                                                                           <th>WA Pending</th>
+                                                                                                                                                                                                                                                                                                                                                                                           <th>Combined %</th>-->
                             <th>Order %</th>
                         </tr>
                     </thead>
@@ -293,25 +418,38 @@
                                 </a>
 
                             </td>
-
+                            <td>
+                                <span class="badge bg-success">
+                                    {{ $staff->rto_verified_orders }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">
+                                    {{ $staff->delivered_reorder_orders }}
+                                </span>
+                            </td>
                             <td>
                                 <span class="badge bg-warning text-dark" style="cursor:pointer"
                                     onclick="openShiftModal({{ $staff->id }})">
                                     {{ $staff->pending_orders }}
                                 </span>
                             </td>
-
+                            <!-- <td>
+                                                                                                                                            <span class="badge bg-danger">
+                                                                                                                                                {{ $staff->rto_orders }}
+                                                                                                                                            </span>
+                                                                                                                                        </td>-->
                             <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->cancel }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->same_order }}</span></td>
-
+                            <td><span class="badge bg-danger">{{ $staff->other }}</span></td>
                             <!--<td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
 
-                                                                                                                                                                                                        <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                    <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
 
-                                                                                                                                                                                                            <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                        <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
 
-                                                                                                                                                                                                            <td><strong>{{ $combinedRate }}%</strong></td>-->
+                                                                                                                                                                                                                                                                                                                                                                                                        <td><strong>{{ $combinedRate }}%</strong></td>-->
 
                             <td><small>{{ $success }}%</small></td>
 

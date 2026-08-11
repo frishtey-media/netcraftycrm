@@ -78,6 +78,41 @@
                 </div>
             @endforeach
 
+            @foreach ($ordersData as $data)
+                <div class="col-md-4">
+
+                    <div class="dashboard-card card-green"
+                        onclick="openAssignModal2(
+                {{ $data['client_id'] }},
+                {{ $data['repeat_pending'] ?? 0 }}
+            )">
+
+                        <div>
+
+                            <div class="card-title">
+                                Repeat Customer
+                            </div>
+
+                            <span>
+                                {{ $data['client_name'] }}
+                            </span>
+
+                            <div class="card-count">
+                                {{ $data['repeat_pending'] ?? 0 }}
+                            </div>
+
+                            <small>
+                                Pending Reorder
+                            </small>
+
+                        </div>
+
+                        <i class="bi bi-arrow-repeat card-icon"></i>
+
+                    </div>
+
+                </div>
+            @endforeach
 
         </div>
 
@@ -144,11 +179,57 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="assignModal2" tabindex="-1">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content p-3">
+
+                <h5>Assign Repeat Customers</h5>
+
+                <p>
+                    Total Orders:
+                    <strong id="totalOrders2">0</strong>
+                </p>
+
+                <form method="POST" action="{{ route('assign.delivered.orders') }}">
+
+                    @csrf
+
+                    <input type="hidden" name="client_id" id="client_id2">
+
+                    @foreach ($allStaff as $staff)
+                        <div class="d-flex justify-content-between mb-2">
+
+                            <label>
+                                {{ $staff->name }}
+                            </label>
+
+                            <input type="number" name="assign[{{ $staff->id }}]" class="form-control w-25"
+                                min="0" placeholder="0">
+
+                        </div>
+                    @endforeach
+
+                    <button type="submit" class="btn btn-primary mt-3 w-100">
+
+                        Assign Repeat Customers
+
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
     <script>
         function openAssignModal(clientId, totalOrders) {
             document.getElementById('client_id').value = clientId;
             document.getElementById('totalOrders').innerText = totalOrders;
-
             new bootstrap.Modal(document.getElementById('assignModal')).show();
         }
     </script>
@@ -156,8 +237,18 @@
         function openAssignModal1(clientId, totalOrders) {
             document.getElementById('client_id1').value = clientId;
             document.getElementById('totalOrders1').innerText = totalOrders;
-
             new bootstrap.Modal(document.getElementById('assignModal1')).show();
+        }
+    </script>
+    <script>
+        function openAssignModal2(clientId, totalOrders) {
+            document.getElementById('client_id2').value = clientId;
+
+            document.getElementById('totalOrders2').innerText = totalOrders;
+
+            new bootstrap.Modal(
+                document.getElementById('assignModal2')
+            ).show();
         }
     </script>
 @endsection

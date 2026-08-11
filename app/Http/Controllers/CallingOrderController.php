@@ -79,18 +79,11 @@ class CallingOrderController extends Controller
         ));
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Customer Previous History
-    |--------------------------------------------------------------------------
-    */
-
     public function customerHistory(Request $request)
     {
         /*
     |--------------------------------------------------------------------------
-    | Normalize searched phone
+    | NORMALIZE PHONE
     |--------------------------------------------------------------------------
     */
 
@@ -100,59 +93,97 @@ class CallingOrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Please enter a valid phone number.',
-                'orders' => [],
+                'orders'  => [],
             ], 422);
         }
 
 
         /*
     |--------------------------------------------------------------------------
-    | IMPORTANT
+    | NORMALIZE CALLINGORDER PHONE
     |--------------------------------------------------------------------------
-    |
-    | Explicitly use orders.customer_phone.
-    | This prevents:
-    |
-    | Column 'customer_phone' in where clause is ambiguous
-    |
     */
 
-        $cleanOrderPhone = "
-REPLACE(
-    REPLACE(
+        $cleanCallingPhone = "
         REPLACE(
             REPLACE(
                 REPLACE(
                     REPLACE(
-                        callingorder.customer_phone,
-                        ' ',
+                        REPLACE(
+                            REPLACE(
+                                callingorder.customer_phone,
+                                ' ',
+                                ''
+                            ),
+                            '+',
+                            ''
+                        ),
+                        '-',
                         ''
                     ),
-                    '+',
+                    '(',
                     ''
                 ),
-                '-',
+                ')',
                 ''
             ),
-            '(',
+            '.',
             ''
-        ),
-        ')',
-        ''
-    ),
-    '.',
-    ''
-)
-";
+        )
+    ";
 
 
         /*
     |--------------------------------------------------------------------------
-    | Previous Order History
+    | NORMALIZE ORDERS PHONE
     |--------------------------------------------------------------------------
     */
 
-        $orders = DB::table('callingorder')
+        $cleanOrdersPhone = "
+        REPLACE(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                orders.customer_phone,
+                                ' ',
+                                ''
+                            ),
+                            '+',
+                            ''
+                        ),
+                        '-',
+                        ''
+                    ),
+                    '(',
+                    ''
+                ),
+                ')',
+                ''
+            ),
+            '.',
+            ''
+        )
+    ";
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | GET CALLING ORDER HISTORY
+    |--------------------------------------------------------------------------
+    |
+    | callingorder.status:
+    |
+    | pending
+    | verified
+    | not_reachable
+    | same_order
+    | cancel
+    |
+    */
+
+        $callingOrders = DB::table('callingorder')
 
             ->leftJoin(
                 'clients',
@@ -168,17 +199,29 @@ REPLACE(
                 'callingorder.assigned_to'
             )
 
-            ->where(function ($query) use ($cleanOrderPhone, $phone) {
+            ->where(function ($query) use (
+                $cleanCallingPhone,
+                $phone
+            ) {
+
+                /*
+            | Exact normalized phone
+            */
 
                 $query->whereRaw(
-                    "{$cleanOrderPhone} = ?",
+                    "{$cleanCallingPhone} = ?",
                     [$phone]
                 );
+
+
+                /*
+            | Last 10 digits
+            */
 
                 if (strlen($phone) === 10) {
 
                     $query->orWhereRaw(
-                        "RIGHT({$cleanOrderPhone},10)=?",
+                        "RIGHT({$cleanCallingPhone}, 10) = ?",
                         [$phone]
                     );
                 }
@@ -186,21 +229,37 @@ REPLACE(
 
             ->select([
 
+                'callingorder.id',
+
                 'callingorder.order_id',
 
-                'callingorder.barcode',
+                DB::raw("'-' as barcode"),
 
-                DB::raw('callingorder.product_name as product'),
+                DB::raw("'callingorder' as source"),
+
+                DB::raw(
+                    'callingorder.product_name as product'
+                ),
 
                 'callingorder.amount',
 
-                DB::raw('callingorder.status as delivery_status'),
+                /*
+            | Calling status becomes delivery_status
+            | for frontend.
+            */
+
+                DB::raw(
+                    'callingorder.status as delivery_status'
+                ),
 
                 'callingorder.created_at',
 
                 'clients.client_name',
 
-                DB::raw('calling_users.name as staff_name'),
+                DB::raw(
+                    'calling_users.name as staff_name'
+                ),
+
             ])
 
             ->orderByDesc('callingorder.created_at')
@@ -210,33 +269,226 @@ REPLACE(
 
         /*
     |--------------------------------------------------------------------------
-    | Latest Delivered Order
+    | GET INDIA POST / ORDERS HISTORY
     |--------------------------------------------------------------------------
     |
-    | Is query me JOIN nahi hai.
-    | Still orders.customer_phone explicitly use kar rahe hain.
+    | orders.delivery_status:
+    |
+    | In Transit
+    | RTO
+    | Delivered
+    | Out for Delivery
+    | etc.
     |
     */
 
-        $deliveredOrder = DB::table('callingorder')
+        $indiaPostOrders = DB::table('orders')
 
-            ->where(function ($query) use ($cleanOrderPhone, $phone) {
+            ->leftJoin(
+                'clients',
+                'clients.id',
+                '=',
+                'orders.client_id'
+            )
+
+            ->where(function ($query) use (
+                $cleanOrdersPhone,
+                $phone
+            ) {
+
+                /*
+            | Exact normalized phone
+            */
 
                 $query->whereRaw(
-                    "{$cleanOrderPhone} = ?",
+                    "{$cleanOrdersPhone} = ?",
+                    [$phone]
+                );
+
+
+                /*
+            | Last 10 digits
+            */
+
+                if (strlen($phone) === 10) {
+
+                    $query->orWhereRaw(
+                        "RIGHT({$cleanOrdersPhone}, 10) = ?",
+                        [$phone]
+                    );
+                }
+            })
+
+            ->select([
+
+                'orders.id',
+
+                'orders.order_id',
+
+                'orders.barcode',
+
+                DB::raw("'orders' as source"),
+
+                DB::raw(
+                    'orders.product as product'
+                ),
+
+                'orders.amount',
+
+                /*
+            | IMPORTANT:
+            | orders uses delivery_status
+            */
+
+                DB::raw(
+                    'orders.delivery_status as delivery_status'
+                ),
+
+                'orders.created_at',
+
+                'clients.client_name',
+
+                DB::raw(
+                    "'India Post' as staff_name"
+                ),
+
+            ])
+
+            ->orderByDesc('orders.created_at')
+
+            ->get();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | COMBINE BOTH TABLES
+    |--------------------------------------------------------------------------
+    */
+
+        $history = $callingOrders
+            ->concat($indiaPostOrders)
+            ->sortByDesc(function ($row) {
+
+                return $row->created_at;
+            })
+            ->values();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CHECK IF INDIA POST ORDER EXISTS
+    |--------------------------------------------------------------------------
+    */
+
+        $hasIndiaPostOrder =
+            $indiaPostOrders->isNotEmpty();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CHECK VERIFIED CALLING ORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $hasVerifiedCallingOrder =
+            $callingOrders->contains(function ($row) {
+
+                return strtolower(
+                    trim(
+                        $row->delivery_status ?? ''
+                    )
+                ) === 'verified';
+            });
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CHECK CALLING ORDER STATUS
+    |--------------------------------------------------------------------------
+    |
+    | We want to hide the new order form only when
+    | the customer's calling history is ONLY verified
+    | and there is NO India Post order yet.
+    |
+    */
+
+        $allCallingOrdersAreVerified =
+            $callingOrders->isNotEmpty() &&
+            $callingOrders->every(function ($row) {
+
+                return strtolower(
+                    trim(
+                        $row->delivery_status ?? ''
+                    )
+                ) === 'verified';
+            });
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | HIDE NEW ORDER FORM
+    |--------------------------------------------------------------------------
+    |
+    | Example:
+    |
+    | Callingorder:
+    | Verified
+    |
+    | Orders:
+    | Nothing
+    |
+    | => HIDE FORM
+    |
+    |
+    | If India Post order exists:
+    |
+    | Verified
+    | +
+    | RTO / In Transit / Delivered
+    |
+    | => SHOW FORM
+    |
+    */
+
+        $hideCallForm =
+            $hasVerifiedCallingOrder &&
+            $allCallingOrdersAreVerified &&
+            !$hasIndiaPostOrder;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | AUTO FILL CUSTOMER DATA
+    |--------------------------------------------------------------------------
+    |
+    | Get latest calling order for customer.
+    |
+    */
+
+        $latestCallingOrder = DB::table('callingorder')
+
+            ->where(function ($query) use (
+                $cleanCallingPhone,
+                $phone
+            ) {
+
+                $query->whereRaw(
+                    "{$cleanCallingPhone} = ?",
                     [$phone]
                 );
 
                 if (strlen($phone) === 10) {
 
                     $query->orWhereRaw(
-                        "RIGHT({$cleanOrderPhone},10)=?",
+                        "RIGHT({$cleanCallingPhone}, 10) = ?",
                         [$phone]
                     );
                 }
             })
 
-            ->orderByDesc('callingorder.created_at')
+            ->orderByDesc(
+                'callingorder.created_at'
+            )
 
             ->select([
 
@@ -260,7 +512,9 @@ REPLACE(
 
                 'callingorder.pincode',
 
-                DB::raw('callingorder.product_name as product'),
+                DB::raw(
+                    'callingorder.product_name as product'
+                ),
 
                 'callingorder.quantity',
 
@@ -268,9 +522,12 @@ REPLACE(
 
                 'callingorder.payment_mode',
 
-                DB::raw('callingorder.status as delivery_status'),
+                DB::raw(
+                    'callingorder.status as delivery_status'
+                ),
 
                 'callingorder.created_at',
+
             ])
 
             ->first();
@@ -278,7 +535,7 @@ REPLACE(
 
         /*
     |--------------------------------------------------------------------------
-    | Final Response
+    | RESPONSE
     |--------------------------------------------------------------------------
     */
 
@@ -288,19 +545,19 @@ REPLACE(
 
             'phone' => $phone,
 
-            'orders' => $orders,
+            'orders' => $history,
 
-            'delivered_order' => $deliveredOrder,
+            'delivered_order' => $latestCallingOrder,
+
+            'hide_call_form' => $hideCallForm,
+
+            'has_india_post_order' => $hasIndiaPostOrder,
+
+            'has_verified_calling_order' =>
+            $hasVerifiedCallingOrder,
 
         ]);
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Get Client Products
-    |--------------------------------------------------------------------------
-    */
 
     public function getClientProducts($clientId)
     {
@@ -318,13 +575,6 @@ REPLACE(
 
         return response()->json($products);
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Generate Order ID
-    |--------------------------------------------------------------------------
-    */
 
     private function generateOrderId($staff, $selectedDate)
     {

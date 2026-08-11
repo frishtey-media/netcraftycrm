@@ -50,26 +50,26 @@ class CallingUserAuthController extends Controller
         $userId = Auth::guard('calling_user')->id();
         $year = now()->year;
 
-
+        // 🔥 ALL ORDERS (single query)
         $allOrders = CallingOrder::where('assigned_to', $userId)->get();
 
-
+        // 🔥 Pending Orders
         $orders = $allOrders->where('status', 'pending')->sortByDesc('created_at');
 
-
+        // 🔥 COUNTS
         $total = $allOrders->where('order_source', '!=', 'whatsapp')->count();
         $verified = $allOrders->where('status', 'verified')->count();
         $pending = $allOrders->where('status', 'pending')->count();
         $notReachable = $allOrders->where('status', 'not_reachable')->count();
         $whatsappOrders = $allOrders->where('order_source', 'whatsapp')->count();
 
-
+        // 🎯 SUCCESS RATE
         $successRate = $total > 0 ? round(($verified / $total) * 100, 1) : 0;
 
-
+        // 🔥 MONTH NAMES
         $months = collect(range(1, 12))->map(fn($m) => date('M', mktime(0, 0, 0, $m, 1)));
 
-
+        // 🔥 GROUPED DATA (FAST QUERY)
         $monthly = CallingOrder::select(
             DB::raw('MONTH(created_at) as month'),
             DB::raw("SUM(CASE WHEN order_source != 'whatsapp' THEN 1 ELSE 0 END) as web"),
@@ -110,7 +110,7 @@ class CallingUserAuthController extends Controller
             ->groupBy('month')
             ->pluck('total', 'month');
 
-
+        // 🔥 FINAL ARRAY (12 months fix)
         $webData = [];
         $waData = [];
         $verifiedData = [];
@@ -138,19 +138,96 @@ class CallingUserAuthController extends Controller
             'nrData'
         ));
     }
+
+
+    public function rtoorders(Request $request)
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        // Only RTO + Pending orders for client tabs/count
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
+            ->where('assigned_to', $userId)
+            ->where('order_source', 'RTO')
+            ->where('status', 'pending')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
+
+        // Only RTO + Pending orders
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('order_source', 'RTO')
+            ->where('status', 'pending');
+
+        // Client filter
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->latest()->get();
+
+        return view('calling.rtoorders', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'RTO Pending Orders',
+            'statusClass' => 'warning',
+            'statusCount' => $orders->count()
+        ]);
+    }
+
+
+    public function deliverordersorders(Request $request)
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        // Only RTO + Pending orders for client tabs/count
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
+            ->where('assigned_to', $userId)
+            ->where('order_source', 'deliveredreorder')
+            ->where('status', 'pending')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
+
+        // Only RTO + Pending orders
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('order_source', 'deliveredreorder')
+            ->where('status', 'pending');
+
+        // Client filter
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->latest()->get();
+
+        return view('calling.deliverorders', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'Deliver Pending Orders',
+            'statusClass' => 'warning',
+            'statusCount' => $orders->count()
+        ]);
+    }
+
     public function orders(Request $request)
     {
         $userId = Auth::guard('calling_user')->id();
 
         $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
             ->where('assigned_to', $userId)
-            ->whereNull('order_source')   // Shopify Orders Only
+            ->where('status', 'pending')
             ->groupBy('client_id')
             ->with('client')
             ->get();
 
         $query = CallingOrder::where('assigned_to', $userId)
-            ->whereNull('order_source');  // Shopify Orders Only
+            ->where('status', 'pending');
 
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
@@ -161,42 +238,11 @@ class CallingUserAuthController extends Controller
         return view('calling.orders', [
             'orders' => $orders,
             'clients' => $clients,
-            'statusLabel' => 'Shopify Orders',
-            'statusClass' => 'primary',
+            'statusLabel' => 'Pending',
+            'statusClass' => 'danger',
             'statusCount' => $orders->count()
         ]);
     }
-
-    public function rtoorders(Request $request)
-    {
-        $userId = Auth::guard('calling_user')->id();
-
-        $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
-            ->where('assigned_to', $userId)
-            ->where('order_source', 'RTO')
-            ->groupBy('client_id')
-            ->with('client')
-            ->get();
-
-        $query = CallingOrder::where('assigned_to', $userId)
-            ->where('order_source', 'RTO');
-
-        if ($request->client_id) {
-            $query->where('client_id', $request->client_id);
-        }
-
-        $orders = $query->latest()->get();
-
-        return view('calling.rtoorders', [
-            'orders' => $orders,
-            'clients' => $clients,
-            'statusLabel' => 'RTO Orders',
-            'statusClass' => 'warning',
-            'statusCount' => $orders->count()
-        ]);
-    }
-
-
 
 
     public function verified(Request $request)

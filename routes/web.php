@@ -213,11 +213,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('orders/moneyorder-pdf', [MoneyorderExportController::class, 'Moneyorder'])->name('orders.Moneyorder.pdf');
 
     Route::post('/assign-orders', [AdminController::class, 'assignOrders'])->name('assign.orders');
-
+    Route::get('/calling/orderspending', [CallingUserAuthController::class, 'orderspending'])
+        ->name('calling.orderspending');
     Route::post('/assign-rto-orders', [AdminController::class, 'assignRtoOrders'])
         ->name('assign.rto.orders');
 
-
+    Route::post('/assign-delivered-orders', [AdminController::class, 'assigndeliveredOrders'])
+        ->name('assign.delivered.orders');
 
     Route::get('/assign', [AdminController::class, 'assignPage']);
     Route::get('/calling-users', [CallingUserController::class, 'index'])->name('calling.users');
@@ -338,6 +340,10 @@ Route::middleware('calling_user')->group(function () {
 
     Route::get('/calling/rtoorders', [CallingUserAuthController::class, 'rtoorders'])
         ->name('calling.rtoorders');
+
+    Route::get('/calling/deliverordersorders', [CallingUserAuthController::class, 'deliverordersorders'])
+        ->name('calling.deliverorders');
+
 
     Route::get(
         '/calling/customer-history',

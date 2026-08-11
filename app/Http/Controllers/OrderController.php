@@ -329,6 +329,14 @@ class OrderController extends Controller
             );
         }
 
+
+        if ($request->filled('payment_mode')) {
+
+            $query->where(
+                'orders.payment_mode',
+                $request->payment_mode
+            );
+        }
         /*
     |--------------------------------------------------------------------------
     | Order Source
@@ -455,7 +463,13 @@ class OrderController extends Controller
                     $request->to
                 );
             })
+            ->when($request->filled('payment_mode'), function ($q) use ($request) {
 
+                $q->where(
+                    'orders.payment_mode',
+                    $request->payment_mode
+                );
+            })
             ->selectRaw("
     callingorder.assigned_to as staff_id,
 
