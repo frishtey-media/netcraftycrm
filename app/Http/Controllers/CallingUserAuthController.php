@@ -177,7 +177,42 @@ class CallingUserAuthController extends Controller
         ]);
     }
 
+    public function abandonedordersorders(Request $request)
+    {
+        $userId = Auth::guard('calling_user')->id();
 
+        // Only RTO + Pending orders for client tabs/count
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
+            ->where('assigned_to', $userId)
+            ->where('order_source', 'shopify_abandoned_checkout')
+            ->where('status', 'pending')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
+
+        // Only RTO + Pending orders
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('order_source', 'shopify_abandoned_checkout')
+            ->where('status', 'pending');
+
+        // Client filter
+        if ($request->client_id) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $orders = $query->latest()->get();
+
+        return view('calling.abandoned', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'Abandoned Pending Orders',
+            'statusClass' => 'warning',
+            'statusCount' => $orders->count()
+        ]);
+    }
     public function deliverordersorders(Request $request)
     {
         $userId = Auth::guard('calling_user')->id();

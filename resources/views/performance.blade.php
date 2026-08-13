@@ -106,16 +106,16 @@
 
                     <!-- <div class="col-md-2 col-6">
 
-                                                                                                                                                                                                                        <button type="button" class="btn btn-success" id="exportSelected">
+                                                                                                                                                                                                                                                                                                <button type="button" class="btn btn-success" id="exportSelected">
 
-                                                                                                                                                                                                                            <i class="fas fa-file-excel"></i>
-                                                                                                                                                                                                                            Export Verify Selected
+                                                                                                                                                                                                                                                                                                    <i class="fas fa-file-excel"></i>
+                                                                                                                                                                                                                                                                                                    Export Verify Selected
 
-                                                                                                                                                                                                                        </button>
+                                                                                                                                                                                                                                                                                                </button>
 
 
 
-                                                                                                                                                                                                                    </div>-->
+                                                                                                                                                                                                                                                                                            </div>-->
 
 
                 </form>
@@ -147,6 +147,10 @@
                             &nbsp; | &nbsp;
                             Deliver Re-Order: {{ $totalDeliveredReorder }}
                         </small>
+
+                        <small class="d-block">
+                            Abandoned: {{ $totalAbandoned }}
+                        </small>
                     </div>
                 </div>
 
@@ -167,6 +171,9 @@
                             RTO: {{ $pendingRto }}
                             &nbsp; | &nbsp;
                             Deliver Re-Order: {{ $pendingDeliveredReorder }}
+                        </small>
+                        <small class="d-block">
+                            Abandoned: {{ $pendingAbandoned }}
                         </small>
                     </div>
                 </div>
@@ -189,6 +196,9 @@
                             &nbsp; | &nbsp;
                             Deliver Re-Order: {{ $verifiedDeliveredReorder }}
                         </small>
+                        <small class="d-block">
+                            Abandoned: {{ $verifiedAbandoned }}
+                        </small>
                     </div>
                 </div>
 
@@ -209,6 +219,9 @@
                             RTO: {{ $cancelRto }}
                             &nbsp; | &nbsp;
                             Deliver Re-Order: {{ $cancelDeliveredReorder }}
+                        </small>
+                        <small class="d-block">
+                            Abandoned: {{ $cancelAbandoned }}
                         </small>
                     </div>
                 </div>
@@ -231,6 +244,9 @@
                             &nbsp; | &nbsp;
                             Deliver Re-Order: {{ $notReachableDeliveredReorder }}
                         </small>
+                        <small class="d-block">
+                            Abandoned: {{ $notReachableAbandoned }}
+                        </small>
                     </div>
                 </div>
 
@@ -251,6 +267,9 @@
                             RTO: {{ $sameOrderRto }}
                             &nbsp; | &nbsp;
                             Deliver Re-Order: {{ $sameOrderDeliveredReorder }}
+                        </small>
+                        <small class="d-block">
+                            Abandoned: {{ $sameOrderAbandoned }}
                         </small>
                     </div>
                 </div>
@@ -273,23 +292,26 @@
                             &nbsp; | &nbsp;
                             Deliver Re-Order: {{ $otherDeliveredReorder }}
                         </small>
+                        <small class="d-block">
+                            Abandoned: {{ $otherAbandoned }}
+                        </small>
                     </div>
                 </div>
 
             </div>
             <!--  <div class="col-md-2 col-6 mb-2">
-                                                                                                                                <div class="card bg-dark text-white p-3">
-                                                                                                                                    <h6>WA Leads</h6>
-                                                                                                                                    <h3>{{ $totalWA }}</h3>
-                                                                                                                                </div>
-                                                                                                                            </div>
+                                                                                                                                                                                                        <div class="card bg-dark text-white p-3">
+                                                                                                                                                                                                            <h6>WA Leads</h6>
+                                                                                                                                                                                                            <h3>{{ $totalWA }}</h3>
+                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                    </div>
 
-                                                                                                                            <div class="col-md-2 col-6 mb-2">
-                                                                                                                                <div class="card bg-info text-white p-3">
-                                                                                                                                    <h6>WA Verified</h6>
-                                                                                                                                    <h3>{{ $verifiedWA }}</h3>
-                                                                                                                                </div>
-                                                                                                                            </div>-->
+                                                                                                                                                                                                    <div class="col-md-2 col-6 mb-2">
+                                                                                                                                                                                                        <div class="card bg-info text-white p-3">
+                                                                                                                                                                                                            <h6>WA Verified</h6>
+                                                                                                                                                                                                            <h3>{{ $verifiedWA }}</h3>
+                                                                                                                                                                                                        </div>
+                                                                                                                                                                                                    </div>-->
 
         </div>
 
@@ -317,6 +339,8 @@
                             <th>WA Verified</th>
                             <th>RTO Verified</th>
                             <th>Re-Order Verified</th>
+
+                            <th>Abandoned Verified</th>
                             <th>Pending</th>
                             <!-- <th>RTO</th>-->
                             <th>Not Reachable</th>
@@ -324,9 +348,9 @@
                             <th>Same Order</th>
                             <th>Other</th>
                             <!--  <th>WA Total</th>
-                                                                                                                                                                                                                                                                                                                                                                                          <th>WA Verified</th>
-                                                                                                                                                                                                                                                                                                                                                                                           <th>WA Pending</th>
-                                                                                                                                                                                                                                                                                                                                                                                           <th>Combined %</th>-->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <th>WA Verified</th>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                   <th>WA Pending</th>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                   <th>Combined %</th>-->
                             <th>Order %</th>
                         </tr>
                     </thead>
@@ -428,6 +452,12 @@
                                     {{ $staff->delivered_reorder_orders }}
                                 </span>
                             </td>
+
+                            <td>
+                                <span class="badge bg-success">
+                                    {{ $staff->abandoned_verified ?? 0 }}
+                                </span>
+                            </td>
                             <td>
                                 <span class="badge bg-warning text-dark" style="cursor:pointer"
                                     onclick="openShiftModal({{ $staff->id }})">
@@ -435,21 +465,21 @@
                                 </span>
                             </td>
                             <!-- <td>
-                                                                                                                                            <span class="badge bg-danger">
-                                                                                                                                                {{ $staff->rto_orders }}
-                                                                                                                                            </span>
-                                                                                                                                        </td>-->
+                                                                                                                                                                                                                    <span class="badge bg-danger">
+                                                                                                                                                                                                                        {{ $staff->rto_orders }}
+                                                                                                                                                                                                                    </span>
+                                                                                                                                                                                                                </td>-->
                             <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->cancel }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->same_order }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->other }}</span></td>
                             <!--<td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                    <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                        <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                        <td><strong>{{ $combinedRate }}%</strong></td>-->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <td><strong>{{ $combinedRate }}%</strong></td>-->
 
                             <td><small>{{ $success }}%</small></td>
 

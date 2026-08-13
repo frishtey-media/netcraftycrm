@@ -38,10 +38,8 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-
 //Route::get('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
 //Route::post('/whatsapp/webhook', [WhatsAppController::class, 'webhook']);
-
 
 Route::match(
     ['GET', 'POST'],
@@ -51,16 +49,11 @@ Route::match(
 
 //Route::post('/webhook/shopify/order', [WhatsAppController::class, 'orderCreate']);
 
-
-
-
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
-
     Route::get('/dashboard/orders', [AdminController::class, 'dashboardOrders'])
         ->name('dashboard.orders');
-
 
     Route::get('/users', [UserController::class, 'index'])
         ->name('users.index');
@@ -81,12 +74,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/generate-order-id', [RecordController::class, 'generateOrderId'])
         ->name('generate.order.id');
 
-
     Route::get('/ordersdashboard/{client_id?}', [AdminController::class, 'ordersdashboard'])
         ->name('ordersdashboard');
 
     Route::get('/clientsorders', [AdminController::class, 'clientsorders'])->name('clientsorders');
-
 
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])->name('labelsenders');
     Route::post('/labelsenders', [AdminController::class, 'storeLabelSenders'])->name('labelsenders.store');
@@ -183,14 +174,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/rto/details/export', [RTOController::class, 'detailsExport'])
         ->name('rto.details.export');
 
-
-
-
     Route::post(
         '/orders/manual-delivery',
         [OrderController::class, 'manualDelivery']
     )->name('orders.manual.delivery');
-
 
     Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
     Route::get('/rto-export', [RTOController::class, 'export'])->name('rto.export');
@@ -221,12 +208,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/assign-delivered-orders', [AdminController::class, 'assigndeliveredOrders'])
         ->name('assign.delivered.orders');
 
+    Route::post('/assign-abandoned-orders', [AdminController::class, 'assignabandonedOrders'])
+        ->name('assign.abandoned.orders');
+
     Route::get('/assign', [AdminController::class, 'assignPage']);
     Route::get('/calling-users', [CallingUserController::class, 'index'])->name('calling.users');
     Route::post('/calling-users', [CallingUserController::class, 'store'])->name('calling.users.store');
     Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
     Route::get('/performance', [AdminController::class, 'performance'])->name('performance.dashboard');
-
 
 
     Route::get(
@@ -343,7 +332,8 @@ Route::middleware('calling_user')->group(function () {
 
     Route::get('/calling/deliverordersorders', [CallingUserAuthController::class, 'deliverordersorders'])
         ->name('calling.deliverorders');
-
+    Route::get('/calling/abandonedordersorders', [CallingUserAuthController::class, 'abandonedordersorders'])
+        ->name('calling.abandoned');
 
     Route::get(
         '/calling/customer-history',

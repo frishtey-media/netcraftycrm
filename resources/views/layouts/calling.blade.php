@@ -135,6 +135,9 @@
         <a href="{{ route('calling.deliverorders') }}" class="menu-link">
             <i class="bi bi-list-check"></i> Deliver Orders
         </a>
+        <a href="{{ route('calling.abandoned') }}" class="menu-link">
+            <i class="bi bi-list-check"></i> Abandoned Orders
+        </a>
         <a href="{{ route('calling.verified') }}" class="menu-link">
             <i class="bi bi-check-circle"></i> Verified
         </a>

@@ -429,10 +429,20 @@ class AdminController extends Controller
                     'UPPER(TRIM(order_source)) = ?',
                     ['RTO']
                 );
+            } elseif ($request->order_source === 'deliveredreorder') {
+
+                $query->whereRaw(
+                    'LOWER(TRIM(order_source)) = ?',
+                    ['deliveredreorder']
+                );
+            } elseif ($request->order_source === 'shopify_abandoned_checkout') {
+
+                $query->whereRaw(
+                    'LOWER(TRIM(order_source)) = ?',
+                    ['shopify_abandoned_checkout']
+                );
             }
         }
-
-
         /*
     |--------------------------------------------------------------------------
     | STATUS FILTER
@@ -550,7 +560,126 @@ class AdminController extends Controller
                 ['RTO']
             )
             ->count();
+        $deliveredReorderOrders = (clone $query)
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['deliveredreorder']
+            )
+            ->count();
+        $abandonedOrders = (clone $query)
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['shopify_abandoned_checkout']
+            )
+            ->count();
 
+        $pendingDeliveredReorder = (clone $query)
+            ->where('status', 'pending')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['deliveredreorder']
+            )
+            ->count();
+
+        $pendingAbandoned = (clone $query)
+            ->where('status', 'pending')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['shopify_abandoned_checkout']
+            )
+            ->count();
+        $verifiedDeliveredReorder = (clone $query)
+            ->where('status', 'verified')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['deliveredreorder']
+            )
+            ->count();
+        $verifiedAbandoned = (clone $query)
+            ->where('status', 'verified')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['shopify_abandoned_checkout']
+            )
+            ->count();
+
+        $cancelDeliveredReorder = (clone $query)
+            ->where('status', 'cancel')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['deliveredreorder']
+            )
+            ->count();
+
+        $cancelAbandoned = (clone $query)
+            ->where('status', 'cancel')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['shopify_abandoned_checkout']
+            )
+            ->count();
+
+        $notReachableDeliveredReorder = (clone $query)
+            ->where('status', 'not_reachable')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['deliveredreorder']
+            )
+            ->count();
+
+        $notReachableAbandoned = (clone $query)
+            ->where('status', 'not_reachable')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['shopify_abandoned_checkout']
+            )
+            ->count();
+
+        $sameOrderDeliveredReorder = (clone $query)
+            ->where('status', 'same_order')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['deliveredreorder']
+            )
+            ->count();
+
+        $sameOrderAbandoned = (clone $query)
+            ->where('status', 'same_order')
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['shopify_abandoned_checkout']
+            )
+            ->count();
+
+        $otherDeliveredReorder = (clone $query)
+            ->where(function ($q) use ($standardStatuses) {
+
+                $q->whereNotIn(
+                    'status',
+                    $standardStatuses
+                )
+                    ->orWhereNull('status');
+            })
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['deliveredreorder']
+            )
+            ->count();
+
+        $otherAbandoned = (clone $query)
+            ->where(function ($q) use ($standardStatuses) {
+
+                $q->whereNotIn(
+                    'status',
+                    $standardStatuses
+                )
+                    ->orWhereNull('status');
+            })
+            ->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['shopify_abandoned_checkout']
+            )
+            ->count();
 
         /*
     |--------------------------------------------------------------------------
@@ -965,6 +1094,25 @@ class AdminController extends Controller
             'performance-orders',
             compact(
 
+                // Delivered Re-Order
+                'deliveredReorderOrders',
+                'pendingDeliveredReorder',
+                'verifiedDeliveredReorder',
+                'cancelDeliveredReorder',
+                'notReachableDeliveredReorder',
+                'sameOrderDeliveredReorder',
+                'otherDeliveredReorder',
+
+                // Abandoned Checkout
+                'abandonedOrders',
+                'pendingAbandoned',
+                'verifiedAbandoned',
+                'cancelAbandoned',
+                'notReachableAbandoned',
+                'sameOrderAbandoned',
+                'otherAbandoned',
+
+                // Orders
                 'orders',
                 'staff',
                 'from',
@@ -1103,36 +1251,17 @@ class AdminController extends Controller
         return view('clientsorders', compact('clients'));
     }
 
-
     public function ordersdashboard($client_id = null)
     {
         $from = Carbon::yesterday()->startOfDay();
         $to   = Carbon::now();
 
-        /*
-    |--------------------------------------------------------------------------
-    | REPEAT CUSTOMER COUNT
-    |--------------------------------------------------------------------------
-    |
-    | Client ID 2  = 20 days
-    | Other Client = 25 days
-    |
-    | Customer is counted only if:
-    | 1. Order is Delivered
-    | 2. Delivery date is older than required repeat days
-    | 3. Customer has NOT already been assigned as deliveredreorder
-    |
-    */
+
 
         $getRepeatPending = function ($clientId) {
 
             $repeatDays = ((int) $clientId === 2) ? 20 : 25;
 
-            /*
-        |--------------------------------------------------------------------------
-        | Clean phone expression for orders table
-        |--------------------------------------------------------------------------
-        */
 
             $orderPhone = "
             RIGHT(
@@ -1334,22 +1463,24 @@ class AdminController extends Controller
             */
 
                 ->withCount([
+
                     'orders as total_orders' => function ($q) use ($from, $to) {
 
-                        $q->whereNull(
-                            'assigned_to'
-                        )
+                        $q->whereNull('assigned_to')
+                            ->where('status', 'pending')
+                            ->whereBetween('order_date', [$from, $to]);
+                    },
 
+                    'callingOrders as total_abandoned_orders' => function ($q) {
+
+                        $q->whereNull('assigned_to')
+                            ->where('status', 'pending')
                             ->where(
-                                'status',
-                                'pending'
-                            )
-
-                            ->whereBetween(
-                                'order_date',
-                                [$from, $to]
+                                'order_source',
+                                'shopify_abandoned_checkout'
                             );
                     }
+
                 ])
 
                 ->get()
@@ -1405,7 +1536,8 @@ class AdminController extends Controller
 
                         'total_orders' =>
                         (int) $client->total_orders,
-
+                        'total_abandoned_orders' =>
+                        (int) $client->total_abandoned_orders,
                         'rto_pending' =>
                         (int) $rtoPending,
 
@@ -1509,28 +1641,24 @@ class AdminController extends Controller
         $ordersData = $query
 
             ->withCount([
+
                 'orders as total_orders' => function ($q) use ($from, $to) {
 
-                    /*
-                |--------------------------------------------------------------------------
-                | Shopify Pending Orders
-                |--------------------------------------------------------------------------
-                */
+                    $q->whereNull('assigned_to')
+                        ->where('status', 'pending')
+                        ->whereBetween('order_date', [$from, $to]);
+                },
 
-                    $q->whereNull(
-                        'assigned_to'
-                    )
+                'callingOrders as total_abandoned_orders' => function ($q) {
 
+                    $q->whereNull('assigned_to')
+                        ->where('status', 'pending')
                         ->where(
-                            'status',
-                            'pending'
-                        )
-
-                        ->whereBetween(
-                            'order_date',
-                            [$from, $to]
+                            'order_source',
+                            'shopify_abandoned_checkout'
                         );
                 }
+
             ])
 
             ->get()
@@ -1586,6 +1714,8 @@ class AdminController extends Controller
 
                     'total_orders' =>
                     (int) $client->total_orders,
+                    'total_abandoned_orders' =>
+                    (int) $client->total_abandoned_orders,
 
                     'rto_pending' =>
                     (int) $rtoPending,
@@ -1824,7 +1954,81 @@ class AdminController extends Controller
         }
     }
 
+    public function assignabandonedOrders(Request $request)
+    {
+        $request->validate([
+            'client_id' => 'required|exists:clients,id',
+            'assign'    => 'required|array',
+        ]);
 
+        $clientId = $request->client_id;
+
+        if ($this->isClient() && $clientId != $this->clientId()) {
+            abort(403, 'Unauthorized Access');
+        }
+
+        $assignData = $request->assign;
+
+
+
+        $orders = CallingOrder::where('client_id', $clientId)
+
+            ->whereNull('assigned_to')
+
+            ->where('status', 'pending')
+
+            ->where(
+                'order_source',
+                'shopify_abandoned_checkout'
+            )
+
+            ->inRandomOrder()
+
+            ->get();
+
+
+        $totalRequested = array_sum($assignData);
+
+
+
+        if ($totalRequested > $orders->count()) {
+
+            return back()->with(
+                'error',
+                'Assigned quantity exceeds available abandoned checkouts'
+            );
+        }
+
+
+        $orderIndex = 0;
+
+        foreach ($assignData as $staffId => $qty) {
+
+            $qty = (int) $qty;
+
+            if ($qty <= 0) {
+                continue;
+            }
+
+            for ($i = 0; $i < $qty; $i++) {
+
+                if (!isset($orders[$orderIndex])) {
+                    break;
+                }
+
+                $orders[$orderIndex]->assigned_to = $staffId;
+
+                $orders[$orderIndex]->save();
+
+                $orderIndex++;
+            }
+        }
+
+        return back()->with(
+            'success',
+            'Abandoned Checkouts Assigned Successfully'
+        );
+    }
     public function assigndeliveredOrders(Request $request)
     {
         $request->validate([
@@ -2206,7 +2410,90 @@ class AdminController extends Controller
                     END
                 ) AS delivered_reorder_orders
             "),
+                DB::raw("
+    SUM(
+        CASE
+            WHEN order_source = 'shopify_abandoned_checkout'
+            THEN 1
+            ELSE 0
+        END
+    ) AS abandoned_orders
+"),
 
+                DB::raw("
+    SUM(
+        CASE
+            WHEN status = 'verified'
+            AND order_source = 'shopify_abandoned_checkout'
+            THEN 1
+            ELSE 0
+        END
+    ) AS abandoned_verified
+"),
+
+                DB::raw("
+    SUM(
+        CASE
+            WHEN status = 'pending'
+            AND order_source = 'shopify_abandoned_checkout'
+            THEN 1
+            ELSE 0
+        END
+    ) AS abandoned_pending
+"),
+
+                DB::raw("
+    SUM(
+        CASE
+            WHEN status = 'cancel'
+            AND order_source = 'shopify_abandoned_checkout'
+            THEN 1
+            ELSE 0
+        END
+    ) AS abandoned_cancel
+"),
+
+                DB::raw("
+    SUM(
+        CASE
+            WHEN status = 'not_reachable'
+            AND order_source = 'shopify_abandoned_checkout'
+            THEN 1
+            ELSE 0
+        END
+    ) AS abandoned_not_reachable
+"),
+
+                DB::raw("
+    SUM(
+        CASE
+            WHEN status = 'same_order'
+            AND order_source = 'shopify_abandoned_checkout'
+            THEN 1
+            ELSE 0
+        END
+    ) AS abandoned_same_order
+"),
+
+                DB::raw("
+    SUM(
+        CASE
+            WHEN order_source = 'shopify_abandoned_checkout'
+            AND (
+                status NOT IN (
+                    'pending',
+                    'verified',
+                    'cancel',
+                    'not_reachable',
+                    'same_order'
+                )
+                OR status IS NULL
+            )
+            THEN 1
+            ELSE 0
+        END
+    ) AS abandoned_other
+"),
                 DB::raw("
                 SUM(
                     CASE
@@ -2384,7 +2671,26 @@ class AdminController extends Controller
 
             $staff->whatsapp_verified_orders =
                 (int) ($stats->whatsapp_verified_orders ?? 0);
+            $staff->abandoned_orders =
+                (int) ($stats->abandoned_orders ?? 0);
 
+            $staff->abandoned_verified =
+                (int) ($stats->abandoned_verified ?? 0);
+
+            $staff->abandoned_pending =
+                (int) ($stats->abandoned_pending ?? 0);
+
+            $staff->abandoned_cancel =
+                (int) ($stats->abandoned_cancel ?? 0);
+
+            $staff->abandoned_not_reachable =
+                (int) ($stats->abandoned_not_reachable ?? 0);
+
+            $staff->abandoned_same_order =
+                (int) ($stats->abandoned_same_order ?? 0);
+
+            $staff->abandoned_other =
+                (int) ($stats->abandoned_other ?? 0);
             $staff->rto_verified_orders =
                 (int) ($stats->rto_verified_orders ?? 0);
 
@@ -2478,8 +2784,6 @@ class AdminController extends Controller
             ];
         }
 
-        $totalOrders =
-            $baseQuery()->count();
 
         $totalWeb =
             $baseQuery()
@@ -2923,7 +3227,70 @@ class AdminController extends Controller
                 'pending'
             )
             ->count();
+        $totalOrders =
+            $baseQuery()->count();
+        $totalAbandoned =
+            $baseQuery()
+            ->where(
+                'order_source',
+                'shopify_abandoned_checkout'
+            )
+            ->count();
+        $pendingAbandoned =
+            $baseQuery()
+            ->where('status', 'pending')
+            ->where(
+                'order_source',
+                'shopify_abandoned_checkout'
+            )
+            ->count();
+        $verifiedAbandoned =
+            $baseQuery()
+            ->where('status', 'verified')
+            ->where(
+                'order_source',
+                'shopify_abandoned_checkout'
+            )
+            ->count();
+        $cancelAbandoned =
+            $baseQuery()
+            ->where('status', 'cancel')
+            ->where(
+                'order_source',
+                'shopify_abandoned_checkout'
+            )
+            ->count();
+        $notReachableAbandoned =
+            $baseQuery()
+            ->where('status', 'not_reachable')
+            ->where(
+                'order_source',
+                'shopify_abandoned_checkout'
+            )
+            ->count();
+        $sameOrderAbandoned =
+            $baseQuery()
+            ->where('status', 'same_order')
+            ->where(
+                'order_source',
+                'shopify_abandoned_checkout'
+            )
+            ->count();
+        $otherAbandoned =
+            $baseQuery()
+            ->where(
+                'order_source',
+                'shopify_abandoned_checkout'
+            )
+            ->where(function ($q) use ($knownStatuses) {
 
+                $q->whereNotIn(
+                    'status',
+                    $knownStatuses
+                )
+                    ->orWhereNull('status');
+            })
+            ->count();
 
         $totalRtoVerified =
             $baseQuery()
@@ -3025,14 +3392,18 @@ class AdminController extends Controller
                 'totalPending',
 
                 'pendingWeb',
-
+                'totalAbandoned',
+                'pendingAbandoned',
+                'verifiedAbandoned',
+                'cancelAbandoned',
+                'notReachableAbandoned',
+                'sameOrderAbandoned',
+                'otherAbandoned',
                 'pendingWhatsapp',
 
                 'pendingRto',
 
                 'pendingDeliveredReorder',
-
-
 
                 'totalVerified',
 

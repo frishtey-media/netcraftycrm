@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\callingorder;
 
 class Client extends Model
 {
@@ -32,6 +33,13 @@ class Client extends Model
     public function orders()
     {
         return $this->hasMany(CallingOrder::class, 'client_id');
+    }
+    public function callingOrders()
+    {
+        return $this->hasMany(
+            CallingOrder::class,
+            'client_id'
+        );
     }
     public function staffs()
     {

@@ -88,7 +88,15 @@
                                 <option value="RTO" {{ request('order_source') == 'RTO' ? 'selected' : '' }}>
                                     RTO
                                 </option>
+                                <option value="deliveredreorder"
+                                    {{ request('order_source') == 'deliveredreorder' ? 'selected' : '' }}>
+                                    Deliver Re-Order
+                                </option>
 
+                                <option value="shopify_abandoned_checkout"
+                                    {{ request('order_source') == 'shopify_abandoned_checkout' ? 'selected' : '' }}>
+                                    Abandoned Checkout
+                                </option>
                             </select>
                         </div>
 
@@ -235,7 +243,11 @@
                                     </strong>
 
                                 </div>
-
+                                <small class="d-block">
+                                    Deliver Re-Order: {{ $deliveredReorderOrders }}
+                                    &nbsp; | &nbsp;
+                                    Abandoned: {{ $abandonedOrders }}
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -278,7 +290,13 @@
                                     </strong>
 
                                 </div>
-
+                                <div class="small mt-1">
+                                    Deliver Re-Order:
+                                    <strong>{{ $pendingDeliveredReorder }}</strong>
+                                    <span class="mx-2">|</span>
+                                    Abandoned:
+                                    <strong>{{ $pendingAbandoned }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -321,7 +339,13 @@
                                     </strong>
 
                                 </div>
-
+                                <div class="small mt-1">
+                                    Deliver Re-Order:
+                                    <strong>{{ $verifiedDeliveredReorder }}</strong>
+                                    <span class="mx-2">|</span>
+                                    Abandoned:
+                                    <strong>{{ $verifiedAbandoned }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -364,7 +388,13 @@
                                     </strong>
 
                                 </div>
-
+                                <div class="small mt-1">
+                                    Deliver Re-Order:
+                                    <strong>{{ $cancelDeliveredReorder }}</strong>
+                                    <span class="mx-2">|</span>
+                                    Abandoned:
+                                    <strong>{{ $cancelAbandoned }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -407,7 +437,13 @@
                                     </strong>
 
                                 </div>
-
+                                <div class="small mt-1">
+                                    Deliver Re-Order:
+                                    <strong>{{ $notReachableDeliveredReorder }}</strong>
+                                    <span class="mx-2">|</span>
+                                    Abandoned:
+                                    <strong>{{ $notReachableAbandoned }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -450,7 +486,13 @@
                                     </strong>
 
                                 </div>
-
+                                <div class="small mt-1">
+                                    Deliver Re-Order:
+                                    <strong>{{ $sameOrderDeliveredReorder }}</strong>
+                                    <span class="mx-2">|</span>
+                                    Abandoned:
+                                    <strong>{{ $sameOrderAbandoned }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -493,7 +535,13 @@
                                     </strong>
 
                                 </div>
-
+                                <div class="small mt-1">
+                                    Deliver Re-Order:
+                                    <strong>{{ $otherDeliveredReorder }}</strong>
+                                    <span class="mx-2">|</span>
+                                    Abandoned:
+                                    <strong>{{ $otherAbandoned }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -633,6 +681,14 @@
                                             @elseif ($source === 'whatsapp')
                                                 <span class="badge bg-success">
                                                     WhatsApp
+                                                </span>
+                                            @elseif ($source === 'deliveredreorder')
+                                                <span class="badge bg-warning text-dark">
+                                                    Deliver Re-Order
+                                                </span>
+                                            @elseif ($source === 'shopify_abandoned_checkout')
+                                                <span class="badge bg-info text-dark">
+                                                    Abandoned Checkout
                                                 </span>
                                             @else
                                                 <span class="badge bg-primary">

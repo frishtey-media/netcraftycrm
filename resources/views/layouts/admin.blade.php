@@ -221,12 +221,14 @@
                             <i class="bi bi-receipt"></i>Payment Reports
                         </a>
 
-
                         <a href="{{ route('performance.dashboard') }}">
                             <i class="bi bi-graph-up"></i>Customer Repeat Delivery Report
                         </a>
                         <a href="{{ route('reports.repeat.rto') }}">
                             <i class="bi bi-graph-up"></i>Customer Repeat RTO Report
+                        </a>
+                        <a href="https://crm.netcrafty.com/inventory/login">
+                            <i class="bi bi-graph-up"></i>Inventory Login
                         </a>
                     @endif
 
