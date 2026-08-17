@@ -217,6 +217,17 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
     Route::get('/performance', [AdminController::class, 'performance'])->name('performance.dashboard');
 
+    Route::get(
+        '/calling-orders/{id}/edit',
+        [AdminController::class, 'editCallingOrder']
+    )->name('calling-orders.edit');
+
+
+    Route::put(
+        '/calling-orders/{id}',
+        [AdminController::class, 'updateCallingOrder']
+    )->name('calling-orders.update');
+
 
     Route::get(
         '/performance/export-selected',
@@ -233,6 +244,30 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/performance/orders', [AdminController::class, 'orderDetails'])->name('performance.orders');
     Route::get('/performance/orders/export', [AdminController::class, 'exportOrderDetails'])->name('performance.orders.export');
+
+
+
+    Route::get(
+        '/assignment-scheduler',
+        [AdminController::class, 'assignmentScheduler']
+    )->name('assignment.scheduler');
+
+    Route::post(
+        '/assignment-scheduler/save',
+        [AdminController::class, 'saveAssignmentScheduler']
+    )->name('assignment.scheduler.save');
+
+    Route::post(
+        '/assignment-scheduler/{id}/toggle',
+        [AdminController::class, 'toggleAssignmentScheduler']
+    )->name('assignment.scheduler.toggle');
+
+    Route::delete(
+        '/assignment-scheduler/{id}',
+        [AdminController::class, 'deleteAssignmentScheduler']
+    )->name('assignment.scheduler.delete');
+
+
 
 
     Route::prefix('reports')->group(function () {

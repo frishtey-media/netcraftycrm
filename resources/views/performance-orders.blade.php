@@ -590,6 +590,8 @@
                                     <th>Remarks</th>
 
                                     <th>Updated Date</th>
+                                    <th>Edit</th>
+
 
                                 </tr>
 
@@ -785,7 +787,14 @@
 
                                         </td>
 
+                                        <td>
 
+                                            <button type="button" class="btn btn-primary btn-sm editOrderBtn"
+                                                data-id="{{ $order->id }}" data-order-id="{{ $order->order_id }}">
+                                                Edit
+                                            </button>
+
+                                        </td>
                                     </tr>
 
                                 @empty
@@ -817,11 +826,487 @@
                         {{ $orders->links() }}
 
                     </div>
+                    <!-- Edit Calling Order Modal -->
+                    <div class="modal fade" id="editOrderModal" tabindex="-1" aria-labelledby="editOrderModalLabel"
+                        aria-hidden="true">
 
+                        <div class="modal-dialog modal-xl">
+                            <div class="modal-content">
+
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editOrderModalLabel">
+                                        Edit Order
+                                    </h5>
+
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                                    </button>
+                                </div>
+
+                                <form id="editOrderForm">
+
+                                    @csrf
+
+                                    <input type="hidden" id="edit_order_id" name="id">
+
+                                    <div class="modal-body">
+
+                                        <div class="row">
+
+                                            <!-- Product -->
+                                            <div class="col-md-8 mb-3">
+                                                <label class="form-label">Product Name</label>
+
+                                                <input type="text" class="form-control" id="edit_product_name"
+                                                    name="product_name">
+                                            </div>
+
+                                            <!-- Quantity -->
+                                            <div class="col-md-4 mb-3">
+                                                <label class="form-label">Quantity</label>
+
+                                                <input type="number" class="form-control" id="edit_quantity"
+                                                    name="quantity" min="1">
+                                            </div>
+
+
+                                            <!-- Customer Name -->
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Customer Name</label>
+
+                                                <input type="text" class="form-control" id="edit_customer_name"
+                                                    name="customer_name">
+                                            </div>
+
+
+                                            <!-- Father Name -->
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Father Name</label>
+
+                                                <input type="text" class="form-control" id="edit_father_name"
+                                                    name="father_name">
+                                            </div>
+
+
+                                            <!-- Phone -->
+                                            <div class="col-md-4 mb-3">
+                                                <label class="form-label">Customer Phone</label>
+
+                                                <input type="text" class="form-control" id="edit_customer_phone"
+                                                    name="customer_phone">
+                                            </div>
+
+
+                                            <!-- Age -->
+                                            <div class="col-md-2 mb-3">
+                                                <label class="form-label">Age</label>
+
+                                                <input type="number" class="form-control" id="edit_age"
+                                                    name="age">
+                                            </div>
+
+
+                                            <!-- City -->
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">City</label>
+
+                                                <input type="text" class="form-control" id="edit_city"
+                                                    name="city">
+                                            </div>
+
+
+                                            <!-- State -->
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">State</label>
+
+                                                <input type="text" class="form-control" id="edit_state"
+                                                    name="state">
+                                            </div>
+
+
+                                            <!-- Pincode -->
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">Pincode</label>
+
+                                                <input type="text" class="form-control" id="edit_pincode"
+                                                    name="pincode">
+                                            </div>
+
+
+                                            <!-- Payment Mode -->
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">Payment Mode</label>
+
+                                                <select class="form-control" id="edit_payment_mode" name="payment_mode">
+
+                                                    <option value="">Select</option>
+                                                    <option value="cod">COD</option>
+                                                    <option value="prepaid">Prepaid</option>
+                                                    <option value="abandoned_checkout">
+                                                        Abandoned Checkout
+                                                    </option>
+
+                                                </select>
+                                            </div>
+
+
+                                            <!-- Amount -->
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">Amount</label>
+
+                                                <input type="number" step="0.01" class="form-control"
+                                                    id="edit_amount" name="amount">
+                                            </div>
+
+
+                                            <!-- Status -->
+                                            <div class="col-md-3 mb-3">
+                                                <label class="form-label">Status</label>
+
+                                                <select class="form-control" id="edit_status" name="status">
+
+                                                    <option value="pending">Pending</option>
+                                                    <option value="verified">Verified</option>
+                                                    <option value="cancel">Cancel</option>
+                                                    <option value="not reachable">Not Reachable</option>
+                                                    <option value="same order">Same Order</option>
+                                                    <option value="other">Other</option>
+
+                                                </select>
+                                            </div>
+
+
+                                            <!-- Shipping Address -->
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Shipping Address</label>
+
+                                                <textarea class="form-control" id="edit_shipping_address" name="shipping_address" rows="3"></textarea>
+                                            </div>
+
+
+                                            <!-- Remarks -->
+                                            <div class="col-md-6 mb-3">
+                                                <label class="form-label">Remarks</label>
+
+                                                <textarea class="form-control" id="edit_remarks" name="remarks" rows="3"></textarea>
+                                            </div>
+
+                                        </div>
+
+                                        <div id="editOrderError" class="alert alert-danger d-none"></div>
+
+                                    </div>
+
+
+                                    <div class="modal-footer">
+
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            Close
+                                        </button>
+
+                                        <button type="submit" class="btn btn-success" id="updateOrderBtn">
+                                            Update Order
+                                        </button>
+
+                                    </div>
+
+                                </form>
+
+                            </div>
+                        </div>
+                    </div>
 
                 </div>
 
             </div>
 
         </div>
+        <script>
+            $(document).ready(function() {
+
+                /*
+                |--------------------------------------------------------------------------
+                | OPEN EDIT MODAL
+                |--------------------------------------------------------------------------
+                */
+
+                $(document).on('click', '.editOrderBtn', function() {
+
+                    let orderId = $(this).data('id');
+
+                    $('#editOrderError')
+                        .addClass('d-none')
+                        .html('');
+
+                    $.ajax({
+
+                        url: "{{ url('/calling-orders') }}/" + orderId + "/edit",
+
+                        type: "GET",
+
+                        success: function(response) {
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Fill Form
+                            |--------------------------------------------------------------------------
+                            */
+
+                            $('#edit_order_id').val(response.id);
+
+                            $('#edit_product_name').val(response.product_name ?? '');
+                            $('#edit_quantity').val(response.quantity ?? '');
+
+                            $('#edit_customer_name').val(response.customer_name ?? '');
+                            $('#edit_father_name').val(response.father_name ?? '');
+
+                            $('#edit_customer_phone').val(
+                                response.customer_phone ?? ''
+                            );
+
+                            $('#edit_age').val(response.age ?? '');
+
+                            $('#edit_shipping_address').val(
+                                response.shipping_address ?? ''
+                            );
+
+                            $('#edit_city').val(response.city ?? '');
+                            $('#edit_state').val(response.state ?? '');
+                            $('#edit_pincode').val(response.pincode ?? '');
+
+                            $('#edit_payment_mode').val(
+                                response.payment_mode ?? ''
+                            );
+
+                            $('#edit_amount').val(response.amount ?? '');
+
+                            $('#edit_status').val(
+                                response.status ?? 'pending'
+                            );
+
+                            $('#edit_remarks').val(
+                                response.remarks ?? ''
+                            );
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Show Modal
+                            |--------------------------------------------------------------------------
+                            */
+
+                            let modalElement =
+                                document.getElementById('editOrderModal');
+
+                            let modal =
+                                bootstrap.Modal.getOrCreateInstance(
+                                    modalElement
+                                );
+
+                            modal.show();
+
+                        },
+
+                        error: function(xhr) {
+
+                            let message =
+                                xhr.responseJSON?.message ||
+                                'Unable to load order.';
+
+                            alert(message);
+                        }
+
+                    });
+
+                });
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | UPDATE ORDER
+                |--------------------------------------------------------------------------
+                */
+
+                $('#editOrderForm').on('submit', function(e) {
+
+                    e.preventDefault();
+
+                    let form = $(this);
+
+                    let orderId =
+                        $('#edit_order_id').val();
+
+                    if (!orderId) {
+
+                        $('#editOrderError')
+                            .removeClass('d-none')
+                            .html('Order ID is missing.');
+
+                        return;
+                    }
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Disable Button
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $('#updateOrderBtn')
+                        .prop('disabled', true)
+                        .text('Updating...');
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | AJAX UPDATE
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $.ajax({
+
+                        url: "{{ url('/calling-orders') }}/" +
+                            orderId,
+
+                        type: "POST",
+
+                        data: form.serialize() +
+                            '&_method=PUT',
+
+                        success: function(response) {
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Enable Button
+                            |--------------------------------------------------------------------------
+                            */
+
+                            $('#updateOrderBtn')
+                                .prop('disabled', false)
+                                .text('Update Order');
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Close Modal
+                            |--------------------------------------------------------------------------
+                            */
+
+                            let modalElement =
+                                document.getElementById(
+                                    'editOrderModal'
+                                );
+
+                            let modal =
+                                bootstrap.Modal.getInstance(
+                                    modalElement
+                                );
+
+                            if (modal) {
+                                modal.hide();
+                            }
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Success
+                            |--------------------------------------------------------------------------
+                            */
+
+                            alert(
+                                response.message ||
+                                'Order updated successfully.'
+                            );
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Reload
+                            |--------------------------------------------------------------------------
+                            */
+
+                            location.reload();
+
+                        },
+
+                        error: function(xhr) {
+
+                            $('#updateOrderBtn')
+                                .prop('disabled', false)
+                                .text('Update Order');
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Validation Errors
+                            |--------------------------------------------------------------------------
+                            */
+
+                            let message =
+                                xhr.responseJSON?.message ||
+                                'Unable to update order.';
+
+
+                            if (
+                                xhr.responseJSON?.errors
+                            ) {
+
+                                let errors =
+                                    xhr.responseJSON.errors;
+
+                                message = '';
+
+                                $.each(
+                                    errors,
+                                    function(field, messages) {
+
+                                        message +=
+                                            messages.join('<br>') +
+                                            '<br>';
+
+                                    }
+                                );
+                            }
+
+
+                            $('#editOrderError')
+                                .removeClass('d-none')
+                                .html(message);
+
+                        }
+
+                    });
+
+                });
+
+            });
+        </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+
+                const existingOrderIds = @json($existingOrderIds);
+
+                document.querySelectorAll('.editOrderBtn').forEach(function(button) {
+
+                    const orderId = String(
+                        button.getAttribute('data-order-id') || ''
+                    );
+
+
+
+                    if (existingOrderIds.includes(orderId)) {
+
+                        button.disabled = true;
+
+                        button.classList.remove('btn-primary');
+                        button.classList.add('btn-secondary');
+
+                        button.title =
+                            'Edit disabled - Order already exists in orders table';
+
+                    }
+
+                });
+
+            });
+        </script>
     @endsection

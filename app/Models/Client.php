@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\callingorder;
+use App\Models\OrderAssignmentScheduler;
 
 class Client extends Model
 {
@@ -34,6 +35,13 @@ class Client extends Model
     {
         return $this->hasMany(CallingOrder::class, 'client_id');
     }
+    public function assignmentSchedulers()
+    {
+        return $this->hasMany(
+            OrderAssignmentScheduler::class,
+            'client_id'
+        );
+    }
     public function callingOrders()
     {
         return $this->hasMany(
@@ -41,6 +49,7 @@ class Client extends Model
             'client_id'
         );
     }
+
     public function staffs()
     {
         return $this->belongsToMany(

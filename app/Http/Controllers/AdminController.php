@@ -24,6 +24,8 @@ use App\Exports\SelectedStaffExport;
 use Illuminate\Support\Facades\Log;
 
 use App\Models\RtoReport;
+use App\Models\OrderAssignmentScheduler;
+
 
 class AdminController extends Controller
 {
@@ -38,6 +40,389 @@ class AdminController extends Controller
         return auth()->user()?->client_id;
     }
 
+    public function assignmentScheduler()
+    {
+        if ($this->isClient()) {
+
+            $clients = Client::where(
+                'id',
+                $this->clientId()
+            )->get();
+        } else {
+
+            $clients = Client::orderBy(
+                'client_name'
+            )->get();
+        }
+
+        $staff = CallingUser::where(
+            'status',
+            1
+        )->orderBy('name')->get();
+
+        $schedulers = OrderAssignmentScheduler::with(
+            'client'
+        )
+            ->when(
+                $this->isClient(),
+                function ($q) {
+                    $q->where(
+                        'client_id',
+                        $this->clientId()
+                    );
+                }
+            )
+            ->latest()
+            ->get();
+
+        return view(
+            'assignment-scheduler',
+            compact(
+                'clients',
+                'staff',
+                'schedulers'
+            )
+        );
+    }
+
+    public function editCallingOrder($id)
+    {
+        $order = CallingOrder::findOrFail($id);
+
+        return response()->json($order);
+    }
+
+    public function updateCallingOrder(Request $request, $id)
+    {
+        $request->validate([
+
+            'product_name' => 'nullable|string|max:1000',
+            'quantity' => 'nullable|integer|min:1',
+
+            'customer_name' => 'nullable|string|max:255',
+            'father_name' => 'nullable|string|max:255',
+
+            'customer_phone' => 'nullable|string|max:30',
+
+            'shipping_address' => 'nullable|string|max:2000',
+
+            'age' => 'nullable|integer|min:0|max:150',
+
+            'city' => 'nullable|string|max:255',
+            'state' => 'nullable|string|max:255',
+            'pincode' => 'nullable|string|max:20',
+
+            'payment_mode' => 'nullable|string|max:100',
+
+            'amount' => 'nullable|numeric|min:0',
+
+            'status' => 'nullable|string|max:100',
+
+            'remarks' => 'nullable|string|max:2000',
+
+        ]);
+
+
+        $order = CallingOrder::findOrFail($id);
+
+
+        $order->update([
+
+            'product_name' =>
+            $request->product_name,
+
+            'quantity' =>
+            $request->quantity,
+
+            'customer_name' =>
+            $request->customer_name,
+
+            'father_name' =>
+            $request->father_name,
+
+            'customer_phone' =>
+            $request->customer_phone,
+
+            'shipping_address' =>
+            $request->shipping_address,
+
+            'age' =>
+            $request->age,
+
+            'city' =>
+            $request->city,
+
+            'state' =>
+            $request->state,
+
+            'pincode' =>
+            $request->pincode,
+
+            'payment_mode' =>
+            $request->payment_mode,
+
+            'amount' =>
+            $request->amount,
+
+            'status' =>
+            $request->status,
+
+            'remarks' =>
+            $request->remarks,
+
+        ]);
+
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order updated successfully',
+            'order' => $order->fresh(),
+        ]);
+    }
+    public function saveAssignmentScheduler(Request $request)
+    {
+        $request->validate([
+
+            'scheduler_id' => 'nullable|integer|exists:order_assignment_schedulers,id',
+
+            'client_id' => 'required|exists:clients,id',
+
+            'order_types' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'order_types.*' => [
+                'in:shopify,abandoned_checkout,deliveredreorder,rto',
+            ],
+
+            'start_time' => 'required|date_format:H:i',
+
+            'end_time' => 'required|date_format:H:i',
+
+            'days' => [
+                'nullable',
+                'array',
+            ],
+
+            'days.*' => [
+                'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
+            ],
+
+            'staff_ids' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'staff_ids.*' => [
+                'integer',
+                'exists:calling_users,id',
+            ],
+
+            'staff_percentages' => [
+                'required',
+                'array',
+            ],
+
+            'is_active' => [
+                'nullable',
+            ],
+        ]);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Client Permission
+    |--------------------------------------------------------------------------
+    */
+
+        if (
+            $this->isClient() &&
+            (int) $request->client_id !==
+            (int) $this->clientId()
+        ) {
+            abort(403, 'Unauthorized Access');
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Validate Time
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->start_time >= $request->end_time) {
+
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'End time must be greater than start time.'
+                );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Staff Percentage
+    |--------------------------------------------------------------------------
+    */
+
+        $staffAssignments = [];
+
+        $totalPercentage = 0;
+
+        foreach ($request->staff_ids as $staffId) {
+
+            $percentage = (float) (
+                $request->staff_percentages[$staffId]
+                ?? 0
+            );
+
+            if ($percentage <= 0) {
+                continue;
+            }
+
+            $staffAssignments[] = [
+                'staff_id' => (int) $staffId,
+                'percentage' => $percentage,
+            ];
+
+            $totalPercentage += $percentage;
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Percentage Must Be Exactly 100
+    |--------------------------------------------------------------------------
+    */
+
+        if (abs($totalPercentage - 100) > 0.01) {
+
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Staff percentage must be exactly 100%. Current: '
+                        . $totalPercentage . '%'
+                );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Create / Update
+    |--------------------------------------------------------------------------
+    */
+
+        $scheduler = $request->scheduler_id
+            ? OrderAssignmentScheduler::findOrFail(
+                $request->scheduler_id
+            )
+            : new OrderAssignmentScheduler();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Client Permission For Existing Scheduler
+    |--------------------------------------------------------------------------
+    */
+
+        if (
+            $scheduler->exists &&
+            $this->isClient() &&
+            (int) $scheduler->client_id !==
+            (int) $this->clientId()
+        ) {
+            abort(403, 'Unauthorized Access');
+        }
+
+
+        $scheduler->client_id =
+            $request->client_id;
+
+        $scheduler->order_types =
+            $request->order_types;
+
+        $scheduler->start_time =
+            $request->start_time;
+
+        $scheduler->end_time =
+            $request->end_time;
+
+        $scheduler->days =
+            $request->days ?? [];
+
+        $scheduler->staff_assignments =
+            $staffAssignments;
+
+        $scheduler->is_active =
+            $request->has('is_active');
+
+        $scheduler->save();
+
+
+        return back()->with(
+            'success',
+            'Assignment Scheduler Saved Successfully.'
+        );
+    }
+
+    public function toggleAssignmentScheduler($id)
+    {
+        $scheduler =
+            OrderAssignmentScheduler::findOrFail($id);
+
+
+        if (
+            $this->isClient() &&
+            (int) $scheduler->client_id !==
+            (int) $this->clientId()
+        ) {
+            abort(403, 'Unauthorized Access');
+        }
+
+
+        $scheduler->is_active =
+            !$scheduler->is_active;
+
+        $scheduler->save();
+
+
+        return back()->with(
+            'success',
+            $scheduler->is_active
+                ? 'Auto Assignment Enabled.'
+                : 'Auto Assignment Disabled.'
+        );
+    }
+
+    public function deleteAssignmentScheduler($id)
+    {
+        $scheduler =
+            OrderAssignmentScheduler::findOrFail($id);
+
+
+        if (
+            $this->isClient() &&
+            (int) $scheduler->client_id !==
+            (int) $this->clientId()
+        ) {
+            abort(403, 'Unauthorized Access');
+        }
+
+
+        $scheduler->delete();
+
+
+        return back()->with(
+            'success',
+            'Scheduler Deleted Successfully.'
+        );
+    }
     public function dashboard()
     {
         $dashboardQuery = Order::query();
@@ -330,11 +715,6 @@ class AdminController extends Controller
     }
     public function orderDetails(Request $request)
     {
-        /*
-    |--------------------------------------------------------------------------
-    | STAFF
-    |--------------------------------------------------------------------------
-    */
 
         $request->validate([
             'staff_id' => 'required|exists:calling_users,id',
@@ -344,13 +724,6 @@ class AdminController extends Controller
             $request->staff_id
         );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | DATE RANGE
-    |--------------------------------------------------------------------------
-    */
-
         $from = $request->filled('from')
             ? Carbon::parse($request->from)->startOfDay()
             : Carbon::today()->startOfDay();
@@ -358,14 +731,6 @@ class AdminController extends Controller
         $to = $request->filled('to')
             ? Carbon::parse($request->to)->endOfDay()
             : Carbon::today()->endOfDay();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | STANDARD STATUSES
-    |--------------------------------------------------------------------------
-    | Keep this BEFORE calculating OTHER counts.
-    */
 
         $standardStatuses = [
             'pending',
@@ -375,12 +740,6 @@ class AdminController extends Controller
             'same_order'
         ];
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | BASE QUERY
-    |--------------------------------------------------------------------------
-    */
 
         $query = CallingOrder::query()
             ->where(
@@ -393,20 +752,10 @@ class AdminController extends Controller
             );
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | ORDER SOURCE FILTER
-    |--------------------------------------------------------------------------
-    */
-
         if ($request->filled('order_source')) {
 
             if ($request->order_source === 'web') {
 
-                /*
-            | Web orders:
-            | NULL, empty or web
-            */
 
                 $query->where(function ($q) {
 
@@ -443,11 +792,6 @@ class AdminController extends Controller
                 );
             }
         }
-        /*
-    |--------------------------------------------------------------------------
-    | STATUS FILTER
-    |--------------------------------------------------------------------------
-    */
 
         if ($request->filled('status')) {
 
@@ -469,13 +813,6 @@ class AdminController extends Controller
                 );
             }
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | SEARCH
-    |--------------------------------------------------------------------------
-    */
 
         if ($request->filled('search')) {
 
@@ -514,23 +851,9 @@ class AdminController extends Controller
         }
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | TOTAL ORDERS
-    |--------------------------------------------------------------------------
-    */
-
         $totalOrders = (clone $query)
             ->count();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | TOTAL BY SOURCE
-    |--------------------------------------------------------------------------
-    */
-
-        // WEB
         $webOrders = (clone $query)
             ->where(function ($q) {
 
@@ -543,8 +866,6 @@ class AdminController extends Controller
             })
             ->count();
 
-
-        // WHATSAPP
         $whatsappOrders = (clone $query)
             ->whereRaw(
                 'LOWER(TRIM(order_source)) = ?',
@@ -1083,6 +1404,13 @@ class AdminController extends Controller
             ->paginate(100)
             ->withQueryString();
 
+        $existingOrderIds = DB::table('orders')
+            ->whereNotNull('order_id')
+            ->pluck('order_id')
+            ->map(function ($id) {
+                return (string) $id;
+            })
+            ->toArray();
 
         /*
     |--------------------------------------------------------------------------
@@ -1102,7 +1430,7 @@ class AdminController extends Controller
                 'notReachableDeliveredReorder',
                 'sameOrderDeliveredReorder',
                 'otherDeliveredReorder',
-
+                'existingOrderIds',
                 // Abandoned Checkout
                 'abandonedOrders',
                 'pendingAbandoned',

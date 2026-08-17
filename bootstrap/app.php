@@ -26,26 +26,23 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function ($schedule) {
 
-        // Existing Shopify Orders Sync 
+
         $schedule->command('sync:shopify-orders')
             ->everyMinute()
             ->withoutOverlapping();
 
-        // Shopify Abandoned Checkout Sync
+
         $schedule->command('sync:shopify-abandoned-checkouts')
+            ->everyMinute()
+            ->withoutOverlapping();
+
+
+        $schedule->command('orders:run-assignment-schedulers')
             ->everyMinute()
             ->withoutOverlapping();
     })
 
-    // ->withSchedule(function ($schedule) {
-    //   $schedule->command('sync:shopify-orders')
-    //      ->everyMinute()
-    //     ->withoutOverlapping();
-    //->withSchedule(function ($schedule) {
-    //   $schedule->command('sync:shopify-orders')
-    //      ->dailyAt('17:00') // 5 PM
-    //   ->withoutOverlapping();
-    //})
+
 
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -581,36 +581,53 @@ class CallingOrderController extends Controller
         $name = trim($staff->name);
 
         $shortName =
-            strtoupper(substr($name, 0, 1))
-            .
+            strtoupper(substr($name, 0, 1)) .
             strtolower(substr($name, -1));
 
         $date = $selectedDate->format('d-m-y');
 
+        // Get the highest existing number for this staff + date
+        $prefix = $shortName . '-' . $date . '-';
 
-        /*
-        |--------------------------------------------------------------------------
-        | Staff-wise + Date-wise count
-        |--------------------------------------------------------------------------
-        */
+        $lastOrder = CallingOrder::where('assigned_to', $staff->id)
+            ->where('order_id', 'like', $prefix . '%')
+            ->orderByRaw("
+            CAST(
+                SUBSTRING_INDEX(order_id, '-', -1)
+                AS UNSIGNED
+            ) DESC
+        ")
+            ->first();
 
-        $count = CallingOrder::where(
-            'assigned_to',
-            $staff->id
-        )
-            ->whereDate(
-                'created_at',
-                $selectedDate
-            )
-            ->count() + 1;
+        if ($lastOrder) {
 
+            $lastNumber = (int) substr(
+                $lastOrder->order_id,
+                strrpos($lastOrder->order_id, '-') + 1
+            );
 
-        return
-            $shortName
-            . '-'
-            . $date
-            . '-'
-            . $count;
+            $count = $lastNumber + 1;
+        } else {
+
+            $count = 1;
+        }
+
+        // Make absolutely sure the ID is unique
+        do {
+
+            $orderId = $prefix . $count;
+
+            $exists = CallingOrder::where(
+                'order_id',
+                $orderId
+            )->exists();
+
+            if ($exists) {
+                $count++;
+            }
+        } while ($exists);
+
+        return $orderId;
     }
 
 

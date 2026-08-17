@@ -40,8 +40,19 @@
     </style>
 
     <div class="container">
-
-
+        <div class="row g-4">
+            <div class="col-md-12">
+                @if (auth()->user()->role == 'super_admin')
+                    <a class="btn btn-primary" style="
+    margin: 20px;
+    float: right;
+"
+                        href="{{ route('assignment.scheduler') }}">
+                        Order Assign Scheduler
+                    </a>
+                @endif
+            </div>
+        </div>
         <div class="row g-4">
 
             @foreach ($clients as $client)
