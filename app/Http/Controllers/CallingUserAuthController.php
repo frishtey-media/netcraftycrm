@@ -45,97 +45,462 @@ class CallingUserAuthController extends Controller
         );
     }
 
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         $userId = Auth::guard('calling_user')->id();
-        $year = now()->year;
 
-        // 🔥 ALL ORDERS (single query)
-        $allOrders = CallingOrder::where('assigned_to', $userId)->get();
+        /*
+    |--------------------------------------------------------------------------
+    | DATE FILTER
+    |--------------------------------------------------------------------------
+    */
 
-        // 🔥 Pending Orders
-        $orders = $allOrders->where('status', 'pending')->sortByDesc('created_at');
+        $fromDate = $request->filled('from')
+            ? $request->from
+            : now()->format('Y-m-d');
 
-        // 🔥 COUNTS
-        $total = $allOrders->where('order_source', '!=', 'whatsapp')->count();
-        $verified = $allOrders->where('status', 'verified')->count();
-        $pending = $allOrders->where('status', 'pending')->count();
-        $notReachable = $allOrders->where('status', 'not_reachable')->count();
-        $whatsappOrders = $allOrders->where('order_source', 'whatsapp')->count();
+        $toDate = $request->filled('to')
+            ? $request->to
+            : now()->format('Y-m-d');
 
-        // 🎯 SUCCESS RATE
-        $successRate = $total > 0 ? round(($verified / $total) * 100, 1) : 0;
+        $from = Carbon::parse($fromDate)->startOfDay();
+        $to   = Carbon::parse($toDate)->endOfDay();
 
-        // 🔥 MONTH NAMES
-        $months = collect(range(1, 12))->map(fn($m) => date('M', mktime(0, 0, 0, $m, 1)));
 
-        // 🔥 GROUPED DATA (FAST QUERY)
-        $monthly = CallingOrder::select(
-            DB::raw('MONTH(created_at) as month'),
-            DB::raw("SUM(CASE WHEN order_source != 'whatsapp' THEN 1 ELSE 0 END) as web"),
-            DB::raw("SUM(CASE WHEN order_source = 'whatsapp' THEN 1 ELSE 0 END) as whatsapp")
-        )
+        /*
+    |--------------------------------------------------------------------------
+    | BASE QUERY
+    | Same as Admin Report
+    |--------------------------------------------------------------------------
+    */
+
+        $baseQuery = CallingOrder::query()
             ->where('assigned_to', $userId)
-            ->whereYear('created_at', $year)
-            ->groupBy('month')
-            ->pluck('web', 'month');
+            ->whereBetween('updated_at', [$from, $to]);
 
-        $monthlyWA = CallingOrder::select(
-            DB::raw('MONTH(created_at) as month'),
-            DB::raw("COUNT(*) as total")
-        )
-            ->where('assigned_to', $userId)
-            ->whereYear('created_at', $year)
-            ->where('order_source', 'whatsapp')
-            ->groupBy('month')
-            ->pluck('total', 'month');
 
-        $monthlyVerified = CallingOrder::select(
-            DB::raw('MONTH(updated_at) as month'),
-            DB::raw("COUNT(*) as total")
-        )
-            ->where('assigned_to', $userId)
-            ->whereYear('updated_at', $year)
+        /*
+    |--------------------------------------------------------------------------
+    | SOURCE CONDITIONS
+    |--------------------------------------------------------------------------
+    */
+
+        $webCondition = function ($q) {
+            $q->whereNull('order_source')
+                ->orWhere('order_source', '')
+                ->orWhereRaw(
+                    'LOWER(TRIM(order_source)) = ?',
+                    ['web']
+                );
+        };
+
+        $whatsappCondition = function ($q) {
+            $q->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['whatsapp']
+            );
+        };
+
+        $rtoCondition = function ($q) {
+            $q->whereRaw(
+                'UPPER(TRIM(order_source)) = ?',
+                ['RTO']
+            );
+        };
+
+        $deliverReorderCondition = function ($q) {
+            $q->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['deliveredreorder']
+            );
+        };
+
+        $abandonedCondition = function ($q) {
+            $q->whereRaw(
+                'LOWER(TRIM(order_source)) = ?',
+                ['shopify_abandoned_checkout']
+            );
+        };
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | HELPER - COUNT BY STATUS + SOURCE
+    |--------------------------------------------------------------------------
+    */
+
+        $countBySource = function ($sourceCondition, $status = null) use ($baseQuery) {
+
+            $query = clone $baseQuery;
+
+            if ($status !== null) {
+                $query->where('status', $status);
+            }
+
+            $query->where($sourceCondition);
+
+            return $query->count();
+        };
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL ORDERS
+    |--------------------------------------------------------------------------
+    */
+
+        $totalOrders = (clone $baseQuery)->count();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL SOURCE COUNTS
+    |--------------------------------------------------------------------------
+    */
+
+        $webOrders = (clone $baseQuery)
+            ->where($webCondition)
+            ->count();
+
+        $whatsappOrders = (clone $baseQuery)
+            ->where($whatsappCondition)
+            ->count();
+
+        $rtoOrders = (clone $baseQuery)
+            ->where($rtoCondition)
+            ->count();
+
+        $deliveredReorderOrders = (clone $baseQuery)
+            ->where($deliverReorderCondition)
+            ->count();
+
+        $abandonedOrders = (clone $baseQuery)
+            ->where($abandonedCondition)
+            ->count();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CALLING STATUS TOTALS
+    |--------------------------------------------------------------------------
+    */
+
+        $pending = (clone $baseQuery)
+            ->where('status', 'pending')
+            ->count();
+
+        $verified = (clone $baseQuery)
             ->where('status', 'verified')
-            ->groupBy('month')
-            ->pluck('total', 'month');
+            ->count();
 
-        $monthlyNR = CallingOrder::select(
-            DB::raw('MONTH(updated_at) as month'),
-            DB::raw("COUNT(*) as total")
-        )
-            ->where('assigned_to', $userId)
-            ->whereYear('updated_at', $year)
+        $cancelled = (clone $baseQuery)
+            ->where('status', 'cancel')
+            ->count();
+
+        $notConnected = (clone $baseQuery)
             ->where('status', 'not_reachable')
-            ->groupBy('month')
-            ->pluck('total', 'month');
+            ->count();
 
-        // 🔥 FINAL ARRAY (12 months fix)
-        $webData = [];
-        $waData = [];
-        $verifiedData = [];
-        $nrData = [];
+        $sameOrder = (clone $baseQuery)
+            ->where('status', 'same_order')
+            ->count();
 
-        for ($i = 1; $i <= 12; $i++) {
-            $webData[] = $monthly[$i] ?? 0;
-            $waData[] = $monthlyWA[$i] ?? 0;
-            $verifiedData[] = $monthlyVerified[$i] ?? 0;
-            $nrData[] = $monthlyNR[$i] ?? 0;
-        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | OTHER
+    |--------------------------------------------------------------------------
+    */
+
+        $standardStatuses = [
+            'pending',
+            'verified',
+            'cancel',
+            'not_reachable',
+            'same_order'
+        ];
+
+        $other = (clone $baseQuery)
+            ->where(function ($q) use ($standardStatuses) {
+
+                $q->whereNotIn('status', $standardStatuses)
+                    ->orWhereNull('status');
+            })
+            ->count();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | PENDING WORK - SOURCE WISE
+    |--------------------------------------------------------------------------
+    */
+
+        $pendingWeb = $countBySource($webCondition, 'pending');
+
+        $pendingWhatsapp = $countBySource(
+            $whatsappCondition,
+            'pending'
+        );
+
+        $pendingRto = $countBySource(
+            $rtoCondition,
+            'pending'
+        );
+
+        $pendingDeliveredReorder = $countBySource(
+            $deliverReorderCondition,
+            'pending'
+        );
+
+        $pendingAbandoned = $countBySource(
+            $abandonedCondition,
+            'pending'
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | VERIFIED - SOURCE WISE
+    |--------------------------------------------------------------------------
+    */
+
+        $verifiedWeb = $countBySource($webCondition, 'verified');
+
+        $verifiedWhatsapp = $countBySource(
+            $whatsappCondition,
+            'verified'
+        );
+
+        $verifiedRto = $countBySource(
+            $rtoCondition,
+            'verified'
+        );
+
+        $verifiedDeliveredReorder = $countBySource(
+            $deliverReorderCondition,
+            'verified'
+        );
+
+        $verifiedAbandoned = $countBySource(
+            $abandonedCondition,
+            'verified'
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CANCELLED - SOURCE WISE
+    |--------------------------------------------------------------------------
+    */
+
+        $cancelledWeb = $countBySource($webCondition, 'cancel');
+
+        $cancelledWhatsapp = $countBySource(
+            $whatsappCondition,
+            'cancel'
+        );
+
+        $cancelledRto = $countBySource(
+            $rtoCondition,
+            'cancel'
+        );
+
+        $cancelledDeliveredReorder = $countBySource(
+            $deliverReorderCondition,
+            'cancel'
+        );
+
+        $cancelledAbandoned = $countBySource(
+            $abandonedCondition,
+            'cancel'
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | NOT CONNECTED - SOURCE WISE
+    |--------------------------------------------------------------------------
+    */
+
+        $notConnectedWeb = $countBySource(
+            $webCondition,
+            'not_reachable'
+        );
+
+        $notConnectedWhatsapp = $countBySource(
+            $whatsappCondition,
+            'not_reachable'
+        );
+
+        $notConnectedRto = $countBySource(
+            $rtoCondition,
+            'not_reachable'
+        );
+
+        $notConnectedDeliveredReorder = $countBySource(
+            $deliverReorderCondition,
+            'not_reachable'
+        );
+
+        $notConnectedAbandoned = $countBySource(
+            $abandonedCondition,
+            'not_reachable'
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | SAME ORDER - SOURCE WISE
+    |--------------------------------------------------------------------------
+    */
+
+        $sameOrderWeb = $countBySource(
+            $webCondition,
+            'same_order'
+        );
+
+        $sameOrderWhatsapp = $countBySource(
+            $whatsappCondition,
+            'same_order'
+        );
+
+        $sameOrderRto = $countBySource(
+            $rtoCondition,
+            'same_order'
+        );
+
+        $sameOrderDeliveredReorder = $countBySource(
+            $deliverReorderCondition,
+            'same_order'
+        );
+
+        $sameOrderAbandoned = $countBySource(
+            $abandonedCondition,
+            'same_order'
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | OTHER - SOURCE WISE
+    |--------------------------------------------------------------------------
+    */
+
+        $otherQuery = function ($sourceCondition) use (
+            $baseQuery,
+            $standardStatuses
+        ) {
+
+            return (clone $baseQuery)
+                ->where(function ($q) use ($standardStatuses) {
+
+                    $q->whereNotIn(
+                        'status',
+                        $standardStatuses
+                    )->orWhereNull('status');
+                })
+                ->where($sourceCondition)
+                ->count();
+        };
+
+        $otherWeb = $otherQuery($webCondition);
+
+        $otherWhatsapp = $otherQuery($whatsappCondition);
+
+        $otherRto = $otherQuery($rtoCondition);
+
+        $otherDeliveredReorder =
+            $otherQuery($deliverReorderCondition);
+
+        $otherAbandoned =
+            $otherQuery($abandonedCondition);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CONVERSION
+    |--------------------------------------------------------------------------
+    */
+
+        $successRate = $totalOrders > 0
+            ? round(($verified / $totalOrders) * 100, 1)
+            : 0;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | VIEW
+    |--------------------------------------------------------------------------
+    */
 
         return view('calling.dashboard', compact(
-            'orders',
-            'total',
-            'verified',
-            'pending',
-            'notReachable',
+
+            // Dates
+            'fromDate',
+            'toDate',
+
+            // Total
+            'totalOrders',
+
+            // Sources
+            'webOrders',
             'whatsappOrders',
-            'successRate',
-            'months',
-            'webData',
-            'waData',
-            'verifiedData',
-            'nrData'
+            'rtoOrders',
+            'deliveredReorderOrders',
+            'abandonedOrders',
+
+            // Status totals
+            'pending',
+            'verified',
+            'cancelled',
+            'notConnected',
+            'sameOrder',
+            'other',
+
+            // Pending source wise
+            'pendingWeb',
+            'pendingWhatsapp',
+            'pendingRto',
+            'pendingDeliveredReorder',
+            'pendingAbandoned',
+
+            // Verified source wise
+            'verifiedWeb',
+            'verifiedWhatsapp',
+            'verifiedRto',
+            'verifiedDeliveredReorder',
+            'verifiedAbandoned',
+
+            // Cancelled source wise
+            'cancelledWeb',
+            'cancelledWhatsapp',
+            'cancelledRto',
+            'cancelledDeliveredReorder',
+            'cancelledAbandoned',
+
+            // Not connected source wise
+            'notConnectedWeb',
+            'notConnectedWhatsapp',
+            'notConnectedRto',
+            'notConnectedDeliveredReorder',
+            'notConnectedAbandoned',
+
+            // Same order source wise
+            'sameOrderWeb',
+            'sameOrderWhatsapp',
+            'sameOrderRto',
+            'sameOrderDeliveredReorder',
+            'sameOrderAbandoned',
+
+            // Other source wise
+            'otherWeb',
+            'otherWhatsapp',
+            'otherRto',
+            'otherDeliveredReorder',
+            'otherAbandoned',
+
+            // Conversion
+            'successRate'
         ));
     }
 
