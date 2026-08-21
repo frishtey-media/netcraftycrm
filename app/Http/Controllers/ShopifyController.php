@@ -25,7 +25,6 @@ class ShopifyController extends Controller
     }
     public function importPage()
     {
-
         session()->forget('duplicate_orders');
         session()->forget('duplicate_barcodes');
         if ($this->isClient()) {

@@ -57,4 +57,20 @@ class Order extends Model
             'order_id'
         );
     }
+    public function shipments()
+    {
+        return $this->hasMany(Shipment::class);
+    }
+
+    public function delhiveryShipment()
+    {
+        return $this->hasOne(
+            \App\Models\Shipment::class,
+            'order_id',
+            'id'
+        )->where(
+            'courier',
+            'delhivery'
+        );
+    }
 }

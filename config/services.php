@@ -13,7 +13,13 @@ return [
     | a conventional file to locate the various service credentials.
     |
     */
-
+    'delhivery' => [
+        'base_url' => env('DELHIVERY_BASE_URL'),
+        'api_token' => env('DELHIVERY_API_TOKEN'),
+        'client_name' => env('DELHIVERY_CLIENT_NAME'),
+        'pickup_location' => env('DELHIVERY_PICKUP_LOCATION'),
+        'origin_pincode' => env('DELHIVERY_ORIGIN_PINCODE'),
+    ],
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

@@ -3,6 +3,10 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use App\Jobs\DelhiveryTrackingJob;
+use App\Models\Shipment;
+use Illuminate\Console\Scheduling\Schedule;
+
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -38,6 +42,37 @@ return Application::configure(basePath: dirname(__DIR__))
 
 
         $schedule->command('orders:run-assignment-schedulers')
+            ->everyMinute()
+            ->withoutOverlapping();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Delhivery Tracking Sync
+    |--------------------------------------------------------------------------
+    |
+    | Every 5 minutes:
+    | Find active Delhivery shipments and dispatch
+    | tracking jobs.
+    |
+    */
+
+        $schedule->call(function () {
+
+            Shipment::where('courier', 'delhivery')
+                ->whereNotNull('awb')
+                ->whereNotIn('status', [
+                    'delivered',
+                    'returned',
+                ])
+                ->pluck('id')
+                ->each(function ($shipmentId) {
+
+                    DelhiveryTrackingJob::dispatch(
+                        (int) $shipmentId
+                    );
+                });
+        })
+            ->name('delhivery-tracking-sync')
             ->everyMinute()
             ->withoutOverlapping();
     })

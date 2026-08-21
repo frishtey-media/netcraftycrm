@@ -29,7 +29,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExtreportController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\RepeatCustomerController;
-
+use App\Models\Shipment;
+use Illuminate\Support\Facades\Storage;
 //dd(base_path());
 
 require __DIR__ . '/inventory.php';
@@ -163,8 +164,60 @@ Route::middleware(['auth'])->group(function () {
         '/export-post-office',
         [PostOfficeExportController::class, 'export']
     )->name('postoffice.export');
-    Route::post('/whatsapp-excel-import', [ShopifyOrderController::class, 'whatsappExcelImport'])->name('whatsapp.excel.import');
 
+
+    Route::post('/whatsapp-excel-import', [ShopifyOrderController::class, 'whatsappExcelImport'])->name('whatsapp.excel.import');
+    Route::post('/delhivery-excel-import', [ShopifyOrderController::class, 'delhiveryExcelImport'])->name('delhivery.excel.import');
+    Route::get(
+        '/delhivery-import-status',
+        [
+            ShopifyOrderController::class,
+            'delhiveryImportStatus'
+        ]
+    )->name(
+        'delhivery.import.status'
+    );
+    Route::get(
+        '/delhivery/label/{shipment}/download',
+        function (Shipment $shipment) {
+
+            abort_unless(
+                $shipment->courier === 'delhivery',
+                404
+            );
+
+            abort_unless(
+                $shipment->label_path &&
+                    Storage::disk('public')
+                    ->exists($shipment->label_path),
+                404
+            );
+
+            return response()->download(
+                Storage::disk('public')
+                    ->path($shipment->label_path),
+                'Delhivery-Label-' .
+                    $shipment->awb .
+                    '.pdf',
+                [
+                    'Content-Type' =>
+                    'application/pdf',
+                ]
+            );
+        }
+    )->name(
+        'delhivery.label.download'
+    );
+    Route::post(
+        '/delhivery/request-pickup',
+        [ShopifyOrderController::class, 'requestDelhiveryPickup']
+    )->name('delhivery.request.pickup');
+    Route::post(
+        '/delhivery/create-pickup',
+        [ShopifyOrderController::class, 'createDelhiveryPickup']
+    )->name(
+        'delhivery.pickup'
+    );
 
 
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
