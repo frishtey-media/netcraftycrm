@@ -183,9 +183,16 @@ class AdminController extends Controller
     {
         $request->validate([
 
-            'scheduler_id' => 'nullable|integer|exists:order_assignment_schedulers,id',
+            'scheduler_id' => [
+                'nullable',
+                'integer',
+                'exists:order_assignment_schedulers,id'
+            ],
 
-            'client_id' => 'required|exists:clients,id',
+            'client_id' => [
+                'required',
+                'exists:clients,id'
+            ],
 
             'order_types' => [
                 'required',
@@ -197,9 +204,15 @@ class AdminController extends Controller
                 'in:shopify,abandoned_checkout,deliveredreorder,rto',
             ],
 
-            'start_time' => 'required|date_format:H:i',
+            'start_time' => [
+                'required',
+                'date_format:H:i'
+            ],
 
-            'end_time' => 'required|date_format:H:i',
+            'end_time' => [
+                'required',
+                'date_format:H:i'
+            ],
 
             'days' => [
                 'nullable',
@@ -210,10 +223,10 @@ class AdminController extends Controller
                 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
             ],
 
+            // IMPORTANT
             'staff_ids' => [
-                'required',
+                'nullable',
                 'array',
-                'min:1',
             ],
 
             'staff_ids.*' => [
@@ -222,7 +235,7 @@ class AdminController extends Controller
             ],
 
             'staff_percentages' => [
-                'required',
+                'nullable',
                 'array',
             ],
 
@@ -234,7 +247,7 @@ class AdminController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Client Permission
+    | CLIENT PERMISSION
     |--------------------------------------------------------------------------
     */
 
@@ -249,7 +262,7 @@ class AdminController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Validate Time
+    | TIME VALIDATION
     |--------------------------------------------------------------------------
     */
 
@@ -266,7 +279,20 @@ class AdminController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Staff Percentage
+    | RTO CHECK
+    |--------------------------------------------------------------------------
+    */
+
+        $isRtoScheduler = in_array(
+            'rto',
+            $request->order_types ?? [],
+            true
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | STAFF ASSIGNMENTS
     |--------------------------------------------------------------------------
     */
 
@@ -274,47 +300,68 @@ class AdminController extends Controller
 
         $totalPercentage = 0;
 
-        foreach ($request->staff_ids as $staffId) {
-
-            $percentage = (float) (
-                $request->staff_percentages[$staffId]
-                ?? 0
-            );
-
-            if ($percentage <= 0) {
-                continue;
-            }
-
-            $staffAssignments[] = [
-                'staff_id' => (int) $staffId,
-                'percentage' => $percentage,
-            ];
-
-            $totalPercentage += $percentage;
-        }
-
 
         /*
     |--------------------------------------------------------------------------
-    | Percentage Must Be Exactly 100
+    | NORMAL ORDERS
     |--------------------------------------------------------------------------
     */
 
-        if (abs($totalPercentage - 100) > 0.01) {
+        if (!$isRtoScheduler) {
 
-            return back()
-                ->withInput()
-                ->with(
-                    'error',
-                    'Staff percentage must be exactly 100%. Current: '
-                        . $totalPercentage . '%'
+            foreach ($request->staff_ids ?? [] as $staffId) {
+
+                $percentage = (float) (
+                    $request->staff_percentages[$staffId] ?? 0
                 );
+
+                if ($percentage <= 0) {
+                    continue;
+                }
+
+                $staffAssignments[] = [
+                    'staff_id' => (int) $staffId,
+                    'percentage' => $percentage,
+                ];
+
+                $totalPercentage += $percentage;
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | NORMAL ORDERS MUST BE 100%
+        |--------------------------------------------------------------------------
+        */
+
+            if (abs($totalPercentage - 100) > 0.01) {
+
+                return back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        'Staff percentage must be exactly 100%. Current: '
+                            . $totalPercentage . '%'
+                    );
+            }
+        } else {
+
+            /*
+        |--------------------------------------------------------------------------
+        | RTO
+        |--------------------------------------------------------------------------
+        |
+        | No staff percentage required.
+        |
+        */
+
+            $staffAssignments = [];
         }
 
 
         /*
     |--------------------------------------------------------------------------
-    | Create / Update
+    | CREATE / UPDATE SCHEDULER
     |--------------------------------------------------------------------------
     */
 
@@ -327,7 +374,7 @@ class AdminController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Client Permission For Existing Scheduler
+    | EXISTING SCHEDULER PERMISSION
     |--------------------------------------------------------------------------
     */
 
@@ -362,6 +409,7 @@ class AdminController extends Controller
         $scheduler->is_active =
             $request->has('is_active');
 
+
         $scheduler->save();
 
 
@@ -370,7 +418,176 @@ class AdminController extends Controller
             'Assignment Scheduler Saved Successfully.'
         );
     }
+    public function rtoStaffAllocation($clientId)
+    {
+        try {
 
+            /*
+        |--------------------------------------------------------------------------
+        | Pending RTO + Original Calling Order Staff
+        |--------------------------------------------------------------------------
+        */
+
+            $rtoOrders = DB::table('rto_reports')
+                ->join(
+                    'orders',
+                    'orders.order_id',
+                    '=',
+                    'rto_reports.order_id'
+                )
+                ->leftJoin(
+                    'callingorder',
+                    'callingorder.order_id',
+                    '=',
+                    'orders.order_id'
+                )
+                ->where('orders.client_id', $clientId)
+                ->where('rto_reports.is_exported', 0)
+                ->select(
+                    'rto_reports.order_id',
+                    'callingorder.assigned_to as original_staff_id'
+                )
+                ->orderBy('rto_reports.id')
+                ->get();
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Staff
+        |--------------------------------------------------------------------------
+        */
+
+            $allStaff = CallingUser::orderBy('id')->get();
+
+            $activeStaff = $allStaff
+                ->where('status', 1)
+                ->values();
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Calculate Allocation
+        |--------------------------------------------------------------------------
+        */
+
+            $allocation = [];
+
+
+            foreach ($rtoOrders as $order) {
+
+                $originalStaffId = $order->original_staff_id;
+
+
+                // Original calling order ka staff nahi mila
+                if (!$originalStaffId) {
+                    continue;
+                }
+
+
+                $originalStaff = $allStaff->firstWhere(
+                    'id',
+                    $originalStaffId
+                );
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | Original Staff Active
+            |--------------------------------------------------------------------------
+            */
+
+                if (
+                    $originalStaff &&
+                    (int) $originalStaff->status === 1
+                ) {
+
+                    $assignTo = (int) $originalStaff->id;
+                } else {
+
+                    /*
+                |--------------------------------------------------------------------------
+                | Original Staff Inactive
+                | Find NEXT Active Staff
+                |--------------------------------------------------------------------------
+                */
+
+                    $replacement = $activeStaff
+                        ->first(function ($staff) use ($originalStaffId) {
+
+                            return (int) $staff->id >
+                                (int) $originalStaffId;
+                        });
+
+
+                    /*
+                |--------------------------------------------------------------------------
+                | If no next active staff
+                | Start from first active staff
+                |--------------------------------------------------------------------------
+                */
+
+                    if (!$replacement) {
+                        $replacement = $activeStaff->first();
+                    }
+
+
+                    if (!$replacement) {
+                        continue;
+                    }
+
+
+                    $assignTo = (int) $replacement->id;
+                }
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | Count
+            |--------------------------------------------------------------------------
+            */
+
+                $allocation[$assignTo] =
+                    ($allocation[$assignTo] ?? 0) + 1;
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Prepare Staff List
+        |--------------------------------------------------------------------------
+        */
+
+            $staff = $activeStaff->map(function ($member) use ($allocation) {
+
+                return [
+                    'id'    => $member->id,
+                    'name'  => $member->name,
+                    'count' => $allocation[$member->id] ?? 0,
+                ];
+            })->values();
+
+
+            return response()->json([
+                'success' => true,
+                'total'   => $rtoOrders->count(),
+                'staff'   => $staff,
+            ]);
+        } catch (\Throwable $e) {
+
+            Log::error('RTO Staff Allocation Error', [
+                'client_id' => $clientId,
+                'message'   => $e->getMessage(),
+                'line'      => $e->getLine(),
+                'file'      => $e->getFile(),
+            ]);
+
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
     public function toggleAssignmentScheduler($id)
     {
         $scheduler =

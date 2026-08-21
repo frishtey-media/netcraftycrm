@@ -258,6 +258,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/assign-rto-orders', [AdminController::class, 'assignRtoOrders'])
         ->name('assign.rto.orders');
 
+
+    Route::get(
+        '/rto/staff-allocation/{client_id}',
+        [AdminController::class, 'rtoStaffAllocation']
+    )->name('rto.staff.allocation');
+
+
     Route::post('/assign-delivered-orders', [AdminController::class, 'assigndeliveredOrders'])
         ->name('assign.delivered.orders');
 

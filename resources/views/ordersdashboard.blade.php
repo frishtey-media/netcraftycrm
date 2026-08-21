@@ -189,33 +189,33 @@
         <div class="modal-dialog">
             <div class="modal-content p-3">
 
-                <h5>Assign Orders</h5>
+                <h5>Assign RTO Orders</h5>
 
-                <p>Total Orders: <strong id="totalOrders1"></strong></p>
+                <p>
+                    Total Orders:
+                    <strong id="totalOrders1">0</strong>
+                </p>
 
                 <form method="POST" action="{{ route('assign.rto.orders') }}">
                     @csrf
 
                     <input type="hidden" name="client_id" id="client_id1">
 
-                    @foreach ($allStaff as $staff)
-                        <div class="d-flex justify-content-between mb-2">
-                            <label>{{ $staff->name }}</label>
-
-                            <input type="number" name="assign[{{ $staff->id }}]" class="form-control w-25"
-                                min="0" placeholder="0">
+                    <div id="rtoStaffList">
+                        <div class="text-center py-3">
+                            Loading...
                         </div>
-                    @endforeach
+                    </div>
 
-                    <button class="btn btn-primary mt-3 w-100">
+                    <button type="submit" class="btn btn-primary mt-3 w-100">
                         Assign Orders
                     </button>
+
                 </form>
 
             </div>
         </div>
     </div>
-
     <div class="modal fade" id="assignModal2" tabindex="-1">
 
         <div class="modal-dialog">
@@ -315,9 +315,95 @@
     </script>
     <script>
         function openAssignModal1(clientId, totalOrders) {
+
             document.getElementById('client_id1').value = clientId;
             document.getElementById('totalOrders1').innerText = totalOrders;
-            new bootstrap.Modal(document.getElementById('assignModal1')).show();
+
+            const staffList = document.getElementById('rtoStaffList');
+
+            staffList.innerHTML = `
+        <div class="text-center py-3">
+            Loading staff allocation...
+        </div>
+    `;
+
+            new bootstrap.Modal(
+                document.getElementById('assignModal1')
+            ).show();
+
+            let url = "{{ route('rto.staff.allocation', ':clientId') }}";
+            url = url.replace(':clientId', clientId);
+
+            fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(async response => {
+
+                    const text = await response.text();
+
+                    console.log('RTO Allocation Status:', response.status);
+                    console.log('RTO Allocation Response:', text);
+
+                    if (!response.ok) {
+                        throw new Error(
+                            'HTTP ' + response.status + ': ' + text
+                        );
+                    }
+
+                    return JSON.parse(text);
+                })
+                .then(data => {
+
+                    console.log('RTO Allocation:', data);
+
+                    if (!data.success) {
+                        throw new Error(
+                            data.message || 'Allocation failed'
+                        );
+                    }
+
+                    let html = '';
+
+                    data.staff.forEach(staff => {
+
+                        html += `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+
+                    <label class="mb-0">
+                        ${staff.name}
+                    </label>
+
+                    <input
+                        type="number"
+                        name="assign[${staff.id}]"
+                        value="${staff.count}"
+                        class="form-control w-25"
+                        readonly
+                    >
+
+                </div>
+            `;
+                    });
+
+                    staffList.innerHTML = html;
+
+                    document.getElementById('totalOrders1').innerText =
+                        data.total;
+                })
+                .catch(error => {
+
+                    console.error('RTO Allocation Error:', error);
+
+                    staffList.innerHTML = `
+            <div class="text-danger">
+                ${error.message}
+            </div>
+        `;
+                });
         }
     </script>
     <script>

@@ -242,68 +242,110 @@
 
                     {{-- STAFF --}}
 
-                    <div class="mb-4">
+                    {{-- STAFF DISTRIBUTION --}}
+                    <div class="mb-4" id="staffDistributionSection">
 
                         <label class="form-label fw-bold">
                             Staff Distribution
                         </label>
 
+                        {{-- NORMAL ORDER TYPES --}}
+                        <div id="normalStaffDistribution">
 
-                        <div id="staffContainer">
+                            <div id="staffContainer">
 
-                            @foreach ($staff as $member)
-                                <div class="row align-items-center mb-2">
+                                @foreach ($staff as $member)
+                                    <div class="row align-items-center mb-2">
 
-                                    <div class="col-md-6">
+                                        <div class="col-md-6">
 
-                                        <div class="form-check">
+                                            <div class="form-check">
 
-                                            <input class="form-check-input staff-check" type="checkbox" name="staff_ids[]"
-                                                value="{{ $member->id }}" id="staff_{{ $member->id }}">
+                                                <input class="form-check-input staff-check" type="checkbox"
+                                                    name="staff_ids[]" value="{{ $member->id }}"
+                                                    id="staff_{{ $member->id }}">
 
-                                            <label class="form-check-label" for="staff_{{ $member->id }}">
+                                                <label class="form-check-label" for="staff_{{ $member->id }}">
+                                                    {{ $member->name }}
+                                                </label>
 
-                                                {{ $member->name }}
+                                            </div>
 
-                                            </label>
+                                        </div>
+
+                                        <div class="col-md-6">
+
+                                            <div class="input-group">
+
+                                                <input type="number" class="form-control staff-percentage"
+                                                    name="staff_percentages[{{ $member->id }}]"
+                                                    data-staff-id="{{ $member->id }}" min="0" max="100"
+                                                    step="0.01" value="0">
+
+                                                <span class="input-group-text">
+                                                    %
+                                                </span>
+
+                                            </div>
 
                                         </div>
 
                                     </div>
+                                @endforeach
+
+                            </div>
 
 
-                                    <div class="col-md-6">
+                            <div class="mt-3">
 
-                                        <div class="input-group">
+                                <strong>
+                                    Total Percentage:
+                                </strong>
 
-                                            <input type="number" class="form-control staff-percentage"
-                                                name="staff_percentages[{{ $member->id }}]"
-                                                data-staff-id="{{ $member->id }}" min="0" max="100"
-                                                step="0.01" value="0">
+                                <span id="totalPercentage" class="badge bg-danger">
+                                    0%
+                                </span>
 
-                                            <span class="input-group-text">
-                                                %
-                                            </span>
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-                            @endforeach
+                            </div>
 
                         </div>
 
 
-                        <div class="mt-3">
+                        {{-- RTO SPECIAL MODE --}}
+                        <div id="rtoAssignmentInfo" class="alert alert-info mb-0" style="display:none;">
 
-                            <strong>
-                                Total Percentage:
-                            </strong>
+                            <div class="d-flex align-items-start">
 
-                            <span id="totalPercentage" class="badge bg-danger">
-                                0%
-                            </span>
+                                <div class="me-3 fs-4">
+                                    🔄
+                                </div>
+
+                                <div>
+
+                                    <strong>
+                                        RTO Auto Assignment
+                                    </strong>
+
+                                    <div class="mt-1">
+                                        RTO orders will automatically be assigned
+                                        to the staff member who handled the original
+                                        order.
+                                    </div>
+
+                                    <div class="mt-2">
+                                        If the original staff member is inactive,
+                                        the order will automatically go to the
+                                        <strong>next active staff member</strong>.
+                                    </div>
+
+                                    <div class="mt-2 small text-muted">
+                                        Staff percentage distribution is not required
+                                        for RTO.
+                                    </div>
+
+                                </div>
+
+                            </div>
 
                         </div>
 
@@ -534,86 +576,223 @@
 
 
     <script>
-        document.addEventListener(
-            'DOMContentLoaded',
-            function() {
+        document.addEventListener('DOMContentLoaded', function() {
 
-                const checks =
-                    document.querySelectorAll('.staff-check');
+            const rtoCheckbox =
+                document.getElementById('typeRto');
 
-                const percentages =
-                    document.querySelectorAll('.staff-percentage');
+            const normalDistribution =
+                document.getElementById('normalStaffDistribution');
 
-                const totalElement =
-                    document.getElementById('totalPercentage');
+            const rtoInfo =
+                document.getElementById('rtoAssignmentInfo');
+
+            const checks =
+                document.querySelectorAll('.staff-check');
+
+            const percentages =
+                document.querySelectorAll('.staff-percentage');
+
+            const totalElement =
+                document.getElementById('totalPercentage');
 
 
-                function calculateTotal() {
-                    let total = 0;
+            /*
+            |--------------------------------------------------------------------------
+            | RTO MODE
+            |--------------------------------------------------------------------------
+            */
+
+            function updateOrderTypeUI() {
+
+                const isRto =
+                    rtoCheckbox &&
+                    rtoCheckbox.checked;
+
+
+                if (isRto) {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | RTO
+                    |--------------------------------------------------------------------------
+                    */
+
+                    normalDistribution.style.display = 'none';
+
+                    rtoInfo.style.display = 'block';
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Disable percentage inputs
+                    |--------------------------------------------------------------------------
+                    */
 
                     percentages.forEach(function(input) {
 
-                        const checkbox =
-                            document.getElementById(
-                                'staff_' +
-                                input.dataset.staffId
-                            );
+                        input.disabled = true;
 
-                        if (
-                            checkbox &&
-                            checkbox.checked
-                        ) {
-
-                            total +=
-                                parseFloat(input.value) || 0;
-                        }
+                        input.value = 0;
 
                     });
 
 
-                    totalElement.innerText =
-                        total.toFixed(2) + '%';
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Uncheck normal staff
+                    |--------------------------------------------------------------------------
+                    */
+
+                    checks.forEach(function(checkbox) {
+
+                        checkbox.checked = false;
+
+                        checkbox.disabled = true;
+
+                    });
 
 
-                    if (
-                        Math.abs(total - 100) < 0.01
-                    ) {
+                    totalElement.innerText = 'N/A';
 
-                        totalElement.className =
-                            'badge bg-success';
+                    totalElement.className =
+                        'badge bg-info';
 
-                    } else {
 
-                        totalElement.className =
-                            'badge bg-danger';
-                    }
+                } else {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | NORMAL MODE
+                    |--------------------------------------------------------------------------
+                    */
+
+                    normalDistribution.style.display = 'block';
+
+                    rtoInfo.style.display = 'none';
+
+
+                    percentages.forEach(function(input) {
+
+                        input.disabled = false;
+
+                    });
+
+
+                    checks.forEach(function(checkbox) {
+
+                        checkbox.disabled = false;
+
+                    });
+
+
+                    calculateTotal();
+
                 }
 
+            }
 
-                checks.forEach(function(check) {
 
-                    check.addEventListener(
-                        'change',
-                        calculateTotal
-                    );
+            /*
+            |--------------------------------------------------------------------------
+            | Calculate Percentage
+            |--------------------------------------------------------------------------
+            */
 
-                });
+            function calculateTotal() {
+
+                let total = 0;
 
 
                 percentages.forEach(function(input) {
 
-                    input.addEventListener(
-                        'input',
-                        calculateTotal
-                    );
+                    const checkbox =
+                        document.getElementById(
+                            'staff_' +
+                            input.dataset.staffId
+                        );
+
+
+                    if (
+                        checkbox &&
+                        checkbox.checked &&
+                        !input.disabled
+                    ) {
+
+                        total +=
+                            parseFloat(input.value) || 0;
+
+                    }
 
                 });
 
 
-                calculateTotal();
+                totalElement.innerText =
+                    total.toFixed(2) + '%';
+
+
+                if (
+                    Math.abs(total - 100) < 0.01
+                ) {
+
+                    totalElement.className =
+                        'badge bg-success';
+
+                } else {
+
+                    totalElement.className =
+                        'badge bg-danger';
+
+                }
 
             }
-        );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Events
+            |--------------------------------------------------------------------------
+            */
+
+            if (rtoCheckbox) {
+
+                rtoCheckbox.addEventListener(
+                    'change',
+                    updateOrderTypeUI
+                );
+
+            }
+
+
+            checks.forEach(function(check) {
+
+                check.addEventListener(
+                    'change',
+                    calculateTotal
+                );
+
+            });
+
+
+            percentages.forEach(function(input) {
+
+                input.addEventListener(
+                    'input',
+                    calculateTotal
+                );
+
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Initial State
+            |--------------------------------------------------------------------------
+            */
+
+            updateOrderTypeUI();
+
+        });
     </script>
 
 @endsection
