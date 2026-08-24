@@ -12,6 +12,8 @@ use App\Http\Controllers\Inventory\SaleController;
 use App\Http\Controllers\Inventory\WarehouseController;
 use App\Http\Controllers\Inventory\StockController;
 use App\Http\Controllers\Inventory\CallnumberIssueController;
+use App\Http\Controllers\Inventory\InventoryController;
+
 
 Route::prefix('inventory')->group(function () {
 
@@ -58,6 +60,20 @@ Route::prefix('inventory')->group(function () {
             ->name('sales.report');
         Route::get('/productreport', [ProductController::class, 'productreport'])
             ->name('products.report');
+
+
+
+        Route::get(
+            '/inventory/print-labels',
+            [InventoryController::class, 'printLabels']
+        )->name('inventory.printLabels');
+
+        Route::post(
+            '/inventory/print-labels/generate',
+            [InventoryController::class, 'generateLabels']
+        )->name('inventory.printLabels.generate');
+
+
 
         Route::get('/RTOreport', [ProductController::class, 'rtoreport'])
             ->name('rto.report');

@@ -40,27 +40,50 @@ class PostOfficeExportController extends Controller
 
     public function export(Request $request)
     {
+        ini_set('memory_limit', '1024M');
+        ini_set('max_execution_time', 300);
 
-        //  dd('Export method reached');
+        /*
+    |--------------------------------------------------------------------------
+    | VALIDATE IMPORT DATE
+    |--------------------------------------------------------------------------
+    */
+
         $request->validate([
             'import_date' => 'required|date',
         ]);
 
+        $importDate = $request->import_date;
+
         /*
-        |--------------------------------------------------------------------------
-        | Copy Shopify Orders to Orders Table
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | COPY SHOPIFY ORDERS TO MAIN ORDERS TABLE
+    |--------------------------------------------------------------------------
+    |
+    | shopify_orders = temporary table
+    | orders         = permanent/main table
+    |
+    */
 
         $duplicates = $this->copyShopifyOrdersToOrders(
-            $request->import_date
+            $importDate
         );
-        //dd($duplicates);
+
+        /*
+    |--------------------------------------------------------------------------
+    | STOP ON DUPLICATES
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    | If duplicate orders/barcodes are found,
+    | DO NOT DELETE shopify_orders.
+    |
+    */
+
         if (
             !empty($duplicates['duplicate_orders']) ||
             !empty($duplicates['duplicate_barcodes'])
         ) {
-
             return back()->with([
                 'duplicate_orders'   => $duplicates['duplicate_orders'],
                 'duplicate_barcodes' => $duplicates['duplicate_barcodes'],
@@ -68,32 +91,48 @@ class PostOfficeExportController extends Controller
         }
 
         /*
-        |--------------------------------------------------------------------------
-        | Shopify Orders
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | GET SHOPIFY ORDERS
+    |--------------------------------------------------------------------------
+    */
 
         $query = ShopifyOrder::query();
 
-        if ($this->isClient()) {
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT SECURITY
+    |--------------------------------------------------------------------------
+    */
 
+        if ($this->isClient()) {
             $query->where(
                 'client_id',
                 $this->clientId()
             );
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | SELECTED IMPORT DATE
+    |--------------------------------------------------------------------------
+    */
+
         $query->whereDate(
             'created_at',
-            $request->import_date
+            $importDate
         );
 
         $orders = $query
             ->orderBy('id')
             ->get();
 
-        if ($orders->isEmpty()) {
+        /*
+    |--------------------------------------------------------------------------
+    | NO ORDERS FOUND
+    |--------------------------------------------------------------------------
+    */
 
+        if ($orders->isEmpty()) {
             return back()->with(
                 'error',
                 'No orders found for selected Import Date.'
@@ -101,33 +140,128 @@ class PostOfficeExportController extends Controller
         }
 
         /*
+    |--------------------------------------------------------------------------
+    | GENERATE INDIA POST EXCEL
+    |--------------------------------------------------------------------------
+    |
+    | Excel is generated in memory first.
+    | We will clear the temporary table ONLY
+    | after Excel generation succeeds.
+    |
+    */
+
+        try {
+
+            $excelContent = Excel::raw(
+                new PostOfficeMultiSheetExport($orders),
+                \Maatwebsite\Excel\Excel::XLSX
+            );
+        } catch (\Throwable $e) {
+
+            /*
         |--------------------------------------------------------------------------
-        | Show Label Button
+        | EXCEL GENERATION FAILED
         |--------------------------------------------------------------------------
+        |
+        | DO NOT DELETE TEMP DATA.
+        |
         */
 
-        session([
-            'show_label' => true
-        ]);
+            return back()->with(
+                'error',
+                'India Post Excel could not be generated: ' .
+                    $e->getMessage()
+            );
+        }
 
         /*
-        |--------------------------------------------------------------------------
-        | Export Excel
-        |--------------------------------------------------------------------------
-        */
-        ShopifyOrder::whereDate('created_at', $request->import_date)
-            ->when($this->isClient(), function ($q) {
-                $q->where('client_id', $this->clientId());
-            })
+    |--------------------------------------------------------------------------
+    | MARK INDIA POST EXPORT COMPLETED
+    |--------------------------------------------------------------------------
+    */
+
+        ShopifyOrder::whereDate(
+            'created_at',
+            $importDate
+        )
+            ->when(
+                $this->isClient(),
+                function ($q) {
+                    $q->where(
+                        'client_id',
+                        $this->clientId()
+                    );
+                }
+            )
             ->update([
-                'postoffice_exported' => 1
+                'postoffice_exported' => 1,
             ]);
 
-        return Excel::download(
-            new PostOfficeMultiSheetExport($orders),
-            'india_post_' . now()->format('YmdHis') . '.xlsx'
+        /*
+    |--------------------------------------------------------------------------
+    | CLEAR TEMP SHOPIFY ORDERS
+    |--------------------------------------------------------------------------
+    |
+    | At this point:
+    |
+    | 1. Orders copied successfully to orders table
+    | 2. No duplicates found
+    | 3. India Post Excel generated successfully
+    |
+    | Therefore it is now safe to clear ONLY
+    | this import date from shopify_orders.
+    |
+    */
+
+        ShopifyOrder::whereDate(
+            'created_at',
+            $importDate
+        )
+            ->when(
+                $this->isClient(),
+                function ($q) {
+                    $q->where(
+                        'client_id',
+                        $this->clientId()
+                    );
+                }
+            )
+            ->delete();
+
+        /*
+    |--------------------------------------------------------------------------
+    | DOWNLOAD INDIA POST EXCEL
+    |--------------------------------------------------------------------------
+    */
+
+        $fileName =
+            'india_post_' .
+            now()->format('YmdHis') .
+            '.xlsx';
+
+        return response(
+            $excelContent,
+            200,
+            [
+                'Content-Type' =>
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+                'Content-Disposition' =>
+                'attachment; filename="' . $fileName . '"',
+
+                'Content-Length' =>
+                strlen($excelContent),
+
+                'Cache-Control' =>
+                'max-age=0, no-cache, no-store, must-revalidate',
+
+                'Pragma' =>
+                'public',
+            ]
         );
-    }/*
+    }
+
+    /*
 |--------------------------------------------------------------------------
 | COPY SHOPIFY ORDERS TO ORDERS TABLE
 |--------------------------------------------------------------------------

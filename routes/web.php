@@ -160,6 +160,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/labels', [OrderController::class, 'labelIndex'])->name('labels.index');
     Route::get('/labels/final-export', [OrderController::class, 'finalLabelExport'])->name('labels.final.export');
+
+
     Route::post(
         '/export-post-office',
         [PostOfficeExportController::class, 'export']

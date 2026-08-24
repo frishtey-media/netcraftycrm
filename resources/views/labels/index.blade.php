@@ -6,9 +6,9 @@
 
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-        {{-- =========================
+        {{-- =========================================================
         DUPLICATE ORDER ALERT
-    ========================== --}}
+    ========================================================== --}}
 
         @if (session('duplicate_orders'))
             <script>
@@ -34,46 +34,48 @@
 
                     if (result.isConfirmed) {
 
-                        let form = document.createElement('form');
+                        let form =
+                            document.createElement('form');
 
                         form.method = 'POST';
 
-                        form.action = "{{ route('clear.duplicates') }}";
+                        form.action =
+                            "{{ route('clear.duplicates') }}";
 
-                        let token = document.createElement('input');
+                        let token =
+                            document.createElement('input');
 
                         token.type = 'hidden';
-
                         token.name = '_token';
-
                         token.value = "{{ csrf_token() }}";
 
                         form.appendChild(token);
 
-                        let ids = document.createElement('input');
+                        let ids =
+                            document.createElement('input');
 
                         ids.type = 'hidden';
-
                         ids.name = 'order_ids';
-
                         ids.value = JSON.stringify(duplicates);
 
                         form.appendChild(ids);
 
-                        let importDate = document.createElement('input');
+                        let importDate =
+                            document.createElement('input');
 
                         importDate.type = 'hidden';
-
                         importDate.name = 'import_date';
 
-                        importDate.value = document.getElementById('import_date').value;
+                        importDate.value =
+                            document.getElementById(
+                                'import_date'
+                            ).value;
 
                         form.appendChild(importDate);
 
                         document.body.appendChild(form);
 
                         form.submit();
-
                     }
 
                 });
@@ -81,10 +83,9 @@
         @endif
 
 
-
-        {{-- =========================
+        {{-- =========================================================
         SUCCESS
-    ========================== --}}
+    ========================================================== --}}
 
         @if (session('success'))
             <script>
@@ -107,10 +108,9 @@
         @endif
 
 
-
-        {{-- =========================
+        {{-- =========================================================
         ERROR
-    ========================== --}}
+    ========================================================== --}}
 
         @if (session('error'))
             <script>
@@ -126,6 +126,7 @@
             </script>
         @endif
 
+
         @if ($errors->any())
             <div class="alert alert-danger">
 
@@ -140,41 +141,138 @@
             </div>
         @endif
 
-        <div class="row">
 
-            @if ($orders->count())
-                <div class="col-lg-6">
+        {{-- =========================================================
+        PAGE HEADER
+    ========================================================== --}}
 
-                    <!-- Post Office Export Card -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
 
-                    <div class="card shadow-sm border-0">
+            <div>
 
-                        <div class="card-header bg-primary text-white">
+                <h3 class="fw-bold mb-1">
+                    <i class="bi bi-box-seam me-2"></i>
+                    India Post Export
+                </h3>
+
+                <div class="text-muted">
+                    Export imported orders to India Post format
+                </div>
+
+            </div>
+
+            <div>
+
+                <span class="badge bg-primary px-3 py-2">
+                    Import Date:
+                    {{ \Carbon\Carbon::parse($importDate)->format('d-m-Y') }}
+                </span>
+
+            </div>
+
+        </div>
+
+
+        {{-- =========================================================
+        INDIA POST EXPORT CARD
+    ========================================================== --}}
+
+        @if ($orders->count())
+            <div class="row justify-content-center">
+
+                <div class="col-xl-7 col-lg-8 col-md-10">
+
+                    <div class="card border-0 shadow-sm">
+
+                        <div class="card-header bg-primary text-white py-3">
 
                             <h5 class="mb-0">
-                                Post Office Export
+
+                                <i class="bi bi-file-earmark-excel me-2"></i>
+
+                                Export India Post File
+
                             </h5>
 
                         </div>
 
-                        <div class="card-body">
 
-                            <form action="{{ route('postoffice.export') }}" method="POST">
+                        <div class="card-body p-4">
+
+                            <div class="alert alert-info">
+
+                                <i class="bi bi-info-circle me-2"></i>
+
+                                Select the import date and download the
+                                India Post file. After successful export,
+                                the imported temporary data will be moved
+                                to the main Orders table.
+
+                            </div>
+
+
+                            <form action="{{ route('postoffice.export') }}" method="POST" id="postOfficeForm">
 
                                 @csrf
 
-                                <div class="mb-3">
 
-                                    <label>Import Date</label>
+                                {{-- IMPORT DATE --}}
 
-                                    <input type="date" id="import_date" name="import_date" class="form-control"
-                                        value="{{ $importDate }}" required>
+                                <div class="mb-4">
+
+                                    <label for="import_date" class="form-label fw-semibold">
+                                        Import Date
+                                    </label>
+
+                                    <input type="date" id="import_date" name="import_date"
+                                        class="form-control form-control-lg" value="{{ $importDate }}" required>
 
                                 </div>
 
-                                <button class="btn btn-primary w-100">
 
-                                    Export Post Office Format
+                                {{-- ORDER COUNT --}}
+
+                                <div class="bg-light rounded p-3 mb-4">
+
+                                    <div class="row text-center">
+
+                                        <div class="col-6">
+
+                                            <div class="text-muted small">
+                                                Orders Found
+                                            </div>
+
+                                            <div class="fs-3 fw-bold text-primary">
+                                                {{ $orders->total() }}
+                                            </div>
+
+                                        </div>
+
+
+                                        <div class="col-6 border-start">
+
+                                            <div class="text-muted small">
+                                                Selected Date
+                                            </div>
+
+                                            <div class="fw-bold">
+                                                {{ \Carbon\Carbon::parse($importDate)->format('d M Y') }}
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                {{-- EXPORT BUTTON --}}
+
+                                <button type="submit" class="btn btn-primary btn-lg w-100">
+
+                                    <i class="bi bi-download me-2"></i>
+
+                                    Export India Post Format
 
                                 </button>
 
@@ -186,271 +284,85 @@
 
                 </div>
 
+            </div>
+        @else
+            {{-- =====================================================
+            NO ORDERS
+        ====================================================== --}}
 
-                <div class="col-lg-6">
+            <div class="row justify-content-center">
 
-                    <div class="card shadow-sm border-0">
+                <div class="col-lg-8">
 
-                        <div class="card-header bg-success text-white">
+                    <div class="card border-0 shadow-sm">
 
-                            <h5 class="mb-0">
+                        <div class="card-body text-center py-5">
 
-                                Label Export
+                            <div class="mb-3">
 
-                            </h5>
-
-                        </div>
-
-                        <div class="card-body">
-
-                            <button class="btn btn-success" {{ $canGenerate ? '' : 'disabled' }} data-bs-toggle="modal"
-                                data-bs-target="#senderModal">
-
-                                Generate Label PDF
-
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-            @else
-                <div class="col-12">
-
-                    <div class="alert alert-warning text-center">
-
-                        <h5 class="mb-0">
-
-                            No Orders Available for Selected Import Date
-
-                        </h5>
-
-                    </div>
-
-                </div>
-            @endif
-
-        </div>
-        {{-- ===========================================
-    LABEL EXPORT MODAL
-============================================ --}}
-        <div class="modal fade" id="senderModal" tabindex="-1" aria-hidden="true">
-
-            <div class="modal-dialog modal-lg">
-
-                <form method="POST" action="{{ route('labels.export') }}">
-
-                    @csrf
-                    <input type="hidden" name="import_date" value="{{ $importDate }}">
-                    <div class="modal-content">
-
-                        <div class="modal-header bg-success text-white">
-
-                            <h5 class="modal-title">
-
-                                <i class="bi bi-printer"></i>
-
-                                Generate India Post Labels
-
-                            </h5>
-
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal">
-                            </button>
-
-                        </div>
-
-                        <div class="modal-body">
-
-                            <div class="row">
-
-                                {{-- CLIENT --}}
-
-                                @if (auth()->user()->role == 'client')
-                                    <div class="col-md-12 mb-3">
-
-                                        <label class="form-label">
-
-                                            Client
-
-                                        </label>
-
-                                        <input type="text" class="form-control"
-                                            value="{{ $clients->first()->client_name }}" readonly>
-
-                                    </div>
-                                @else
-                                    <div class="col-md-6 mb-3">
-
-                                        <label class="form-label">
-
-                                            Client
-
-                                        </label>
-
-                                        <select class="form-control" disabled>
-
-                                            @foreach ($clients as $client)
-                                                <option>
-
-                                                    {{ $client->client_name }}
-
-                                                </option>
-                                            @endforeach
-
-                                        </select>
-
-                                    </div>
-                                @endif
-
-
-                                {{-- IMPORT DATE --}}
-
-                                <div class="col-md-6 mb-3">
-
-                                    <label class="form-label">
-
-                                        Import Date
-
-                                    </label>
-
-                                    <input type="date" class="form-control" value="{{ $importDate }}" readonly>
-
-                                </div>
-
-
-                                {{-- SENDER --}}
-
-                                <div class="col-md-12">
-
-                                    <label class="form-label">
-
-                                        Sender
-
-                                    </label>
-
-                                    <select class="form-control" name="sender_id" required>
-
-                                        <option value="">
-
-                                            Select Sender
-
-                                        </option>
-
-                                        @foreach ($senders as $sender)
-                                            <option value="{{ $sender->id }}">
-
-                                                {{ $sender->customer_name }}
-
-                                            </option>
-                                        @endforeach
-
-                                    </select>
-
-                                </div>
+                                <i class="bi bi-inbox" style="font-size:60px;color:#adb5bd;"></i>
 
                             </div>
 
-                        </div>
+                            <h5 class="fw-bold">
+                                No Orders Available
+                            </h5>
 
-                        <div class="modal-footer">
+                            <p class="text-muted mb-0">
 
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                No imported orders were found for
 
-                                Close
+                                <strong>
+                                    {{ \Carbon\Carbon::parse($importDate)->format('d-m-Y') }}
+                                </strong>
 
-                            </button>
-
-                            <button type="submit" class="btn btn-success">
-
-                                <i class="bi bi-file-earmark-pdf"></i>
-
-                                Generate Labels
-
-                            </button>
+                            </p>
 
                         </div>
 
                     </div>
 
-                </form>
+                </div>
 
             </div>
+        @endif
 
-        </div>
-        @push('scripts')
-            <script>
-                $(function() {
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Post Office Export
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $('form[action="{{ route('postoffice.export') }}"]').on('submit', function() {
-
-                        let btn = $(this).find('button[type=submit]');
-
-                        btn.prop('disabled', true);
-
-                        btn.html(
-                            '<span class="spinner-border spinner-border-sm"></span> Preparing Export...'
-                        );
-
-                    });
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Label Export
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $('form[action="{{ route('labels.export') }}"]').on('submit', function() {
-
-                        let sender = $(this).find('[name=sender_id]').val();
-
-                        if (sender == '') {
-
-                            Swal.fire({
-
-                                icon: 'warning',
-
-                                title: 'Select Sender',
-
-                                text: 'Please select sender first.'
-
-                            });
-
-                            return false;
-                        }
-
-                        let btn = $(this).find('button[type=submit]');
-
-                        btn.prop('disabled', true);
-
-                        btn.html(
-                            '<span class="spinner-border spinner-border-sm"></span> Generating PDF...'
-                        );
-
-                    });
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Focus Sender
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $('#senderModal').on('shown.bs.modal', function() {
-
-                        $(this).find('[name=sender_id]').focus();
-
-                    });
-
-                });
-            </script>
-        @endpush
 
     </div>
+
+
+    {{-- =============================================================
+    EXPORT LOADING
+============================================================== --}}
+
+    @push('scripts')
+        <script>
+            $(function() {
+
+                $('#postOfficeForm').on(
+                    'submit',
+                    function() {
+
+                        let btn =
+                            $(this).find(
+                                'button[type=submit]'
+                            );
+
+                        btn.prop(
+                            'disabled',
+                            true
+                        );
+
+                        btn.html(
+                            '<span class="spinner-border spinner-border-sm me-2"></span>' +
+                            'Preparing India Post File...'
+                        );
+
+                    }
+                );
+
+            });
+        </script>
+    @endpush
 
 @endsection

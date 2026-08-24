@@ -40,18 +40,16 @@ class LabelController extends Controller
     public function export(Request $request)
     {
         ini_set('memory_limit', '1024M');
-
         ini_set('max_execution_time', 300);
 
         $request->validate([
             'sender_id' => 'required|exists:label_senders,id',
+            'import_date' => 'required|date',
         ]);
 
         $sender = LabelSender::findOrFail(
             $request->sender_id
         );
-
-
 
         /*
     |--------------------------------------------------------------------------
@@ -69,7 +67,39 @@ class LabelController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | GET ORDERS
+    | CHECK INDIA POST EXPORT
+    |--------------------------------------------------------------------------
+    */
+
+        $allowed = ShopifyOrder::whereDate(
+            'created_at',
+            $request->import_date
+        )
+            ->when(
+                $this->isClient(),
+                function ($q) {
+                    $q->where(
+                        'client_id',
+                        $this->clientId()
+                    );
+                }
+            )
+            ->where(
+                'postoffice_exported',
+                1
+            )
+            ->exists();
+
+        if (!$allowed) {
+            return back()->with(
+                'error',
+                'Please export India Post Excel first.'
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | GET TEMP ORDERS
     |--------------------------------------------------------------------------
     */
 
@@ -78,110 +108,66 @@ class LabelController extends Controller
         );
 
         if ($this->isClient()) {
-
             $query->where(
                 'client_id',
                 $this->clientId()
             );
         }
 
+        $query->whereDate(
+            'created_at',
+            $request->import_date
+        );
+
         $orders = $query
             ->latest()
             ->get();
 
         if ($orders->isEmpty()) {
-
             return back()->with(
                 'error',
                 'No orders found for label generation.'
             );
         }
 
-        try {
+        /*
+    |--------------------------------------------------------------------------
+    | GENERATE PDF
+    |--------------------------------------------------------------------------
+    */
 
-            /*
-        |--------------------------------------------------------------------------
-        | PDF GENERATE
-        |--------------------------------------------------------------------------
-        */
+        try {
 
             $pdf = Pdf::loadView(
                 'labels.pdf',
                 [
                     'orders' => $orders,
-                    'sender' => $sender
+                    'sender' => $sender,
                 ]
             )
-                ->setPaper([0, 0, 288, 432], 'portrait')
+                ->setPaper(
+                    [0, 0, 288, 432],
+                    'portrait'
+                )
                 ->setOptions([
                     'isRemoteEnabled' => true,
-                    'defaultFont' => 'sans-serif'
+                    'defaultFont' => 'sans-serif',
                 ]);
-
-            /*
-        |--------------------------------------------------------------------------
-        | PDF OUTPUT
-        |--------------------------------------------------------------------------
-        */
 
             $pdfContent = $pdf->output();
 
             /*
         |--------------------------------------------------------------------------
-        | DELETE SHOPIFY ORDERS
+        | DOWNLOAD ONLY
         |--------------------------------------------------------------------------
-        */
-            $importDate = request('import_date');
-
-            $allowed = ShopifyOrder::whereDate(
-                'created_at',
-                $importDate
-            )
-
-                ->when(auth()->user()->role == 'client', function ($q) {
-
-                    $q->where(
-                        'client_id',
-                        auth()->user()->client_id
-                    );
-                })
-
-                ->where(
-                    'postoffice_exported',
-                    1
-                )
-
-                ->exists();
-
-            if (!$allowed) {
-
-                return back()->with(
-
-                    'error',
-
-                    'Please export India Post Excel first.'
-
-                );
-            }
-            ShopifyOrder::whereDate(
-                'created_at',
-                $importDate
-            )
-
-                ->when(auth()->user()->role == 'client', function ($q) {
-
-                    $q->where(
-                        'client_id',
-                        auth()->user()->client_id
-                    );
-                })
-
-                ->delete();
-
-            /*
-        |--------------------------------------------------------------------------
-        | DOWNLOAD RESPONSE
-        |--------------------------------------------------------------------------
+        |
+        | IMPORTANT:
+        | Do NOT delete shopify_orders here.
+        |
+        | shopify_orders will be cleared by
+        | PostOfficeExportController after successful
+        | India Post export.
+        |
         */
 
             $fileName =

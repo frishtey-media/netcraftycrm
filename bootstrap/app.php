@@ -30,31 +30,17 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function ($schedule) {
 
-
         $schedule->command('sync:shopify-orders')
             ->everyMinute()
             ->withoutOverlapping();
-
 
         $schedule->command('sync:shopify-abandoned-checkouts')
             ->everyMinute()
             ->withoutOverlapping();
 
-
         $schedule->command('orders:run-assignment-schedulers')
             ->everyMinute()
             ->withoutOverlapping();
-
-        /*
-    |--------------------------------------------------------------------------
-    | Delhivery Tracking Sync
-    |--------------------------------------------------------------------------
-    |
-    | Every 5 minutes:
-    | Find active Delhivery shipments and dispatch
-    | tracking jobs.
-    |
-    */
 
         $schedule->call(function () {
 
@@ -77,8 +63,4 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
     })
 
-
-
-    ->withExceptions(function (Exceptions $exceptions): void {
-        //
-    })->create();
+    ->withExceptions(function (Exceptions $exceptions): void {})->create();
