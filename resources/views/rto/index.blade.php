@@ -4,7 +4,7 @@
 
     <div class="card mb-3">
         <h4 class="text-center p-3">RTO Received Report</h4>
-        <hr>
+
 
         {{-- Success Message --}}
         @if (session('success'))
@@ -44,26 +44,26 @@
             </div>
         @endif
         {{-- Upload Excel --}}
-        <form method="POST" action="{{ route('rto.search') }}" enctype="multipart/form-data">
-            @csrf
+        <!-- <form method="POST" action="{{ route('rto.search') }}" enctype="multipart/form-data">
+                    @csrf
 
-            <div class="card-body">
-                <div class="row">
+                    <div class="card-body">
+                        <div class="row">
 
-                    <div class="col-md-4">
-                        <label>Upload RTO Barcodes (Excel)</label>
-                        <input type="file" name="rtobarcodes" class="form-control" required>
+                            <div class="col-md-4">
+                                <label>Upload RTO Barcodes (Excel)</label>
+                                <input type="file" name="rtobarcodes" class="form-control" required>
+                            </div>
+
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-success">
+                                    Submit
+                                </button>
+                            </div>
+
+                        </div>
                     </div>
-
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-success">
-                            Submit
-                        </button>
-                    </div>
-
-                </div>
-            </div>
-        </form>
+                </form>-->
     </div>
 
     {{-- Export Button --}}

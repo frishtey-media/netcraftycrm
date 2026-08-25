@@ -81,6 +81,13 @@
             <i class="bi bi-tags"></i>
             Print Labels
         </a>
+        <a href="{{ route('inventory.rto') }}" class="{{ request()->routeIs('inventory.rto') ? 'active' : '' }}">
+
+            <i class="bi bi-arrow-return-left"></i>
+            <span>RTO Scan Upload</span>
+
+        </a>
+
         <a href="{{ route('callnumber-issues.index') }}">
             <i class="bi bi-building"></i> Phone Numbers
         </a>

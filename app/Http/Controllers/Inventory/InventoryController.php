@@ -9,8 +9,14 @@ use App\Models\LabelSender;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use App\Imports\RTOBarcodeImport;
+use App\Models\RtoReport;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Session;
 
 class InventoryController extends Controller
+
 {
     /**
      * Check if logged-in user is a client.
@@ -32,6 +38,279 @@ class InventoryController extends Controller
     /**
      * Inventory - Print Labels Page
      */
+
+    /**
+     * RTO Barcode Upload / Receive
+     */
+    public function rto(Request $request)
+    {
+        return view('inventory.rto');
+    }
+    public function uploadRto(Request $request)
+    {
+        try {
+
+            /*
+        |--------------------------------------------------------------------------
+        | VALIDATE EXCEL
+        |--------------------------------------------------------------------------
+        */
+
+            $request->validate([
+                'rtobarcodes' => 'required|mimes:xls,xlsx',
+            ]);
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | READ EXCEL
+        |--------------------------------------------------------------------------
+        */
+
+            $barcodes = Excel::toArray(
+                new RTOBarcodeImport,
+                $request->file('rtobarcodes')
+            );
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | GET UNIQUE BARCODES
+        |--------------------------------------------------------------------------
+        */
+
+            $barcodeList = collect($barcodes[0] ?? [])
+                ->flatten()
+                ->filter()
+                ->map(function ($barcode) {
+
+                    return trim((string) $barcode);
+                })
+                ->unique()
+                ->values()
+                ->toArray();
+
+
+            $totalUploaded = count($barcodeList);
+
+
+            if ($totalUploaded === 0) {
+
+                return redirect()
+                    ->route('inventory.rto')
+                    ->with(
+                        'rto_error',
+                        'Excel file does not contain any valid barcode.'
+                    );
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | ALREADY SCANNED RTO
+        |--------------------------------------------------------------------------
+        */
+
+            $existingBarcodes = RtoReport::whereIn(
+                'tracking_no',
+                $barcodeList
+            )
+                ->pluck('tracking_no')
+                ->toArray();
+
+
+            $skippedBarcodes = $existingBarcodes;
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | NEW BARCODES ONLY
+        |--------------------------------------------------------------------------
+        */
+
+            $newBarcodes = array_values(
+                array_diff(
+                    $barcodeList,
+                    $existingBarcodes
+                )
+            );
+
+
+            $skippedCount = count($existingBarcodes);
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | FIND ORDERS
+        |--------------------------------------------------------------------------
+        */
+
+            $orders = Order::whereIn(
+                'barcode',
+                $newBarcodes
+            )
+                ->orderBy('date', 'desc')
+                ->get();
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | NOT FOUND BARCODES
+        |--------------------------------------------------------------------------
+        */
+
+            $foundBarcodes = $orders
+                ->pluck('barcode')
+                ->filter()
+                ->toArray();
+
+
+            $notFoundBarcodes = array_values(
+                array_diff(
+                    $newBarcodes,
+                    $foundBarcodes
+                )
+            );
+
+
+            $notFoundCount = count($notFoundBarcodes);
+
+            $foundCount = $orders->count();
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | UPDATE ORDER RTO STATUS
+        |--------------------------------------------------------------------------
+        */
+
+            if (!empty($foundBarcodes)) {
+
+                Order::whereIn(
+                    'barcode',
+                    $foundBarcodes
+                )
+                    ->update([
+                        'rtorecivedsts'  => 1,
+                        'rtoreciveddate' => Carbon::now(),
+                    ]);
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | CREATE RTO REPORT
+        |--------------------------------------------------------------------------
+        |
+        | IMPORTANT:
+        | Excel download nahi hoga.
+        | RTO Report isi upload process me create hoga.
+        |
+        */
+
+            $reportCreated = 0;
+
+            foreach ($orders as $order) {
+
+                if (empty($order->barcode)) {
+                    continue;
+                }
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | EXTRA DUPLICATE SAFETY CHECK
+            |--------------------------------------------------------------------------
+            */
+
+                $alreadyExists = RtoReport::where(
+                    'tracking_no',
+                    $order->barcode
+                )->exists();
+
+
+                if ($alreadyExists) {
+                    continue;
+                }
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | SAVE RTO REPORT
+            |--------------------------------------------------------------------------
+            */
+
+                RtoReport::create([
+
+                    'order_id'         => $order->order_id,
+
+                    'tracking_no'      => $order->barcode,
+
+                    'customer_name'    => $order->customer_name,
+
+                    'customer_phone'   => $order->customer_phone,
+
+                    'father_name'      => $order->father_name,
+
+                    'shipping_address' => $order->shipping_address,
+
+                    'payment_mode'     => $order->payment_mode,
+
+                    'amount'           => $order->amount,
+
+                    'product'          => $order->product,
+
+                    'quantity'         => $order->quantity,
+
+                    'weight'           => $order->weight,
+
+                    'order_date'       => $order->date,
+
+                    'is_exported'      => '0',
+
+                ]);
+
+
+                $reportCreated++;
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | SUCCESS MESSAGE
+        |--------------------------------------------------------------------------
+        */
+
+            $message = "
+            <strong>Total Uploaded:</strong> {$totalUploaded}<br>
+            <strong>New RTO Found:</strong> {$foundCount}<br>
+            <strong>RTO Report Created:</strong> {$reportCreated}<br>
+            <strong>Already Scanned / Skipped:</strong> {$skippedCount}<br>
+            <strong>Not Found:</strong> {$notFoundCount}
+        ";
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | RETURN TO RTO PAGE
+        |--------------------------------------------------------------------------
+        */
+
+            return redirect()
+                ->route('inventory.rto')
+                ->with('rto_success', $message)
+                ->with('rto_skipped', $skippedBarcodes)
+                ->with('rto_not_found', $notFoundBarcodes);
+        } catch (\Exception $e) {
+
+            return redirect()
+                ->route('inventory.rto')
+                ->with(
+                    'rto_error',
+                    'RTO upload failed: ' . $e->getMessage()
+                );
+        }
+    }
     public function printLabels(Request $request)
     {
         /*

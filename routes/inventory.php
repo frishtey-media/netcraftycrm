@@ -73,7 +73,15 @@ Route::prefix('inventory')->group(function () {
             [InventoryController::class, 'generateLabels']
         )->name('inventory.printLabels.generate');
 
+        Route::get(
+            '/inventory/rto',
+            [InventoryController::class, 'rto']
+        )->name('inventory.rto');
 
+        Route::post(
+            '/inventory/rto/upload',
+            [InventoryController::class, 'uploadRto']
+        )->name('inventory.rto.upload');
 
         Route::get('/RTOreport', [ProductController::class, 'rtoreport'])
             ->name('rto.report');

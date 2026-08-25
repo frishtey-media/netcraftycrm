@@ -223,6 +223,9 @@ Route::middleware(['auth'])->group(function () {
 
 
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
+    Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
+
+
     Route::get('/rto/details', [RTOController::class, 'details'])
         ->name('rto.details');
 
@@ -234,7 +237,10 @@ Route::middleware(['auth'])->group(function () {
         [OrderController::class, 'manualDelivery']
     )->name('orders.manual.delivery');
 
-    Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
+
+
+
+
     Route::get('/rto-export', [RTOController::class, 'export'])->name('rto.export');
     Route::get('/record/create', [RecordController::class, 'create'])->name('record.create');
     Route::post('/record/store', [RecordController::class, 'store'])->name('record.store');
