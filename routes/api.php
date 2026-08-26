@@ -7,3 +7,5 @@ Route::get('/verified-orders', [
     CallingOrderApiController::class,
     'verifiedOrders'
 ]);
+
+Route::post('/knowlarity/log', [CallingOrderApiController::class, 'store']);

@@ -1,62 +1,16 @@
 @extends('layouts.admin')
 
 @section('content')
+
     <style>
         #barcodeTable {
-            padding-top: 25px;
-        }
-
-        .report-card {
-            border-radius: 15px;
-            transition: all .3s;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
-        }
-
-        .report-card:hover {
-            transform: translateY(-3px);
-        }
-
-        .report-card .count {
-            font-size: 34px;
-            font-weight: 700;
-        }
-
-        .report-card .title {
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .dashboard-card {
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
-        }
-
-        .dashboard-card .card-header {
-            padding: 8px 15px;
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .dashboard-card .card-body {
-            padding: 12px 15px;
-        }
-
-        .dashboard-card p {
-            margin-bottom: 6px;
-            font-size: 14px;
-        }
-
-        .dashboard-card b {
-            font-size: 16px;
-        }
-
-        .row.g-4 {
-            --bs-gutter-y: 12px;
+            padding-top: 15px;
         }
 
         .card {
+            border: none;
             border-radius: 12px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, .08);
         }
 
         .form-label {
@@ -71,16 +25,15 @@
             font-size: 14px;
         }
 
+        textarea.form-control {
+            height: auto;
+        }
+
         .btn {
-            height: 42px;
+            min-height: 42px;
             border-radius: 8px;
             font-weight: 500;
         }
-
-        .card-body {
-            padding: 20px;
-        }
-
 
         .filter-badge {
             display: inline-flex;
@@ -117,12 +70,8 @@
             color: #555;
         }
 
-        .btn-light {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-
         .stat-card {
+            min-height: 90px;
             border-radius: 12px;
             transition: .2s;
         }
@@ -131,14 +80,19 @@
             transform: translateY(-3px);
         }
 
+        .stat-card .card-body {
+            padding: 14px;
+        }
+
         .icon {
-            width: 52px;
-            height: 52px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 20px;
+            flex-shrink: 0;
         }
 
         .bg-purple {
@@ -146,1851 +100,1561 @@
             color: #8e44ad;
         }
 
-        .summary-head {
-            background: #082b68;
-            color: #fff;
-        }
-
-        .summary-head th {
-
-            background: #0d2d68 !important;
-
-            color: #fff;
-
-            font-size: 13px;
-
-            font-weight: 600;
-
-        }
-
-        .table td,
-        .table th {
-
-            padding: .55rem;
-
-            font-size: 13px;
-
-            vertical-align: middle;
-
-        }
-
-        .table tbody th {
-            background: #fafafa;
-        }
-
-        .container-fluid {
-
-            max-width: 1900px;
-
-            margin: auto;
-
-        }
-
-        .card {
-
-            border: none;
-
-            border-radius: 10px;
-
-            box-shadow: 0 1px 6px rgba(0, 0, 0, .08);
-
-        }
-
         .summary-head th {
             background: #082b68 !important;
             color: #fff !important;
             border-color: #082b68 !important;
+            font-size: 13px;
             font-weight: 600;
         }
 
-        .dashboard-card {
-            border-radius: 12px;
-            box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .08);
-            height: 100%;
+        .table td,
+        .table th {
+            padding: .55rem;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        .badge {
+            padding: 7px 10px;
+            font-size: 12px;
+            border-radius: 20px;
         }
 
         .chart-card {
             height: 320px;
-        }
-
-        .chart-card .card-body {
-            height: 100%;
-        }
-
-        .staff-card {
-
-            height: 320px;
-
-            overflow: auto;
-
         }
 
         .chart-card canvas {
             width: 100% !important;
-            height: 240px !important;
-        }
-
-        .chart-card {
-
-            height: 320px;
-
-            border-radius: 12px;
-
-        }
-
-        .chart-card canvas {
-
             height: 250px !important;
-
         }
 
-        .card {
-
-            border-radius: 12px;
-
-        }
-
-        .card h6 {
-
-            font-weight: 600;
-
-            margin-bottom: 15px;
-
-        }
-
-        .progress {
-
-            height: 8px;
-
-            background: #eee;
-
-        }
-
-        .progress-bar {
-
-            border-radius: 10px;
-
-        }
-
-        .table td {
-
-            vertical-align: middle;
-
-        }
-
-        .badge {
-
-            padding: 7px 10px;
-
-            font-size: 12px;
-
-            border-radius: 20px;
-
-        }
-
-        .card-header {
-
-            font-weight: 600;
-
-        }
-
-        .card-body small {
-
-            font-size: 12px;
-
-            color: #999;
-
-        }
-
-        .card-body h5 {
-
-            margin: 0;
-
-            font-weight: 700;
-
-        }
-
-        .card-body h6 {
-
-            margin: 0;
-
-            font-weight: 600;
-
-        }
-
+        .staff-card,
         .client-card {
-
             height: 320px;
-
             overflow: auto;
-
         }
 
         .insight-card {
-
             height: 320px;
-
         }
 
-        .stat-card {
-
-            height: 74px;
-
-            border-radius: 12px;
-
+        .status-delivered {
+            background: #198754 !important;
+            color: #fff !important;
         }
 
-        .stat-card .card-body {
-
-            padding: 12px;
-
+        .status-rto {
+            background: #dc3545 !important;
+            color: #fff !important;
         }
 
-        .icon {
+        .status-transit {
+            background: #0d6efd !important;
+            color: #fff !important;
+        }
 
-            width: 44px;
+        .status-hold {
+            background: #ffc107 !important;
+            color: #212529 !important;
+        }
 
-            height: 44px;
+        .status-other {
+            background: #6c757d !important;
+            color: #fff !important;
+        }
 
-            font-size: 18px;
-
+        .status-empty {
+            background: #f8f9fa !important;
+            color: #212529 !important;
+            border: 1px solid #dee2e6;
         }
     </style>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
 
-            <form method="GET" action="{{ route('orders.list') }}">
 
-                <div class="row g-3 align-items-end">
+    <div class="container-fluid">
 
-                    <!-- Client -->
-                    <div class="col-lg-2 col-md-6">
-                        <label class="form-label fw-semibold small">Client</label>
+        {{-- =========================================================
+         FILTERS
+    ========================================================== --}}
 
-                        @if (auth()->user()->role == 'client')
-                            <input type="hidden" name="client_id" value="{{ $clients->first()->id }}">
+        <div class="card shadow-sm border-0 mb-4">
 
-                            <input type="text" class="form-control" value="{{ $clients->first()->client_name }}"
-                                readonly>
-                        @else
-                            <select name="client_id" id="client_id" class="form-select">
-                                <option value="">Select Client</option>
+            <div class="card-body">
 
-                                @foreach ($clients as $client)
-                                    <option value="{{ $client->id }}"
-                                        {{ request('client_id') == $client->id ? 'selected' : '' }}>
-                                        {{ $client->client_name }}
+                <form method="GET" action="{{ route('orders.list') }}">
+
+                    <div class="row g-3 align-items-end">
+
+                        {{-- CLIENT --}}
+                        <div class="col-lg-2 col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Client
+                            </label>
+
+                            @if (auth()->user()->role == 'client')
+                                <input type="hidden" name="client_id" value="{{ optional($clients->first())->id }}">
+
+                                <input type="text" class="form-control"
+                                    value="{{ optional($clients->first())->client_name }}" readonly>
+                            @else
+                                <select name="client_id" id="client_id" class="form-select">
+
+                                    <option value="">
+                                        All Clients
+                                    </option>
+
+                                    @foreach ($clients as $client)
+                                        <option value="{{ $client->id }}"
+                                            {{ request('client_id') == $client->id ? 'selected' : '' }}>
+
+                                            {{ $client->client_name }}
+
+                                        </option>
+                                    @endforeach
+
+                                </select>
+                            @endif
+
+                        </div>
+
+
+                        {{-- PRODUCT --}}
+                        <div class="col-lg-2 col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Product
+                            </label>
+
+                            <select name="product" id="product" class="form-select">
+
+                                <option value="">
+                                    All Products
+                                </option>
+
+                                @if (request('product'))
+                                    <option value="{{ request('product') }}" selected>
+
+                                        {{ request('product') }}
+
+                                    </option>
+                                @endif
+
+                            </select>
+
+                        </div>
+
+
+                        {{-- STAFF --}}
+                        <div class="col-lg-2 col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Staff
+                            </label>
+
+                            <select name="staff_id" class="form-select">
+
+                                <option value="">
+                                    All Staff
+                                </option>
+
+                                @foreach ($staffs as $staff)
+                                    <option value="{{ $staff->id }}"
+                                        {{ request('staff_id') == $staff->id ? 'selected' : '' }}>
+
+                                        {{ $staff->name }}
+
                                     </option>
                                 @endforeach
 
                             </select>
-                        @endif
-                    </div>
-                    <div class="col-md-3">
-                        <label>Product</label>
 
-                        <select name="product" id="product" class="form-control">
+                        </div>
 
-                            <option value="">All Products</option>
 
-                        </select>
-                    </div>
-                    <!-- Staff -->
-                    <div class="col-lg-2 col-md-6">
-                        <label class="form-label fw-semibold small">Staff</label>
+                        {{-- PAYMENT --}}
+                        <div class="col-lg-2 col-md-6">
 
-                        <select name="staff_id" class="form-select">
-                            <option value="">All Staff</option>
+                            <label class="form-label fw-semibold">
+                                Payment Type
+                            </label>
 
-                            @foreach ($staffs as $staff)
-                                <option value="{{ $staff->id }}"
-                                    {{ request('staff_id') == $staff->id ? 'selected' : '' }}>
-                                    {{ $staff->name }}
+                            <select name="payment_mode" class="form-select">
+
+                                <option value="">
+                                    All Payment
                                 </option>
-                            @endforeach
-                        </select>
-                    </div>
 
-                    <!-- Payment Type -->
-                    <!-- Payment Type -->
-                    <div class="col-lg-2 col-md-6">
+                                <option value="VPP" {{ request('payment_mode') == 'VPP' ? 'selected' : '' }}>
+                                    VPP
+                                </option>
 
-                        <label class="form-label fw-semibold small">
-                            Payment Type
-                        </label>
+                                <option value="COD" {{ request('payment_mode') == 'COD' ? 'selected' : '' }}>
+                                    COD
+                                </option>
 
-                        <select name="payment_mode" class="form-select">
+                                <option value="prepaid"
+                                    {{ strtolower(request('payment_mode', '')) == 'prepaid' ? 'selected' : '' }}>
+                                    Prepaid
+                                </option>
 
-                            <option value="">
-                                All Payment
-                            </option>
-
-                            <option value="VPP" {{ request('payment_mode') == 'VPP' ? 'selected' : '' }}>
-                                VPP
-                            </option>
-
-                            <option value="COD" {{ request('payment_mode') == 'COD' ? 'selected' : '' }}>
-                                COD
-                            </option>
-
-                            <option value="prepaid"
-                                {{ strtolower(request('payment_mode', '')) == 'prepaid' ? 'selected' : '' }}>
-                                Prepaid
-                            </option>
-
-                        </select>
-
-                    </div>
-
-                    <!-- Status -->
-                    <div class="col-lg-2 col-md-6">
-                        <label class="form-label fw-semibold small">Status</label>
-
-                        <select name="delivery_status" class="form-select">
-                            <option value="">All Status</option>
-                            <option value="Delivered" {{ request('delivery_status') == 'Delivered' ? 'selected' : '' }}>
-                                Delivered
-                            </option>
-                            <option value="RTO" {{ request('delivery_status') == 'RTO' ? 'selected' : '' }}>RTO</option>
-                            <option value="In Transit" {{ request('delivery_status') == 'In Transit' ? 'selected' : '' }}>
-                                In
-                                Transit</option>
-                            <option value="Out For Delivery"
-                                {{ request('delivery_status') == 'Out For Delivery' ? 'selected' : '' }}>Out For Delivery
-                            </option>
-                            <option value="null" {{ request('delivery_status') == 'null' ? 'selected' : '' }}>No Status
-                            </option>
-                        </select>
-                    </div>
-
-                    <!-- Date From -->
-                    <div class="col-lg-2 col-md-6">
-                        <label class="form-label fw-semibold small">Date From</label>
-
-                        <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control">
-                    </div>
-
-                    <!-- Date To -->
-                    <div class="col-lg-2 col-md-6">
-                        <label class="form-label fw-semibold small">Date To</label>
-
-                        <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-control">
-                    </div>
-
-                    <!-- Search -->
-                    <div class="col-lg-3 col-md-8">
-                        <label class="form-label fw-semibold small">Search</label>
-
-
-                        <label class="form-label fw-semibold">
-                            Bulk Search
-                        </label>
-
-                        <textarea name="search" class="form-control" rows="4" placeholder="Paste Order ID / Barcode / Phone">
-{{ request('search') }}</textarea>
-
-                        <small class="text-muted">
-                            One value per line or comma separated.
-                        </small>
-
-                    </div>
-
-                    <!-- Records -->
-                    <div class="col-lg-1 col-md-4">
-                        <label class="form-label fw-semibold small">Records</label>
-
-                        <select name="per_page" class="form-select" onchange="this.form.submit()">
-
-                            <option value="10" {{ request('per_page') == 10 ? 'selected' : '' }}>10</option>
-                            <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25</option>
-                            <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
-                            <option value="100" {{ request('per_page', 100) == 100 ? 'selected' : '' }}>100</option>
-                            <option value="500" {{ request('per_page') == 500 ? 'selected' : '' }}>500</option>
-                            <option value="1000" {{ request('per_page') == 1000 ? 'selected' : '' }}>1000</option>
-                            <option value="5000" {{ request('per_page') == 5000 ? 'selected' : '' }}>5000</option>
-                            <option value="10000" {{ request('per_page') == 10000 ? 'selected' : '' }}>10000</option>
-                            <option value="15000" {{ request('per_page') == 15000 ? 'selected' : '' }}>15000</option>
-
-                        </select>
-                    </div>
-
-                    <!-- Buttons -->
-                    <div class="col-lg-2 col-md-12 d-flex gap-2">
-
-                        <button type="submit" class="btn btn-primary w-100">
-                            Filter
-                        </button>
-
-                        <a href="{{ route('orders.list') }}" class="btn btn-outline-secondary w-100">
-                            Reset
-                        </a>
-                        <button type="button" id="compareBtn" class="btn btn-warning">
-
-                            Compare
-
-                        </button>
-                    </div>
-
-                </div>
-                <div class="card border-warning shadow-sm mb-4" id="compareSection" style="display:none;">
-
-                    <div class="card-header bg-warning">
-
-                        <h5 class="mb-0">
-
-                            <i class="fas fa-chart-line"></i>
-
-                            Compare Current Report
-
-                        </h5>
-
-                    </div>
-
-                    <div class="card-body">
-
-                        <div class="alert alert-info mb-4">
-
-                            <strong>
-
-                                Current Filters
-
-                            </strong>
-
-                            will remain same.
-
-                            Only Date Range will change.
+                            </select>
 
                         </div>
 
-                        <div class="row">
 
-                            <div class="col-md-3">
+                        {{-- DELIVERY STATUS --}}
+                        <div class="col-lg-3 col-md-6">
 
-                                <label>Compare From</label>
+                            <label class="form-label fw-semibold">
+                                Delivery Status
+                            </label>
 
-                                <input type="date" name="compare_from" class="form-control">
+                            <select name="delivery_status" class="form-select">
 
-                            </div>
+                                <option value="">
+                                    All Status
+                                </option>
 
-                            <div class="col-md-3">
+                                <option value="Delivered"
+                                    {{ request('delivery_status') === 'Delivered' ? 'selected' : '' }}>
+                                    Delivered
+                                </option>
 
-                                <label>Compare To</label>
+                                <option value="RTO-intrasit"
+                                    {{ request('delivery_status') === 'RTO-intrasit' ? 'selected' : '' }}>
+                                    RTO Intrasit
+                                </option>
 
-                                <input type="date" name="compare_to" class="form-control">
+                                <option value="RTO Received"
+                                    {{ request('delivery_status') === 'RTO Received' ? 'selected' : '' }}>
+                                    RTO Received
+                                </option>
 
-                            </div>
+                                <option value="Customer - Intrasit"
+                                    {{ request('delivery_status') === 'Customer - Intrasit' ? 'selected' : '' }}>
+                                    Customer Intrasit
+                                </option>
 
-                            <div class="col-md-2 d-grid">
+                                <option value="Out for Delivery"
+                                    {{ request('delivery_status') === 'Out for Delivery' ? 'selected' : '' }}>
+                                    Out for Delivery
+                                </option>
 
-                                <label>&nbsp;</label>
+                                <option value="On Hold" {{ request('delivery_status') === 'On Hold' ? 'selected' : '' }}>
+                                    On Hold
+                                </option>
 
-                                <button name="compare" value="1" class="btn btn-success">
+                                <option value="null" {{ request('delivery_status') === 'null' ? 'selected' : '' }}>
+                                    No Status
+                                </option>
 
-                                    Compare
-
-                                </button>
-
-                            </div>
+                            </select>
 
                         </div>
 
-                    </div>
 
-                </div>
-            </form>
+                        {{-- DATE FROM --}}
+                        <div class="col-lg-2 col-md-6">
 
-        </div>
-    </div>
+                            <label class="form-label fw-semibold">
+                                Date From
+                            </label>
 
-    <div class="card mb-3" style="padding: 15px;">
+                            <input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control">
 
-        <div class="table-responsive">
-            @if (!empty($searchTerms))
-                <div class="alert alert-info mb-3">
+                        </div>
 
-                    <strong>Total Search Items:</strong>
-                    {{ count($searchTerms) }}
 
-                    &nbsp;&nbsp;|&nbsp;&nbsp;
+                        {{-- DATE TO --}}
+                        <div class="col-lg-2 col-md-6">
 
-                    <strong>Matched:</strong>
-                    {{ count($searchTerms) - count($notFound) }}
+                            <label class="form-label fw-semibold">
+                                Date To
+                            </label>
 
-                    &nbsp;&nbsp;|&nbsp;&nbsp;
+                            <input type="date" name="date_to" value="{{ request('date_to') }}" class="form-control">
 
-                    <strong>Not Found:</strong>
-                    {{ count($notFound) }}
+                        </div>
 
-                </div>
-            @endif
-            @if (!empty($notFound))
-                <div class="alert alert-danger">
 
-                    <strong>Records Not Found ({{ count($notFound) }})</strong>
+                        {{-- SEARCH --}}
+                        <div class="col-lg-3 col-md-8">
 
-                    <textarea class="form-control mt-2" rows="6" readonly>{{ implode("\n", $notFound) }}</textarea>
+                            <label class="form-label fw-semibold">
+                                Bulk Search
+                            </label>
 
-                </div>
-            @endif
-            @if (request()->anyFilled(['client_id', 'staff_id', 'delivery_status', 'date_from', 'date_to', 'search']))
-                <div class="card shadow-sm border-0 mb-3">
-                    <div class="card-body py-3">
+                            <textarea name="search" class="form-control" rows="3" placeholder="Paste Order ID / Barcode / Phone">{{ request('search') }}</textarea>
 
-                        <h6 class="fw-bold mb-3">
-                            Applied Filters
-                        </h6>
+                            <small class="text-muted">
+                                One value per line or comma separated.
+                            </small>
 
-                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                        </div>
 
-                            @if (request('client_id'))
-                                <span class="filter-badge bg-client">
-                                    <strong>Client :</strong>
-                                    {{ optional($clients->where('id', request('client_id'))->first())->client_name }}
-                                </span>
-                            @endif
 
-                            @if (request('staff_id'))
-                                <span class="filter-badge bg-staff">
-                                    <strong>Staff :</strong>
-                                    {{ optional($staffs->where('id', request('staff_id'))->first())->name }}
-                                </span>
-                            @endif
+                        {{-- RECORDS --}}
+                        <div class="col-lg-1 col-md-4">
 
-                            @if (request('date_from') || request('date_to'))
-                                <span class="filter-badge bg-date">
-                                    <strong>Date :</strong>
-                                    {{ request('date_from') ? \Carbon\Carbon::parse(request('date_from'))->format('d-m-Y') : '' }}
-                                    @if (request('date_from') && request('date_to'))
-                                        to
-                                    @endif
-                                    {{ request('date_to') ? \Carbon\Carbon::parse(request('date_to'))->format('d-m-Y') : '' }}
-                                </span>
-                            @endif
+                            <label class="form-label fw-semibold">
+                                Records
+                            </label>
 
-                            @if (request('delivery_status'))
-                                <span class="filter-badge bg-status">
-                                    <strong>Status :</strong>
-                                    {{ request('delivery_status') }}
-                                </span>
-                            @endif
+                            <select name="per_page" class="form-select" onchange="this.form.submit()">
 
-                            @if (request('search'))
-                                <span class="filter-badge bg-search">
-                                    <strong>Search :</strong>
-                                    {{ request('search') }}
-                                </span>
-                            @endif
+                                @foreach ([10, 25, 50, 100, 500, 1000, 5000, 10000, 15000] as $size)
+                                    <option value="{{ $size }}"
+                                        {{ request('per_page', 100) == $size ? 'selected' : '' }}>
 
-                            <a href="{{ route('orders.list') }}" class="btn btn-light btn-sm px-3">
-                                <i class="fas fa-times me-1"></i> Clear All
+                                        {{ $size }}
+
+                                    </option>
+                                @endforeach
+
+                            </select>
+
+                        </div>
+
+
+                        {{-- BUTTONS --}}
+                        <div class="col-lg-3 col-md-12 d-flex gap-2">
+
+                            <button type="submit" class="btn btn-primary flex-fill">
+
+                                <i class="fas fa-filter"></i>
+                                Filter
+
+                            </button>
+
+                            <a href="{{ route('orders.list') }}" class="btn btn-outline-secondary flex-fill">
+
+                                Reset
+
                             </a>
 
+                            <button type="button" id="compareBtn" class="btn btn-warning">
+
+                                Compare
+
+                            </button>
+
                         </div>
 
                     </div>
+
+
+                    {{-- COMPARE --}}
+                    <div class="card border-warning shadow-sm mt-4" id="compareSection" style="display:none;">
+
+                        <div class="card-header bg-warning">
+
+                            <strong>
+                                <i class="fas fa-chart-line"></i>
+                                Compare Current Report
+                            </strong>
+
+                        </div>
+
+                        <div class="card-body">
+
+                            <div class="alert alert-info">
+
+                                Current filters will remain same.
+                                Only date range will change.
+
+                            </div>
+
+                            <div class="row">
+
+                                <div class="col-md-3">
+
+                                    <label>Compare From</label>
+
+                                    <input type="date" name="compare_from" class="form-control">
+
+                                </div>
+
+                                <div class="col-md-3">
+
+                                    <label>Compare To</label>
+
+                                    <input type="date" name="compare_to" class="form-control">
+
+                                </div>
+
+                                <div class="col-md-2 d-grid">
+
+                                    <label>&nbsp;</label>
+
+                                    <button name="compare" value="1" class="btn btn-success">
+
+                                        Compare
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+
+        {{-- =========================================================
+         SEARCH RESULT
+    ========================================================== --}}
+
+        @if (!empty($searchTerms))
+            <div class="alert alert-info">
+
+                <strong>Total Search Items:</strong>
+                {{ count($searchTerms) }}
+
+                &nbsp; | &nbsp;
+
+                <strong>Matched:</strong>
+                {{ count($searchTerms) - count($notFound) }}
+
+                &nbsp; | &nbsp;
+
+                <strong>Not Found:</strong>
+                {{ count($notFound) }}
+
+            </div>
+        @endif
+
+
+        @if (!empty($notFound))
+            <div class="alert alert-danger">
+
+                <strong>
+                    Records Not Found ({{ count($notFound) }})
+                </strong>
+
+                <textarea class="form-control mt-2" rows="5" readonly>{{ implode("\n", $notFound) }}</textarea>
+
+            </div>
+        @endif
+
+
+        {{-- =========================================================
+         APPLIED FILTERS
+    ========================================================== --}}
+
+        @if (request()->anyFilled(['client_id', 'staff_id', 'delivery_status', 'date_from', 'date_to', 'search']))
+
+            <div class="card shadow-sm border-0 mb-3">
+
+                <div class="card-body py-3">
+
+                    <h6 class="fw-bold mb-3">
+                        Applied Filters
+                    </h6>
+
+                    <div class="d-flex flex-wrap gap-2">
+
+                        @if (request('client_id'))
+                            <span class="filter-badge bg-client">
+
+                                <strong>Client:</strong>&nbsp;
+
+                                {{ optional($clients->where('id', request('client_id'))->first())->client_name }}
+
+                            </span>
+                        @endif
+
+
+                        @if (request('staff_id'))
+                            <span class="filter-badge bg-staff">
+
+                                <strong>Staff:</strong>&nbsp;
+
+                                {{ optional($staffs->where('id', request('staff_id'))->first())->name }}
+
+                            </span>
+                        @endif
+
+
+                        @if (request('date_from') || request('date_to'))
+                            <span class="filter-badge bg-date">
+
+                                <strong>Date:</strong>&nbsp;
+
+                                {{ request('date_from') ? \Carbon\Carbon::parse(request('date_from'))->format('d-m-Y') : '' }}
+
+                                @if (request('date_from') && request('date_to'))
+                                    to
+                                @endif
+
+                                {{ request('date_to') ? \Carbon\Carbon::parse(request('date_to'))->format('d-m-Y') : '' }}
+
+                            </span>
+                        @endif
+
+
+                        @if (request('delivery_status'))
+                            <span class="filter-badge bg-status">
+
+                                <strong>Status:</strong>&nbsp;
+
+                                {{ request('delivery_status') === 'null' ? 'No Status' : request('delivery_status') }}
+
+                            </span>
+                        @endif
+
+
+                        @if (request('search'))
+                            <span class="filter-badge bg-search">
+
+                                <strong>Search:</strong>&nbsp;
+
+                                {{ request('search') }}
+
+                            </span>
+                        @endif
+
+
+                        <a href="{{ route('orders.list') }}" class="btn btn-light btn-sm">
+
+                            <i class="fas fa-times"></i>
+                            Clear All
+
+                        </a>
+
+                    </div>
+
                 </div>
 
-            @endif
-            @if (auth()->user()->role == 'super_admin')
-                <div class="row g-3 mb-4">
+            </div>
 
-                    <div class="col-lg col-md-3">
-                        <div class="card border-0 shadow-sm stat-card">
-                            <div class="card-body d-flex align-items-center">
-                                <div class="icon bg-primary-subtle text-primary">
-                                    <i class="fas fa-shopping-bag"></i>
-                                </div>
-                                <div class="ms-3">
-                                    <small class="text-muted">Total Orders</small>
-                                    <h3>{{ number_format($totalOrders) }}</h3>
-                                </div>
+        @endif
+
+
+        {{-- =========================================================
+         DASHBOARD
+    ========================================================== --}}
+
+        @if (auth()->user()->role == 'super_admin')
+            <div class="row g-3 mb-4">
+
+
+                {{-- TOTAL --}}
+                <div class="col-lg col-md-4 col-sm-6">
+
+                    <div class="card stat-card h-100">
+
+                        <div class="card-body d-flex align-items-center">
+
+                            <div class="icon bg-primary-subtle text-primary">
+
+                                <i class="fas fa-shopping-bag"></i>
+
                             </div>
+
+                            <div class="ms-3">
+
+                                <small class="text-muted">
+                                    Total Orders
+                                </small>
+
+                                <h3 class="mb-0">
+                                    {{ number_format($totalOrders) }}
+                                </h3>
+
+                            </div>
+
                         </div>
+
                     </div>
 
-                    <div class="col-lg col-md-3">
-                        <div class="card border-0 shadow-sm stat-card">
-                            <div class="card-body d-flex align-items-center">
-                                <div class="icon bg-success-subtle text-success">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <div class="ms-3">
-                                    <small class="text-muted">Delivered</small>
-                                    <h3>{{ number_format($totalDelivered) }}</h3>
-                                </div>
+                </div>
+
+
+                {{-- DELIVERED --}}
+                <div class="col-lg col-md-4 col-sm-6">
+
+                    <div class="card stat-card h-100">
+
+                        <div class="card-body d-flex align-items-center">
+
+                            <div class="icon bg-success-subtle text-success">
+
+                                <i class="fas fa-check-circle"></i>
+
                             </div>
+
+                            <div class="ms-3">
+
+                                <small class="text-muted">
+                                    Delivered
+                                </small>
+
+                                <h3 class="mb-0 text-success">
+                                    {{ number_format($totalDelivered) }}
+                                </h3>
+
+                            </div>
+
                         </div>
+
                     </div>
 
+                </div>
 
-                    <div class="col-lg col-md-3">
-                        <div class="card border-0 shadow-sm stat-card">
-                            <div class="card-body d-flex align-items-center">
-                                <div class="icon bg-danger-subtle text-danger">
-                                    <i class="fas fa-reply"></i>
-                                </div>
-                                <div class="ms-3">
-                                    <small class="text-muted">RTO</small>
-                                    <h3>{{ number_format($totalRto) }}</h3>
-                                </div>
+
+                {{-- RTO INTRANSIT --}}
+                <div class="col-lg col-md-4 col-sm-6">
+
+                    <div class="card stat-card h-100">
+
+                        <div class="card-body d-flex align-items-center">
+
+                            <div class="icon bg-danger-subtle text-danger">
+
+                                <i class="fas fa-reply"></i>
+
                             </div>
+
+                            <div class="ms-3">
+
+                                <small class="text-muted">
+                                    RTO Intrasit
+                                </small>
+
+                                <h3 class="mb-0 text-danger">
+                                    {{ number_format($totalRto) }}
+                                </h3>
+
+                            </div>
+
                         </div>
+
                     </div>
-                    <div class="col-lg col-md-3">
-                        <div class="card border-0 shadow-sm stat-card">
-                            <div class="card-body d-flex align-items-center">
 
-                                <div class="icon bg-danger-subtle text-danger">
-                                    <i class="fas fa-undo"></i>
-                                </div>
+                </div>
 
-                                <div class="ms-3">
-                                    <small class="text-muted">RTO Received</small>
 
-                                    <h4 class="text-danger mb-0">
+                {{-- RTO RECEIVED --}}
+                <div class="col-lg col-md-4 col-sm-6">
+
+                    <div class="card stat-card h-100">
+
+                        <div class="card-body d-flex align-items-center">
+
+                            <div class="icon bg-danger-subtle text-danger">
+
+                                <i class="fas fa-undo"></i>
+
+                            </div>
+
+                            <div class="ms-3">
+
+                                <small class="text-muted">
+                                    RTO Received
+                                </small>
+
+                                <h3 class="mb-0 text-danger">
+                                    {{ number_format($totalRtoReceived) }}
+                                </h3>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                {{-- CUSTOMER INTRANSIT --}}
+                <div class="col-lg col-md-4 col-sm-6">
+
+                    <div class="card stat-card h-100">
+
+                        <div class="card-body d-flex align-items-center">
+
+                            <div class="icon bg-primary-subtle text-primary">
+
+                                <i class="fas fa-truck"></i>
+
+                            </div>
+
+                            <div class="ms-3">
+
+                                <small class="text-muted">
+                                    Customer Intrasit
+                                </small>
+
+                                <h3 class="mb-0 text-primary">
+                                    {{ number_format($totalTransit) }}
+                                </h3>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                {{-- NO STATUS --}}
+                <div class="col-lg col-md-4 col-sm-6">
+
+                    <div class="card stat-card h-100">
+
+                        <div class="card-body d-flex align-items-center">
+
+                            <div class="icon bg-purple">
+
+                                <i class="fas fa-question-circle"></i>
+
+                            </div>
+
+                            <div class="ms-3">
+
+                                <small class="text-muted">
+                                    No Status
+                                </small>
+
+                                <h3 class="mb-0">
+                                    {{ number_format($totalNoStatus) }}
+                                </h3>
+
+                                <small class="text-muted">
+                                    Customer Transit &gt; 7 Days
+                                </small>
+
+                                <h6 class="text-warning mb-0">
+                                    {{ number_format($transit7Days) }}
+                                </h6>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {{-- =====================================================
+             WEB / WHATSAPP SUMMARY
+        ====================================================== --}}
+
+            <div class="card shadow-sm mb-4">
+
+                <div class="card-header bg-white">
+
+                    <strong>
+                        Web vs WhatsApp Summary
+                    </strong>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered table-hover text-center mb-0">
+
+                        <thead class="summary-head">
+
+                            <tr>
+
+                                <th>Category</th>
+                                <th>Orders</th>
+                                <th>Delivered</th>
+                                <th>RTO Intrasit</th>
+                                <th>RTO Received</th>
+                                <th>Customer Intrasit</th>
+                                <th>No Status</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {{-- TOTAL --}}
+                            <tr>
+
+                                <th class="text-primary">
+                                    Total
+                                </th>
+
+                                <td>
+                                    <strong>
+                                        {{ number_format($totalOrders) }}
+                                    </strong>
+                                </td>
+
+                                <td>
+
+                                    <strong class="text-success">
+                                        {{ number_format($totalDelivered) }}
+                                    </strong>
+
+                                    <br>
+
+                                    <small class="text-success">
+                                        {{ $totalDeliveredPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    <strong class="text-danger">
+                                        {{ number_format($totalRto) }}
+                                    </strong>
+
+                                    <br>
+
+                                    <small class="text-danger">
+                                        {{ $totalRtoPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    <strong class="text-danger">
                                         {{ number_format($totalRtoReceived) }}
-                                    </h4>
+                                    </strong>
+
+                                    <br>
+
+                                    <small class="text-danger">
+                                        {{ $totalRtoReceivedPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    <strong class="text-primary">
+                                        {{ number_format($totalTransit) }}
+                                    </strong>
+
+                                    <br>
+
+                                    <small class="text-primary">
+                                        {{ $totalTransitPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    <strong>
+                                        {{ number_format($totalNoStatus) }}
+                                    </strong>
+
+                                    <br>
+
+                                    <small>
+                                        {{ $totalNoStatusPercent }}%
+                                    </small>
+
+                                </td>
+
+                            </tr>
 
 
-                                </div>
+                            {{-- WEB --}}
+                            <tr>
 
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg col-md-3">
-                        <div class="card border-0 shadow-sm stat-card">
-                            <div class="card-body d-flex align-items-center">
-                                <div class="icon bg-warning-subtle text-warning">
-                                    <i class="fas fa-truck"></i>
-                                </div>
-                                <div class="ms-3">
-                                    <small class="text-muted">In Transit</small>
-                                    <h3>{{ number_format($totalTransit) }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                <th class="text-primary">
+                                    🌐 Web
+                                </th>
 
-                    <div class="col-lg col-md-3">
-                        <div class="card border-0 shadow-sm stat-card">
-                            <div class="card-body d-flex align-items-center">
-                                <div class="icon bg-purple">
-                                    <i class="fas fa-question-circle"></i>
-                                </div>
-                                <div class="ms-3">
-                                    <small class="text-muted">Our No Status</small>
-                                    <h3>{{ number_format($totalNoStatus) }}</h3>
-                                    <!--  <small class="text-muted">Our Side Pending</small>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <h6>{{ number_format($ourSidePending) }}</h6>-->
+                                <td>
+                                    {{ number_format($webOrders) }}
+                                </td>
+
+                                <td>
+
+                                    {{ number_format($webDelivered) }}
+
+                                    <br>
+
+                                    <small class="text-success">
+                                        {{ $webDeliveredPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    {{ number_format($webRto) }}
+
+                                    <br>
+
+                                    <small class="text-danger">
+                                        {{ $webRtoPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    {{ number_format($webRtoReceived) }}
+
+                                    <br>
+
+                                    <small class="text-danger">
+                                        {{ $webRtoReceivedPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    {{ number_format($webTransit) }}
+
+                                    <br>
+
+                                    <small class="text-primary">
+                                        {{ $webTransitPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    {{ number_format($webNoStatus) }}
+
+                                    <br>
+
+                                    <small>
+                                        {{ $webNoStatusPercent }}%
+                                    </small>
+
+                                </td>
+
+                            </tr>
 
 
+                            {{-- WHATSAPP --}}
+                            <tr>
 
-                                    <small class="text-muted">Transit > 7 Days</small>
-                                    <h6 class="text-warning">{{ number_format($transit7Days) }}</h6>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                <th class="text-success">
 
-                    <!-- <div class="col-lg col-md-3">
-                                                                                                                                                                                            <div class="card border-0 shadow-sm stat-card">
-                                                                                                                                                                                                <div class="card-body d-flex align-items-center">
+                                    <i class="fab fa-whatsapp"></i>
+                                    WhatsApp
 
-                                                                                                                                                                                                    <div class="icon bg-info-subtle text-info">
-                                                                                                                                                                                                        <i class="fas fa-money-bill-wave"></i>
-                                                                                                                                                                                                    </div>
+                                </th>
 
-                                                                                                                                                                                                    <div class="ms-3">
-                                                                                                                                                                                                        <small class="text-muted">Payment Received</small>
+                                <td>
+                                    {{ number_format($whatsappOrders) }}
+                                </td>
 
-                                                                                                                                                                                                        <h4 class="text-success mb-0">
-                                                                                                                                                                                                            ₹{{ number_format($paymentReceivedAmount) }}
-                                                                                                                                                                                                        </h4>
+                                <td>
 
-                                                                                                                                                                                                        <small class="text-muted">
-                                                                                                                                                                                                            {{ number_format($paymentReceivedOrders) }} Orders
-                                                                                                                                                                                                        </small>
+                                    {{ number_format($whatsappDelivered) }}
 
-                                                                                                                                                                                                    </div>
+                                    <br>
 
-                                                                                                                                                                                                </div>
-                                                                                                                                                                                            </div>
-                                                                                                                                                                                        </div>
+                                    <small class="text-success">
+                                        {{ $waDeliveredPercent }}%
+                                    </small>
 
-                                                                                                                                                                                        <div class="col-lg col-md-3">
-                                                                                                                                                                                            <div class="card border-0 shadow-sm stat-card">
-                                                                                                                                                                                                <div class="card-body d-flex align-items-center">
+                                </td>
 
-                                                                                                                                                                                                    <div class="icon bg-warning-subtle text-warning">
-                                                                                                                                                                                                        <i class="fas fa-wallet"></i>
-                                                                                                                                                                                                    </div>
+                                <td>
 
-                                                                                                                                                                                                    <div class="ms-3">
+                                    {{ number_format($whatsappRto) }}
 
-                                                                                                                                                                                                        <small class="text-muted">Pending Payment</small>
+                                    <br>
 
-                                                                                                                                                                                                        <h4 class="text-warning mb-0">
-                                                                                                                                                                                                            ₹{{ number_format($paymentPendingAmount) }}
-                                                                                                                                                                                                        </h4>
+                                    <small class="text-danger">
+                                        {{ $waRtoPercent }}%
+                                    </small>
 
-                                                                                                                                                                                                        <small class="text-muted">
-                                                                                                                                                                                                            {{ number_format($paymentPendingOrders) }} Orders
-                                                                                                                                                                                                        </small>
+                                </td>
 
-                                                                                                                                                                                                    </div>
+                                <td>
 
-                                                                                                                                                                                                </div>
-                                                                                                                                                                                            </div>
-                                                                                                                                                                                        </div>-->
+                                    {{ number_format($whatsappRtoReceived) }}
+
+                                    <br>
+
+                                    <small class="text-danger">
+                                        {{ $waRtoReceivedPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    {{ number_format($whatsappTransit) }}
+
+                                    <br>
+
+                                    <small class="text-primary">
+                                        {{ $waTransitPercent }}%
+                                    </small>
+
+                                </td>
+
+                                <td>
+
+                                    {{ number_format($whatsappNoStatus) }}
+
+                                    <br>
+
+                                    <small>
+                                        {{ $waNoStatusPercent }}%
+                                    </small>
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
 
                 </div>
 
-                <div class="card border-0 shadow-sm">
-
-                    <div class="card-header bg-white border-bottom">
-                        <strong>Web vs WhatsApp Summary</strong>
-                    </div>
-
-                    <div class="table-responsive">
-
-                        <table class="table table-bordered table-hover align-middle text-center mb-0">
-
-                            <thead class="summary-head">
-
-                                <tr>
-                                    <th>Category</th>
-                                    <th>Orders</th>
-                                    <th>Delivered</th>
-                                    <th>RTO</th>
-                                    <th>RTO Received</th>
-                                    <th>In Transit</th>
-                                    <th>No Status</th>
-                                    <!--<th>Payment Received</th>
-                                                                                                                                                                            <th>Pending Payment</th>-->
-                                </tr>
-
-                            </thead>
-
-                            <tbody>
-
-                                <tr>
-                                    <th class="text-primary">Total</th>
-
-                                    <td><strong>{{ number_format($totalOrders) }}</strong></td>
-
-                                    <td>
-                                        <strong>{{ number_format($totalDelivered) }}</strong>
-                                        <small class="text-success">{{ $totalDeliveredPercent }}%</small>
-                                    </td>
-                                    <td>
-                                        <strong>{{ number_format($totalRto) }}</strong>
-                                        <small class="text-success">{{ $totalRtoPercent }}%</small>
-                                    </td>
-                                    <td>
-                                        <strong>{{ number_format($totalRtoReceived) }}</strong>
-                                        <small class="text-success">{{ $totalRtoReceivedPercent }}%</small>
-                                    </td>
+            </div>
 
 
-                                    <td>
-                                        <strong>{{ number_format($totalTransit) }}</strong>
-                                        <small class="text-success">{{ $totalTransitPercent }}%</small>
-                                    </td>
-                                    <td>
-                                        <strong>{{ number_format($totalNoStatus) }}</strong>
-                                        <small class="text-success">{{ $totalNoStatusPercent }}%</small>
-                                    </td>
+            {{-- =====================================================
+             CHARTS
+        ====================================================== --}}
 
-                                    <!--  <td>
-                                                                                                                                                                                                    <strong class="text-success">
-                                                                                                                                                                                                        ₹{{ number_format($paymentReceivedAmount) }}
-                                                                                                                                                                                                    </strong><br>
-                                                                                                                                                                                                    <small>
-                                                                                                                                                                                                        {{ $paymentReceivedOrders }} Orders ({{ $paymentReceivedPercent }}%)
-                                                                                                                                                                                                    </small>
-                                                                                                                                                                                                </td>
+            <div class="row g-3 mb-4">
 
-                                                                                                                                                                                                <td>
-                                                                                                                                                                                                    <strong class="text-danger">
-                                                                                                                                                                                                        ₹{{ number_format($paymentPendingAmount) }}
-                                                                                                                                                                                                    </strong><br>
-                                                                                                                                                                                                    <small>
-                                                                                                                                                                                                        {{ $paymentPendingOrders }} Orders ({{ $paymentPendingPercent }}%)
-                                                                                                                                                                                                    </small>
-                                                                                                                                                                                                </td>-->
+                <div class="col-xl-4 col-lg-6">
 
-                                </tr>
+                    <div class="card chart-card">
 
-                                <tr>
-                                    <th class="text-primary">
-                                        🌐 Web
-                                    </th>
+                        <div class="card-body">
 
-                                    <td>{{ $webOrders }}</td>
-                                    <td>
-                                        {{ number_format($webDelivered) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $webDeliveredPercent }}%
-                                        </small>
-                                    </td>
-                                    <td>
-                                        {{ number_format($webRto) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $webRtoPercent }}%
-                                        </small>
-                                    </td>
-                                    <td>
-                                        {{ number_format($webRtoReceived) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $webRtoReceivedPercent }}%
-                                        </small>
-                                    </td>
-                                    <td>
-                                        {{ number_format($webTransit) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $webTransitPercent }}%
-                                        </small>
-                                    </td>
-                                    <td>
-                                        {{ number_format($webNoStatus) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $webNoStatusPercent }}%
-                                        </small>
-                                    </td>
+                            <h6 class="fw-bold">
+                                Orders Trend
+                            </h6>
 
+                            <canvas id="ordersChart"></canvas>
 
-
-                                    <!--<td class="text-success">
-                                                                                                                                                                                                ₹{{ number_format($webPaymentReceivedAmount ?? 0) }}
-                                                                                                                                                                                            </td>
-
-                                                                                                                                                                                            <td class="text-danger">
-                                                                                                                                                                                                ₹{{ number_format($webPaymentPendingAmount ?? 0) }}
-                                                                                                                                                                                            </td>-->
-
-                                </tr>
-
-                                <tr>
-                                    <th class="text-success">
-                                        <i class="fab fa-whatsapp"></i> WhatsApp
-                                    </th>
-
-                                    <td>{{ $whatsappOrders }}</td>
-                                    <td>
-                                        {{ number_format($whatsappDelivered) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $waDeliveredPercent }}%
-                                        </small>
-                                    </td>
-
-                                    <td>
-                                        {{ number_format($whatsappRto) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $waRtoPercent }}%
-                                        </small>
-                                    </td>
-
-                                    <td>
-                                        {{ number_format($whatsappRtoReceived) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $waRtoReceivedPercent }}%
-                                        </small>
-                                    </td>
-                                    <td>
-                                        {{ number_format($whatsappTransit) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $waTransitPercent }}%
-                                        </small>
-                                    </td>
-                                    <td>
-                                        {{ number_format($whatsappNoStatus) }}
-                                        <br>
-                                        <small class="text-success">
-                                            {{ $waNoStatusPercent }}%
-                                        </small>
-                                    </td>
-
-                                    <!-- <td class="text-success">
-                                                                                                                                                                                            ₹{{ number_format($whatsappPaymentReceivedAmount ?? 0) }}
-                                                                                                                                                                                        </td>
-
-                                                                                                                                                                                        <td class="text-danger">
-                                                                                                                                                                                            ₹{{ number_format($whatsappPaymentPendingAmount ?? 0) }}
-                                                                                                                                                                                        </td>-->
-
-                                </tr>
-
-                            </tbody>
-
-                        </table>
+                        </div>
 
                     </div>
 
                 </div>
 
-                @if ($compareData)
-                    <hr class="my-5">
 
-                    <div class="text-center mb-3">
-                        <h3 class="text-warning">
-                            Compare Report
-                        </h3>
+                <div class="col-xl-4 col-lg-6">
 
-                        <small>
+                    <div class="card chart-card">
 
-                            {{ request('compare_from') }}
+                        <div class="card-body">
 
-                            →
+                            <h6 class="fw-bold">
+                                Delivery / RTO Trend
+                            </h6>
 
-                            {{ request('compare_to') }}
+                            <canvas id="deliveryChart"></canvas>
 
-                        </small>
-                    </div>
-
-                    <div class="card shadow-sm border-warning">
-
-                        <div class="card-header bg-warning text-dark">
-                            <h5 class="mb-0">
-                                Web vs WhatsApp Summary (Compare)
-                            </h5>
                         </div>
 
-                        <div class="card-body p-0">
+                    </div>
 
-                            <table class="table table-bordered table-hover mb-0">
+                </div>
 
-                                <thead class="table-dark text-center">
 
-                                    <tr>
+                <div class="col-xl-4 col-lg-6">
 
-                                        <th>Category</th>
+                    <div class="card chart-card">
 
-                                        <th>Orders</th>
+                        <div class="card-body">
 
-                                        <th>Delivered</th>
+                            <h6 class="fw-bold">
+                                Order Status
+                            </h6>
 
-                                        <th>RTO</th>
+                            <canvas id="statusChart"></canvas>
 
-                                        <th>Transit</th>
+                        </div>
 
-                                        <th>No Status</th>
+                    </div>
 
-                                        <th>Payment Received</th>
+                </div>
 
-                                        <th>Pending Payment</th>
+            </div>
+        @endif
 
-                                    </tr>
 
-                                </thead>
+        {{-- =========================================================
+         BULK ACTIONS
+    ========================================================== --}}
 
-                                <tbody class="text-center">
+        <div id="bulkActions" class="mb-3 d-none">
 
-                                    <tr>
+            <button class="btn btn-danger" id="downloadInvoice">
 
-                                        <th>Total</th>
+                Download Invoice PDF
 
-                                        <td>{{ $compareData['totalOrders'] }}</td>
+            </button>
 
-                                        <td>{{ $compareData['totalDelivered'] }}</td>
+            <button class="btn btn-success" id="downloadLabel">
 
-                                        <td>{{ $compareData['totalRto'] }}</td>
+                Re-Download Label PDF
 
-                                        <td>{{ $compareData['totalTransit'] }}</td>
+            </button>
 
-                                        <td>{{ $compareData['totalNoStatus'] }}</td>
+            <button class="btn btn-primary" id="downloadExcel">
 
-                                        <td>
-                                            <strong class="text-success">
-                                                ₹{{ number_format($compareData['paymentReceivedAmount'], 2) }}
-                                            </strong>
-                                            <br>
-                                            <small>
-                                                {{ $compareData['paymentReceivedOrders'] }}
-                                                Orders
-                                                ({{ $compareData['totalOrders'] > 0
-                                                    ? number_format(($compareData['paymentReceivedOrders'] / $compareData['totalOrders']) * 100, 2)
-                                                    : 0 }}%)
-                                            </small>
-                                        </td>
+                Download Post Office Excel
 
-                                        <td>
-                                            <strong class="text-danger">
-                                                ₹{{ number_format($compareData['paymentPendingAmount'], 2) }}
-                                            </strong>
-                                            <br>
-                                            <small>
-                                                {{ $compareData['paymentPendingOrders'] }}
-                                                Orders
-                                                ({{ $compareData['totalDelivered'] > 0
-                                                    ? number_format(($compareData['paymentPendingOrders'] / $compareData['totalDelivered']) * 100, 2)
-                                                    : 0 }}%)
-                                            </small>
-                                        </td>
-                                    </tr>
+            </button>
 
-                                    <tr>
+            <button class="btn btn-danger" id="downloadmoney">
 
-                                        <th>Web</th>
+                Download Money Order PDF
 
-                                        <td>{{ $compareData['webOrders'] }}</td>
+            </button>
 
-                                        <td>
-                                            {{ $compareData['webDelivered'] }}
-                                            <br>
-                                            <small class="text-success">
-                                                {{ $compareData['webOrders'] > 0
-                                                    ? number_format(($compareData['webDelivered'] / $compareData['webOrders']) * 100, 2)
-                                                    : 0 }}%
-                                            </small>
-                                        </td>
+            <button class="btn btn-success" id="downloadexcelsss">
 
-                                        <td>
-                                            {{ $compareData['webRto'] }}
-                                            <br>
-                                            <small class="text-success">
-                                                {{ $compareData['webOrders'] > 0
-                                                    ? number_format(($compareData['webRto'] / $compareData['webOrders']) * 100, 2)
-                                                    : 0 }}%
-                                            </small>
-                                        </td>
-                                        <td>
-                                            {{ $compareData['webTransit'] }}
-                                            <br>
-                                            <small class="text-success">
-                                                {{ $compareData['webOrders'] > 0
-                                                    ? number_format(($compareData['webTransit'] / $compareData['webOrders']) * 100, 2)
-                                                    : 0 }}%
-                                            </small>
-                                        </td>
+                Download Excel
 
-                                        <td>
-                                            {{ $compareData['webNoStatus'] }}
-                                            <br>
-                                            <small class="text-success">
-                                                {{ $compareData['webOrders'] > 0
-                                                    ? number_format(($compareData['webNoStatus'] / $compareData['webOrders']) * 100, 2)
-                                                    : 0 }}%
-                                            </small>
-                                        </td>
+            </button>
 
-                                        <td>-</td>
+            <button class="btn btn-primary d-none" id="updateStatusBtn">
 
-                                        <td>-</td>
+                <i class="fa fa-edit"></i>
+                Update Status
 
-                                    </tr>
+            </button>
 
-                                    <tr>
+        </div>
 
-                                        <th>WhatsApp</th>
 
-                                        <td>{{ $compareData['whatsappOrders'] }}</td>
+        {{-- =========================================================
+         ORDERS TABLE
+    ========================================================== --}}
 
-                                        <td>
-                                            {{ $compareData['whatsappDelivered'] }}
-                                            <br>
-                                            <small class="text-success">
-                                                {{ $compareData['whatsappOrders'] > 0
-                                                    ? number_format(($compareData['whatsappDelivered'] / $compareData['whatsappOrders']) * 100, 2)
-                                                    : 0 }}%
-                                            </small>
-                                        </td>
+        <div class="card">
 
-                                        <td>
-                                            {{ $compareData['whatsappRto'] }}
-                                            <br>
-                                            <small class="text-success">
-                                                {{ $compareData['whatsappOrders'] > 0
-                                                    ? number_format(($compareData['whatsappRto'] / $compareData['whatsappOrders']) * 100, 2)
-                                                    : 0 }}%
-                                            </small>
-                                        </td>
+            <div class="card-body">
 
-                                        <td>
-                                            {{ $compareData['whatsappTransit'] }}
-                                            <br>
-                                            <small class="text-success">
-                                                {{ $compareData['whatsappOrders'] > 0
-                                                    ? number_format(($compareData['whatsappTransit'] / $compareData['whatsappOrders']) * 100, 2)
-                                                    : 0 }}%
-                                            </small>
-                                        </td>
+                <div class="table-responsive">
 
-                                        <td>
-                                            {{ $compareData['whatsappNoStatus'] }}
-                                            <br>
-                                            <small class="text-success">
-                                                {{ $compareData['whatsappOrders'] > 0
-                                                    ? number_format(($compareData['whatsappNoStatus'] / $compareData['whatsappOrders']) * 100, 2)
-                                                    : 0 }}%
-                                            </small>
-                                        </td>
+                    <table id="barcodeTable" class="table table-bordered table-striped">
 
-                                        <td>-</td>
+                        <thead class="table-dark">
 
-                                        <td>-</td>
+                            <tr>
 
-                                    </tr>
+                                <th>
+                                    <input type="checkbox" id="selectAll">
+                                </th>
 
-                                </tbody>
+                                <th>#</th>
 
-                            </table>
+                                <th>Order ID</th>
+
+                                <th>Delivery Status</th>
+
+                                <th>Payment Status</th>
+
+                                <th>Barcode / AWB</th>
+
+                                <th>Customer Name</th>
+
+                                <th>Customer Phone</th>
+
+                                <th>Shipping Address</th>
+
+                                <th>Payment Mode</th>
+
+                                <th>Amount</th>
+
+                                <th>Product</th>
+
+                                <th>Quantity</th>
+
+                                <th>Weight</th>
+
+                                <th>Date</th>
+
+                                <th>Delivery Remarks</th>
+
+                                <th>Label</th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            @forelse($orders as $order)
+                                @php
+
+                                    $status = trim($order->delivery_status ?? '');
+
+                                    $statusLower = strtolower($status);
+
+                                @endphp
+
+                                <tr>
+
+                                    {{-- CHECKBOX --}}
+                                    <td>
+
+                                        <input type="checkbox" class="order-checkbox" value="{{ $order->id }}">
+
+                                    </td>
+
+
+                                    {{-- NUMBER --}}
+                                    <td>
+                                        {{ $orders->firstItem() + $loop->index }}
+                                    </td>
+
+
+                                    {{-- ORDER --}}
+                                    <td>
+
+                                        <a href="javascript:void(0)" data-bs-toggle="tooltip" data-bs-placement="top"
+                                            title="Assigned To: {{ $order->callingOrder->staff->name ?? 'Not Assigned' }}">
+
+                                            {{ $order->order_id }}
+
+                                        </a>
+
+                                    </td>
+
+
+                                    {{-- DELIVERY STATUS --}}
+                                    <td>
+
+                                        @if ($statusLower === 'delivered')
+                                            <span class="badge status-delivered">
+                                                Delivered
+                                            </span>
+                                        @elseif($statusLower === 'rto-intrasit')
+                                            <span class="badge status-rto">
+                                                RTO Intrasit
+                                            </span>
+                                        @elseif($statusLower === 'rto received')
+                                            <span class="badge status-rto">
+                                                RTO Received
+                                            </span>
+                                        @elseif($statusLower === 'customer - intrasit')
+                                            <span class="badge status-transit">
+                                                Customer Intrasit
+                                            </span>
+                                        @elseif($statusLower === 'out for delivery')
+                                            <span class="badge status-transit">
+                                                Out for Delivery
+                                            </span>
+                                        @elseif($statusLower === 'on hold')
+                                            <span class="badge status-hold">
+                                                On Hold
+                                            </span>
+                                        @elseif($status !== '')
+                                            <span class="badge status-other">
+                                                {{ $status }}
+                                            </span>
+                                        @else
+                                            <span class="badge status-empty">
+                                                No Status
+                                            </span>
+                                        @endif
+
+                                    </td>
+
+
+                                    {{-- PAYMENT STATUS --}}
+                                    <td>
+
+                                        @if ($order->recivedpaysts == 1)
+                                            <span class="badge bg-success">
+                                                Payment Received
+                                            </span>
+                                        @else
+                                            <span class="text-muted">
+                                                Pending
+                                            </span>
+                                        @endif
+
+                                    </td>
+
+
+                                    {{-- BARCODE / AWB --}}
+                                    <td>
+
+                                        @if ($order->delhiveryShipment?->awb)
+                                            <div>
+                                                <strong>AWB:</strong>
+                                                {{ $order->delhiveryShipment->awb }}
+                                            </div>
+                                        @endif
+
+
+                                        @if ($order->barcode)
+                                            <div>
+                                                <strong>Barcode:</strong>
+                                                {{ $order->barcode }}
+                                            </div>
+                                        @endif
+
+                                    </td>
+
+
+                                    {{-- CUSTOMER --}}
+                                    <td>
+                                        {{ $order->customer_name }}
+                                    </td>
+
+
+                                    {{-- PHONE --}}
+                                    <td>
+                                        {{ $order->customer_phone }}
+                                    </td>
+
+
+                                    {{-- ADDRESS --}}
+                                    <td>
+                                        {{ $order->shipping_address }}
+                                    </td>
+
+
+                                    {{-- PAYMENT MODE --}}
+                                    <td>
+                                        {{ $order->payment_mode }}
+                                    </td>
+
+
+                                    {{-- AMOUNT --}}
+                                    <td>
+                                        {{ $order->amount }}
+                                    </td>
+
+
+                                    {{-- PRODUCT --}}
+                                    <td>
+                                        {{ $order->product }}
+                                    </td>
+
+
+                                    {{-- QUANTITY --}}
+                                    <td>
+                                        {{ $order->quantity }}
+                                    </td>
+
+
+                                    {{-- WEIGHT --}}
+                                    <td>
+                                        {{ $order->weight }}
+                                    </td>
+
+
+                                    {{-- DATE --}}
+                                    <td>
+                                        {{ $order->date }}
+                                    </td>
+
+
+                                    {{-- REMARK --}}
+                                    <td>
+                                        {{ $order->delivery_remark }}
+                                    </td>
+
+
+                                    {{-- LABEL --}}
+                                    <td>
+
+                                        @if ($order->delhiveryShipment)
+                                            @if ($order->delhiveryShipment->label_path && $order->delhiveryShipment->label_url)
+                                                <a href="{{ route('delhivery.label.download', $order->delhiveryShipment->id) }}"
+                                                    class="btn btn-sm btn-primary" target="_blank">
+
+                                                    <i class="fas fa-print"></i>
+                                                    Print Label
+
+                                                </a>
+                                            @elseif($order->delhiveryShipment->status === 'label_generated')
+                                                <span class="badge bg-warning text-dark">
+                                                    Label Ready
+                                                </span>
+                                            @elseif($order->delhiveryShipment->status === 'label_failed')
+                                                <span class="badge bg-danger"
+                                                    title="{{ $order->delhiveryShipment->error_message }}">
+
+                                                    Label Failed
+
+                                                </span>
+                                            @else
+                                                <span class="badge bg-secondary">
+                                                    Label Pending
+                                                </span>
+                                            @endif
+                                        @endif
+
+                                    </td>
+
+                                </tr>
+
+                            @empty
+
+                                <tr>
+
+                                    <td colspan="17" class="text-center py-4">
+
+                                        <strong>
+                                            No Orders Found
+                                        </strong>
+
+                                    </td>
+
+                                </tr>
+                            @endforelse
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                {{-- PAGINATION --}}
+                @if ($orders->total() > 0)
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+
+                        <div>
+
+                            Showing
+                            <strong>{{ $orders->firstItem() }}</strong>
+                            to
+                            <strong>{{ $orders->lastItem() }}</strong>
+                            of
+                            <strong>{{ $orders->total() }}</strong>
+                            records
+
+                        </div>
+
+                        <div>
+
+                            {{ $orders->links() }}
 
                         </div>
 
                     </div>
                 @endif
-                <!--<div class="row g-3 mb-3">
 
-                                                                                                                                                                                                                                                                                                                        <div class="col-xl-3 col-lg-6">
-                                                                                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                                                                                                <div class="card-body">
-                                                                                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Orders Trend</h6>
-                                                                                                                                                                                                                                                                                                                                    <canvas id="ordersChart"></canvas>
-                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                                                        <div class="col-xl-3 col-lg-6">
-                                                                                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                                                                                                <div class="card-body">
-                                                                                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Delivery Trend</h6>
-                                                                                                                                                                                                                                                                                                                                    <canvas id="deliveryChart"></canvas>
-                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                                                        <div class="col-xl-3 col-lg-6">
-                                                                                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                                                                                                <div class="card-body">
-                                                                                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Payment Trend</h6>
-                                                                                                                                                                                                                                                                                                                                    <canvas id="paymentChart"></canvas>
-                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                                                        <div class="col-xl-3 col-lg-6">
-                                                                                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                                                                                                <div class="card-body">
-                                                                                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Source Distribution</h6>
-                                                                                                                                                                                                                                                                                                                                    <canvas id="sourceChart"></canvas>
-                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                                                                                    <div class="row g-3">
-
-                                                                                                                                                                                                                                                                                                                        <div class="col-xl-4">
-
-                                                                                                                                                                                                                                                                                                                            <div class="card shadow-sm staff-card">
-
-                                                                                                                                                                                                                                                                                                                                <div class="card-header">
-
-                                                                                                                                                                                                                                                                                                                                    <b>Staff Performance (Orders)</b>
-
-                                                                                                                                                                                                                                                                                                                                </div>
-
-                                                                                                                                                                                                                                                                                                                                <div class="table-responsive">
-
-                                                                                                                                                                                                                                                                                                                                    <table class="table table-sm align-middle">
-
-                                                                                                                                                                                                                                                                                                                                        <thead>
-
-                                                                                                                                                                                                                                                                                                                                            <tr>
-
-                                                                                                                                                                                                                                                                                                                                                <th>#</th>
-
-                                                                                                                                                                                                                                                                                                                                                <th>Staff</th>
-
-                                                                                                                                                                                                                                                                                                                                                <th>Total</th>
-
-                                                                                                                                                                                                                                                                                                                                                <th>Delivered</th>
-
-                                                                                                                                                                                                                                                                                                                                                <th>Success</th>
-
-                                                                                                                                                                                                                                                                                                                                            </tr>
-
-                                                                                                                                                                                                                                                                                                                                        </thead>
-
-                                                                                                                                                                                                                                                                                                                                        <tbody>
-
-                                                                                                                                                                                                                                                                                                                                            @foreach ($staffPerformance as $index => $staff)
-    <tr>
-
-                                                                                                                                                                                                                                                                                                                                                    <td>{{ $index + 1 }}</td>
-
-                                                                                                                                                                                                                                                                                                                                                    <td>{{ $staff->name }}</td>
-
-                                                                                                                                                                                                                                                                                                                                                    <td>{{ $staff->total_orders }}</td>
-
-                                                                                                                                                                                                                                                                                                                                                    <td>{{ $staff->delivered }}</td>
-
-                                                                                                                                                                                                                                                                                                                                                    <td width="170">
-
-                                                                                                                                                                                                                                                                                                                                                        <div class="progress" style="height:8px;">
-
-                                                                                                                                                                                                                                                                                                                                                            <div class="progress-bar bg-success"
-                                                                                                                                                                                                                                                                                                                                                                style="width:{{ $staff->success }}%">
-
-                                                                                                                                                                                                                                                                                                                                                            </div>
-
-                                                                                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                                                                                        <small>
-
-                                                                                                                                                                                                                                                                                                                                                            {{ $staff->success }}%
-
-                                                                                                                                                                                                                                                                                                                                                        </small>
-
-                                                                                                                                                                                                                                                                                                                                                    </td>
-
-                                                                                                                                                                                                                                                                                                                                                </tr>
-    @endforeach
-
-                                                                                                                                                                                                                                                                                                                                        </tbody>
-
-                                                                                                                                                                                                                                                                                                                                    </table>
-
-                                                                                                                                                                                                                                                                                                                                </div>
-
-                                                                                                                                                                                                                                                                                                                            </div>
-
-                                                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                                                        <div class="col-xl-4">
-
-                                                                                                                                                                                                                                                                                                                            <div class="card shadow-sm client-card">
-
-                                                                                                                                                                                                                                                                                                                                <div class="card-header bg-white">
-
-                                                                                                                                                                                                                                                                                                                                    <strong>🏆 Top Clients</strong>
-
-                                                                                                                                                                                                                                                                                                                                </div>
-
-                                                                                                                                                                                                                                                                                                                                <div class="table-responsive">
-
-                                                                                                                                                                                                                                                                                                                                    <table class="table table-hover align-middle mb-0">
-
-                                                                                                                                                                                                                                                                                                                                        <thead class="table-light">
-
-                                                                                                                                                                                                                                                                                                                                            <tr>
-
-                                                                                                                                                                                                                                                                                                                                                <th>#</th>
-
-                                                                                                                                                                                                                                                                                                                                                <th>Client</th>
-
-                                                                                                                                                                                                                                                                                                                                                <th>Web</th>
-
-                                                                                                                                                                                                                                                                                                                                                <th>WhatsApp</th>
-
-                                                                                                                                                                                                                                                                                                                                                <th>Total</th>
-
-                                                                                                                                                                                                                                                                                                                                            </tr>
-
-                                                                                                                                                                                                                                                                                                                                        </thead>
-
-                                                                                                                                                                                                                                                                                                                                        <tbody>
-
-                                                                                                                                                                                                                                                                                                                                            @forelse($topClients as $index=>$client)
-    <tr>
-
-                                                                                                                                                                                                                                                                                                                                                    <td>{{ $index + 1 }}</td>
-
-                                                                                                                                                                                                                                                                                                                                                    <td>
-
-                                                                                                                                                                                                                                                                                                                                                        <strong>
-
-                                                                                                                                                                                                                                                                                                                                                            {{ $client->client_name }}
-
-                                                                                                                                                                                                                                                                                                                                                        </strong>
-
-                                                                                                                                                                                                                                                                                                                                                    </td>
-
-                                                                                                                                                                                                                                                                                                                                                    <td>
-
-                                                                                                                                                                                                                                                                                                                                                        <span class="badge bg-primary">
-
-                                                                                                                                                                                                                                                                                                                                                            {{ $client->web_orders }}
-
-                                                                                                                                                                                                                                                                                                                                                        </span>
-
-                                                                                                                                                                                                                                                                                                                                                    </td>
-
-                                                                                                                                                                                                                                                                                                                                                    <td>
-
-                                                                                                                                                                                                                                                                                                                                                        <span class="badge bg-success">
-
-                                                                                                                                                                                                                                                                                                                                                            {{ $client->whatsapp_orders }}
-
-                                                                                                                                                                                                                                                                                                                                                        </span>
-
-                                                                                                                                                                                                                                                                                                                                                    </td>
-
-                                                                                                                                                                                                                                                                                                                                                    <td>
-
-                                                                                                                                                                                                                                                                                                                                                        <strong>
-
-                                                                                                                                                                                                                                                                                                                                                            {{ $client->total_orders }}
-
-                                                                                                                                                                                                                                                                                                                                                        </strong>
-
-                                                                                                                                                                                                                                                                                                                                                    </td>
-
-                                                                                                                                                                                                                                                                                                                                                </tr>
-
-                                        @empty
-
-                                                                                                                                                                                                                                                                                                                                                <tr>
-
-                                                                                                                                                                                                                                                                                                                                                    <td colspan="5" class="text-center">
-
-                                                                                                                                                                                                                                                                                                                                                        No Record Found
-
-                                                                                                                                                                                                                                                                                                                                                    </td>
-
-                                                                                                                                                                                                                                                                                                                                                </tr>
-    @endforelse
-
-                                                                                                                                                                                                                                                                                                                                        </tbody>
-
-                                                                                                                                                                                                                                                                                                                                    </table>
-
-                                                                                                                                                                                                                                                                                                                                </div>
-
-                                                                                                                                                                                                                                                                                                                            </div>
-
-                                                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                                                        <div class="col-xl-2">
-                                                                                                                                                                                                                                                                                                                            <div class="card shadow-sm chart-card">
-                                                                                                                                                                                                                                                                                                                                <div class="card-body">
-                                                                                                                                                                                                                                                                                                                                    <h6 class="fw-bold">Order Status</h6>
-                                                                                                                                                                                                                                                                                                                                    <canvas id="statusChart"></canvas>
-                                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                                            </div>
-                                                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                                                        <div class="col-xl-2">
-
-                                                                                                                                                                                                                                                                                                                            <div class="card shadow-sm">
-
-                                                                                                                                                                                                                                                                                                                                <div class="card-header bg-white">
-
-                                                                                                                                                                                                                                                                                                                                    <strong>💡 Quick Insights</strong>
-
-                                                                                                                                                                                                                                                                                                                                </div>
-
-                                                                                                                                                                                                                                                                                                                                <div class="card-body">
-
-                                                                                                                                                                                                                                                                                                                                    <div class="mb-3">
-
-                                                                                                                                                                                                                                                                                                                                        <small class="text-muted">
-
-                                                                                                                                                                                                                                                                                                                                            Delivery Rate
-
-                                                                                                                                                                                                                                                                                                                                        </small>
-
-                                                                                                                                                                                                                                                                                                                                        <h5 class="text-success">
-
-                                                                                                                                                                                                                                                                                                                                            {{ $deliveryRate }}%
-
-                                                                                                                                                                                                                                                                                                                                        </h5>
-
-                                                                                                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                                                                                                    <hr>
-
-                                                                                                                                                                                                                                                                                                                                    <div class="mb-3">
-
-                                                                                                                                                                                                                                                                                                                                        <small class="text-muted">
-
-                                                                                                                                                                                                                                                                                                                                            RTO Rate
-
-                                                                                                                                                                                                                                                                                                                                        </small>
-
-                                                                                                                                                                                                                                                                                                                                        <h5 class="text-danger">
-
-                                                                                                                                                                                                                                                                                                                                            {{ $rtoRate }}%
-
-                                                                                                                                                                                                                                                                                                                                        </h5>
-
-                                                                                                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                                                                                                    <hr>
-
-                                                                                                                                                                                                                                                                                                                                    <div class="mb-3">
-
-                                                                                                                                                                                                                                                                                                                                        <small class="text-muted">
-
-                                                                                                                                                                                                                                                                                                                                            Avg Orders / Day
-
-                                                                                                                                                                                                                                                                                                                                        </small>
-
-                                                                                                                                                                                                                                                                                                                                        <h5>
-
-                                                                                                                                                                                                                                                                                                                                            {{ $averageOrders }}
-
-                                                                                                                                                                                                                                                                                                                                        </h5>
-
-                                                                                                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                                                                                                    <hr>
-
-                                                                                                                                                                                                                                                                                                                                    <div class="mb-3">
-
-                                                                                                                                                                                                                                                                                                                                        <small class="text-muted">
-
-                                                                                                                                                                                                                                                                                                                                            Best Day
-
-                                                                                                                                                                                                                                                                                                                                        </small>
-
-                                                                                                                                                                                                                                                                                                                                        <h6>
-
-                                                                                                                                                                                                                                                                                                                                            @if ($bestDay)
-    {{ \Carbon\Carbon::parse($bestDay->day)->format('d M') }}
-    @endif
-
-                                                                                                                                                                                                                                                                                                                                        </h6>
-
-                                                                                                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                                                                                                    <hr>
-
-                                                                                                                                                                                                                                                                                                                                    <div class="mb-3">
-
-                                                                                                                                                                                                                                                                                                                                        <small class="text-muted">
-
-                                                                                                                                                                                                                                                                                                                                            Highest Payment
-
-                                                                                                                                                                                                                                                                                                                                        </small>
-
-                                                                                                                                                                                                                                                                                                                                        <h6 class="text-primary">
-
-                                                                                                                                                                                                                                                                                                                                            @if ($highestPayment)
-    ₹{{ number_format($highestPayment->amount, 2) }}
-    @endif
-
-                                                                                                                                                                                                                                                                                                                                        </h6>
-
-                                                                                                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                                                                                                    <hr>
-
-                                                                                                                                                                                                                                                                                                                                    <div>
-
-                                                                                                                                                                                                                                                                                                                                        <small class="text-muted">
-
-                                                                                                                                                                                                                                                                                                                                            Best Staff
-
-                                                                                                                                                                                                                                                                                                                                        </small>
-
-                                                                                                                                                                                                                                                                                                                                        <h6>
-
-                                                                                                                                                                                                                                                                                                                                            @if ($bestStaff)
-    {{ $bestStaff->name }}
-                                                                                                                                                                                                                                                                                                                                                <br>
-                                                                                                                                                                                                                                                                                                                                                <small class="text-success">
-                                                                                                                                                                                                                                                                                                                                                    {{ $bestStaff->delivered }} Deliveries
-                                                                                                                                                                                                                                                                                                                                                </small>
-@else
-    N/A
-    @endif
-
-                                                                                                                                                                                                                                                                                                                                        </h6>
-
-                                                                                                                                                                                                                                                                                                                                    </div>
-
-                                                                                                                                                                                                                                                                                                                                </div>
-
-                                                                                                                                                                                                                                                                                                                            </div>
-
-                                                                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                                                                    </div>-->
-            @endif
-            <div id="bulkActions" class="mb-3 d-none">
-                <button class="btn btn-danger" id="downloadInvoice">
-                    Download Invoice PDF
-                </button>
-
-                <button class="btn btn-success" id="downloadLabel">
-                    Re-Download Label PDF
-                </button>
-
-                <button class="btn btn-primary" id="downloadExcel">
-                    Download Post Office Excel
-                </button>
-
-                <button class="btn btn-danger" id="downloadmoney">
-                    Download Money order Pdf
-                </button>
-                <button class="btn btn-success" id="downloadexcelsss">
-                    Download Excel
-                </button>
-                <button class="btn btn-primary d-none" id="updateStatusBtn">
-                    <i class="fa fa-edit"></i>
-                    Update Status
-                </button>
             </div>
 
-            <table id="barcodeTable" class="table table-bordered table-striped">
-                <thead class="table-dark">
-                    <tr>
-                        <th><input type="checkbox" id="selectAll"></th>
-                        <th>#</th>
-                        <th>Order ID</th>
-
-                        <th>Delivery Status</th>
-                        <th>Payment Status</th>
-                        <th>RTO Receive Status</th>
-                        <th>Barcode/AWB</th>
-                        <th>Customer Name</th>
-                        <th>Customer Phone</th>
-                        <th>Shipping Address</th>
-                        <th>Payment Mode</th>
-                        <th>Amount</th>
-                        <th>Product</th>
-                        <th>Quantity</th>
-                        <th>Weight</th>
-                        <th>Date</th>
-                        <th>Delivery Remarks</th>
-                        <th>Label</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($orders as $order)
-                        <tr>
-                            <td>
-                                <input type="checkbox" class="order-checkbox" value="{{ $order->id }}">
-                            </td>
-                            <td>{{ $loop->iteration }}</td>
-                            <td>
-                                <a href="javascript:void(0)" data-bs-toggle="tooltip" data-bs-placement="top"
-                                    title="Assigned To: {{ $order->callingOrder->staff->name ?? 'Not Assigned' }}">
-
-                                    {{ $order->order_id }}
-                                </a>
-                            </td>
-                            <td>
-                                @if (strtolower($order->delivery_status) == 'delivered')
-                                    <span class="badge bg-success fs-6">
-                                        {{ $order->delivery_status }}
-                                    </span>
-                                @elseif(strtolower($order->delivery_status) == 'in transit' || strtolower($order->delivery_status) == 'out for delivery')
-                                    <span class="badge bg-primary fs-6">
-                                        {{ $order->delivery_status }}
-                                    </span>
-                                @else
-                                    <span class="badge bg-success fs-6">
-                                        {{ $order->delivery_status }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="{{ $order->recivedpaysts == 1 ? 'bg-success text-white fw-bold' : '' }}">
-                                {{ $order->recivedpaysts == 1 ? 'Payment Received' : '' }}
-                            </td>
-
-                            <td class="{{ $order->rtorecivedsts == 1 ? 'bg-warning text-dark fw-bold' : '' }}">
-                                {{ $order->rtorecivedsts == 1 ? 'RTO Received' : '' }}
-                            </td>
-                            <td>
-                                @if ($order->delhiveryShipment)
-                                    @if ($order->delhiveryShipment->awb)
-                                        <div>
-                                            <strong>AWB:</strong>
-                                            {{ $order->delhiveryShipment->awb }}
-                                        </div>
-                                    @endif
-                                @endif
-
-                                @if ($order->barcode)
-                                    <div>
-                                        <strong>Barcode:</strong>
-                                        {{ $order->barcode }}
-                                    </div>
-                                @endif
-                            </td>
-                            <td>{{ $order->customer_name }}</td>
-                            <td>{{ $order->customer_phone }}</td>
-                            <td>{{ $order->shipping_address }}</td>
-                            <td>{{ $order->payment_mode }}</td>
-                            <td>{{ $order->amount }}</td>
-                            <td>{{ $order->product }}</td>
-                            <td>{{ $order->quantity }}</td>
-                            <td>{{ $order->weight }}</td>
-                            <td>{{ $order->date }}</td>
-                            <td>{{ $order->delivery_remark }}</td>
-                            <td>
-
-                                @if ($order->delhiveryShipment)
-                                    @if ($order->delhiveryShipment->label_path && $order->delhiveryShipment->label_url)
-                                        <a href="{{ route('delhivery.label.download', $order->delhiveryShipment->id) }}"
-                                            class="btn btn-sm btn-primary" target="_blank"
-                                            style="
-    width: 110px;
-    height: 33px;
-">
-                                            <i class="fas fa-print"></i>
-                                            Print Label
-                                        </a>
-                                    @elseif ($order->delhiveryShipment->status === 'label_generated')
-                                        <span class="badge bg-warning">
-                                            Label Ready
-                                        </span>
-                                    @elseif ($order->delhiveryShipment->status === 'label_failed')
-                                        <span class="badge bg-danger"
-                                            title="{{ $order->delhiveryShipment->error_message }}">
-                                            Label Failed
-                                        </span>
-                                    @else
-                                        <span class="badge bg-secondary">
-                                            Label Pending
-                                        </span>
-                                    @endif
-                                @endif
-
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            <div class="d-flex justify-content-between align-items-center mt-3">
-
-                <div>
-                    Showing
-                    <strong>{{ $orders->firstItem() }}</strong>
-                    to
-                    <strong>{{ $orders->lastItem() }}</strong>
-                    of
-                    <strong>{{ $orders->total() }}</strong>
-                    records
-                </div>
-
-                <div>
-                    {{ $orders->links() }}
-                </div>
-
-            </div>
         </div>
+
     </div>
-    {{-- SCRIPTS --}}
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-    <script>
-        function printDelhiveryLabel(url) {
-            const win = window.open(
-                url,
-                '_blank'
-            );
-
-            win.onload = function() {
-                win.print();
-            };
-        }
-    </script>
-
-    <script>
-        $('#client_id').on('change', function() {
-
-            let clientId = $(this).val();
-
-            $('#product').html('<option>Loading...</option>');
-
-            if (clientId == '') {
-                $('#product').html('<option value="">All Products</option>');
-                return;
-            }
-
-            $.ajax({
-
-                url: '/get-products/' + clientId,
-
-                type: 'GET',
-
-                success: function(products) {
-
-                    let options =
-                        '<option value="">All Products</option>';
-
-                    $.each(products, function(index, product) {
-
-                        options +=
-                            '<option value="' + product + '">' + product + '</option>';
-
-                    });
-
-                    $('#product').html(options);
-
-                }
-
-            });
-
-        });
 
 
-        document.addEventListener("DOMContentLoaded", function() {
-            var tooltipTriggerList = [].slice.call(
-                document.querySelectorAll('[data-bs-toggle="tooltip"]')
-            );
-
-            tooltipTriggerList.map(function(tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        });
-    </script>
-    <script>
-        $(document).ready(function() {
-
-            // Select All
-            $('#selectAll').on('change', function() {
-                $('.order-checkbox').prop('checked', $(this).prop('checked'));
-                toggleButtons();
-            });
-
-            // Individual checkbox
-            $(document).on('change', '.order-checkbox', function() {
-                toggleButtons();
-            });
-
-            function toggleButtons() {
-                let checkedCount = $('.order-checkbox:checked').length;
-                if (checkedCount > 0) {
-                    $('#bulkActions').removeClass('d-none');
-                } else {
-                    $('#bulkActions').addClass('d-none');
-                }
-            }
-
-            function getSelectedOrders() {
-                let ids = [];
-                $('.order-checkbox:checked').each(function() {
-                    ids.push($(this).val());
-                });
-                return ids;
-            }
-
-            // Invoice PDF
-            $('#downloadInvoice').click(function() {
-                let ids = getSelectedOrders();
-                window.location.href = "{{ route('orders.invoice.pdf') }}?ids=" + ids.join(',');
-            });
-
-            // Excel
-            $('#downloadExcel').click(function() {
-                let ids = getSelectedOrders();
-                window.location.href = "{{ route('orders.postoffice.excel') }}?ids=" + ids.join(',');
-            });
-
-            $('#downloadmoney').click(function() {
-                let ids = getSelectedOrders();
-
-                if (ids.length === 0) {
-                    alert('Please select orders');
-                    return;
-                }
-
-                let form = $('<form>', {
-                    method: 'POST',
-                    action: "{{ route('orders.Moneyorder.pdf') }}"
-                });
-
-                form.append('@csrf');
-                form.append(`<input type="hidden" name="ids" value="${ids.join(',')}">`);
-
-                $('body').append(form);
-                form.submit();
-            });
-
-
-
-
-            $('#downloadexcelsss').click(function() {
-
-                let ids = getSelectedOrders();
-
-                if (ids.length === 0) {
-                    alert('Please select orders');
-                    return;
-                }
-
-                let form = $('<form>', {
-                    method: 'POST',
-                    action: "{{ route('orders.export.selected') }}"
-                });
-
-                form.append('@csrf');
-
-                form.append(
-                    $('<input>', {
-                        type: 'hidden',
-                        name: 'ids',
-                        value: ids.join(',')
-                    })
-                );
-
-                $('body').append(form);
-                form.submit();
-            });
-
-
-        });
-    </script>
+    {{-- =============================================================
+     SENDER MODAL
+============================================================= --}}
 
     <div class="modal fade" id="senderModal" tabindex="-1">
+
         <div class="modal-dialog">
+
             <form id="labelDownloadForm" method="POST" action="{{ route('labels.selected.pdf') }}">
+
                 @csrf
 
                 <input type="hidden" name="ids" id="selected_ids">
 
                 <div class="modal-content">
+
                     <div class="modal-header">
-                        <h5>Select Sender</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+                        <h5>
+                            Select Sender
+                        </h5>
+
+                        <button type="button" class="btn-close" data-bs-dismiss="modal">
+                        </button>
+
                     </div>
 
                     <div class="modal-body">
+
                         <select name="sender_id" id="modal_sender_id" class="form-control" required>
-                            <option value="">-- Select Sender --</option>
+
+                            <option value="">
+                                -- Select Sender --
+                            </option>
+
                             @foreach ($senders as $sender)
                                 <option value="{{ $sender->id }}">
                                     {{ $sender->customer_name }}
                                 </option>
                             @endforeach
+
                         </select>
+
+
                         <div class="form-check mt-3">
+
                             <input class="form-check-input" type="checkbox" name="use_old_barcode" id="use_old_barcode"
                                 value="1">
-                            <label class="form-check-label" for="use_old_barcode">
-                                Use Old Barcode (Assign existing barcode)
-                            </label>
-                        </div>
-                    </div>
 
+                            <label class="form-check-label" for="use_old_barcode">
+
+                                Use Old Barcode
+                                (Assign existing barcode)
+
+                            </label>
+
+                        </div>
+
+                    </div>
 
                     <div class="modal-footer">
+
                         <button type="button" id="confirmDownloadLabel" class="btn btn-success">
+
                             Download Label PDF
+
                         </button>
+
                     </div>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
-    <div class="modal fade" id="statusModal">
+
+
+    {{-- =============================================================
+     MANUAL DELIVERY MODAL
+============================================================= --}}
+
+    <div class="modal fade" id="statusModal" tabindex="-1">
 
         <div class="modal-dialog">
 
@@ -2004,9 +1668,11 @@
 
                     <div class="modal-header">
 
-                        <h5>Manual Delivery</h5>
+                        <h5>
+                            Manual Delivery
+                        </h5>
 
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                        <button type="button" class="btn-close" data-bs-dismiss="modal">
                         </button>
 
                     </div>
@@ -2025,13 +1691,17 @@
 
                         <br>
 
-                        <label>Delivery Date</label>
+                        <label>
+                            Delivery Date
+                        </label>
 
                         <input type="date" class="form-control" name="delivery_date" value="{{ date('Y-m-d') }}">
 
                         <br>
 
-                        <label>Remark</label>
+                        <label>
+                            Remark
+                        </label>
 
                         <textarea class="form-control" name="remark">Delivered By Hand</textarea>
 
@@ -2054,279 +1724,627 @@
         </div>
 
     </div>
+
+
+    {{-- =============================================================
+     JAVASCRIPT
+============================================================= --}}
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
     <script>
-        $('#compareBtn').click(function() {
+        $(document).ready(function() {
 
-            $('#compareSection').slideToggle();
 
-        });
+            /* =========================================================
+               PRODUCT LOAD
+            ========================================================== */
 
-        function toggleButtons() {
+            $('#client_id').on('change', function() {
 
-            let count = $('.order-checkbox:checked').length;
+                let clientId = $(this).val();
 
-            if (count == 1) {
+                $('#product').html(
+                    '<option value="">Loading...</option>'
+                );
 
-                $('#updateStatusBtn').removeClass('d-none');
+                if (!clientId) {
 
-            } else {
+                    $('#product').html(
+                        '<option value="">All Products</option>'
+                    );
 
-                $('#updateStatusBtn').addClass('d-none');
+                    return;
+                }
+
+                $.ajax({
+
+                    url: '/get-products/' + clientId,
+
+                    type: 'GET',
+
+                    success: function(products) {
+
+                        let options =
+                            '<option value="">All Products</option>';
+
+                        $.each(products, function(index, product) {
+
+                            options +=
+                                '<option value="' +
+                                product +
+                                '">' +
+                                product +
+                                '</option>';
+
+                        });
+
+                        $('#product').html(options);
+
+                    },
+
+                    error: function() {
+
+                        $('#product').html(
+                            '<option value="">All Products</option>'
+                        );
+
+                    }
+
+                });
+
+            });
+
+
+            /* =========================================================
+               TOOLTIP
+            ========================================================== */
+
+            document
+                .querySelectorAll('[data-bs-toggle="tooltip"]')
+                .forEach(function(el) {
+
+                    new bootstrap.Tooltip(el);
+
+                });
+
+
+            /* =========================================================
+               COMPARE
+            ========================================================== */
+
+            $('#compareBtn').on('click', function() {
+
+                $('#compareSection').slideToggle();
+
+            });
+
+
+            /* =========================================================
+               SELECT ALL
+            ========================================================== */
+
+            $('#selectAll').on('change', function() {
+
+                $('.order-checkbox').prop(
+                    'checked',
+                    this.checked
+                );
+
+                toggleButtons();
+
+            });
+
+
+            /* =========================================================
+               INDIVIDUAL CHECKBOX
+            ========================================================== */
+
+            $(document).on(
+                'change',
+                '.order-checkbox',
+                function() {
+
+                    toggleButtons();
+
+                }
+            );
+
+
+            /* =========================================================
+               BUTTON VISIBILITY
+            ========================================================== */
+
+            function toggleButtons() {
+
+                let count =
+                    $('.order-checkbox:checked').length;
+
+                if (count > 0) {
+
+                    $('#bulkActions')
+                        .removeClass('d-none');
+
+                } else {
+
+                    $('#bulkActions')
+                        .addClass('d-none');
+
+                }
+
+
+                if (count === 1) {
+
+                    $('#updateStatusBtn')
+                        .removeClass('d-none');
+
+                } else {
+
+                    $('#updateStatusBtn')
+                        .addClass('d-none');
+
+                }
 
             }
 
-        }
 
-        $(document).on(
-            'change',
-            '.order-checkbox,#selectAll',
-            toggleButtons
-        );
+            /* =========================================================
+               GET SELECTED ORDERS
+            ========================================================== */
+
+            function getSelectedOrders() {
+
+                let ids = [];
+
+                $('.order-checkbox:checked')
+                    .each(function() {
+
+                        ids.push($(this).val());
+
+                    });
+
+                return ids;
+
+            }
 
 
-        $(document).on(
-            'click',
-            '#updateStatusBtn',
-            function() {
+            /* =========================================================
+               INVOICE
+            ========================================================== */
 
-                let id = $('.order-checkbox:checked')
+            $('#downloadInvoice').on('click', function() {
+
+                let ids = getSelectedOrders();
+
+                if (!ids.length) {
+
+                    alert('Please select orders');
+
+                    return;
+
+                }
+
+                window.location.href =
+                    "{{ route('orders.invoice.pdf') }}" +
+                    "?ids=" +
+                    ids.join(',');
+
+            });
+
+
+            /* =========================================================
+               POST OFFICE EXCEL
+            ========================================================== */
+
+            $('#downloadExcel').on('click', function() {
+
+                let ids = getSelectedOrders();
+
+                if (!ids.length) {
+
+                    alert('Please select orders');
+
+                    return;
+
+                }
+
+                window.location.href =
+                    "{{ route('orders.postoffice.excel') }}" +
+                    "?ids=" +
+                    ids.join(',');
+
+            });
+
+
+            /* =========================================================
+               MONEY ORDER PDF
+            ========================================================== */
+
+            $('#downloadmoney').on('click', function() {
+
+                let ids = getSelectedOrders();
+
+                if (!ids.length) {
+
+                    alert('Please select orders');
+
+                    return;
+
+                }
+
+                let form = $('<form>', {
+
+                    method: 'POST',
+
+                    action: "{{ route('orders.Moneyorder.pdf') }}"
+
+                });
+
+                form.append('@csrf');
+
+                form.append(
+                    $('<input>', {
+
+                        type: 'hidden',
+
+                        name: 'ids',
+
+                        value: ids.join(',')
+
+                    })
+                );
+
+                $('body').append(form);
+
+                form.submit();
+
+            });
+
+
+            /* =========================================================
+               EXPORT EXCEL
+            ========================================================== */
+
+            $('#downloadexcelsss').on('click', function() {
+
+                let ids = getSelectedOrders();
+
+                if (!ids.length) {
+
+                    alert('Please select orders');
+
+                    return;
+
+                }
+
+                let form = $('<form>', {
+
+                    method: 'POST',
+
+                    action: "{{ route('orders.export.selected') }}"
+
+                });
+
+                form.append('@csrf');
+
+                form.append(
+                    $('<input>', {
+
+                        type: 'hidden',
+
+                        name: 'ids',
+
+                        value: ids.join(',')
+
+                    })
+                );
+
+                $('body').append(form);
+
+                form.submit();
+
+            });
+
+
+            /* =========================================================
+               MANUAL STATUS
+            ========================================================== */
+
+            $('#updateStatusBtn').on('click', function() {
+
+                let id =
+                    $('.order-checkbox:checked')
                     .first()
                     .val();
 
+                if (!id) {
+
+                    alert('Please select one order');
+
+                    return;
+
+                }
+
                 $('#status_order_id').val(id);
 
-                let modal = new bootstrap.Modal(
-                    document.getElementById('statusModal')
-                );
+                let modal =
+                    new bootstrap.Modal(
+                        document.getElementById('statusModal')
+                    );
 
                 modal.show();
 
-            }
-        );
-
-        // get selected orders
-        function getSelectedOrders() {
-            let ids = [];
-            $('.order-checkbox:checked').each(function() {
-                ids.push($(this).val());
             });
-            return ids;
-        }
 
-        // open sender modal
 
-        $('#downloadLabel').on('click', function() {
-            let ids = getSelectedOrders();
+            /* =========================================================
+               DOWNLOAD LABEL
+            ========================================================== */
 
-            if (ids.length === 0) {
-                alert('Please select at least one order');
-                return;
-            }
+            $('#downloadLabel').on('click', function() {
 
-            $('#selected_ids').val(ids.join(','));
-            $('#senderModal').modal('show');
-        });
+                let ids = getSelectedOrders();
 
-        // select all
-        $('#selectAll').on('change', function() {
-            $('.order-checkbox').prop('checked', this.checked);
-        });
+                if (!ids.length) {
 
-        // confirm download
-        $('#confirmDownloadLabel').on('click', function() {
-            let senderId = $('#modal_sender_id').val();
+                    alert('Please select at least one order');
 
-            if (!senderId) {
-                alert('Please select sender');
-                return;
-            }
+                    return;
 
-            // submit POST form
-            $('#labelDownloadForm').submit();
+                }
 
-            $('#senderModal').modal('hide');
-        });
+                $('#selected_ids')
+                    .val(ids.join(','));
 
-        new Chart(document.getElementById('ordersChart'), {
+                let modal =
+                    new bootstrap.Modal(
+                        document.getElementById('senderModal')
+                    );
 
-            type: 'line',
+                modal.show();
 
-            data: {
+            });
 
-                labels: @json($labels),
 
-                datasets: [
+            /* =========================================================
+               CONFIRM LABEL
+            ========================================================== */
 
-                    {
-                        label: 'Total',
-                        data: @json($totalOrdersChart),
-                        borderColor: '#2563eb',
-                        backgroundColor: 'transparent',
-                        tension: .4
-                    },
+            $('#confirmDownloadLabel').on('click', function() {
 
-                    {
-                        label: 'Web',
-                        data: @json($webOrdersChart),
-                        borderColor: '#16a34a',
-                        backgroundColor: 'transparent',
-                        tension: .4
-                    },
+                let senderId =
+                    $('#modal_sender_id').val();
 
-                    {
-                        label: 'WhatsApp',
-                        data: @json($waOrdersChart),
-                        borderColor: '#7c3aed',
-                        backgroundColor: 'transparent',
-                        tension: .4
-                    }
+                if (!senderId) {
 
-                ]
+                    alert('Please select sender');
 
-            },
+                    return;
 
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
+                }
 
-        });
+                $('#labelDownloadForm').submit();
 
+            });
 
-        new Chart(document.getElementById('deliveryChart'), {
 
-            type: 'line',
+            /* =========================================================
+               ORDERS CHART
+            ========================================================== */
 
-            data: {
+            @if (auth()->user()->role == 'super_admin')
 
-                labels: @json($labels),
+                const ordersChartEl =
+                    document.getElementById('ordersChart');
 
-                datasets: [
+                if (ordersChartEl) {
 
-                    {
-                        label: 'Delivered',
-                        data: @json($deliveryChart),
-                        borderColor: '#16a34a',
-                        backgroundColor: 'transparent',
-                        tension: .4
-                    },
+                    new Chart(
+                        ordersChartEl, {
 
-                    {
-                        label: 'RTO',
-                        data: @json($rtoChart),
-                        borderColor: '#dc2626',
-                        backgroundColor: 'transparent',
-                        tension: .4
-                    }
+                            type: 'line',
 
-                ]
+                            data: {
 
-            },
+                                labels: @json($labels),
 
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
+                                datasets: [
 
-        });
+                                    {
 
-        new Chart(document.getElementById('paymentChart'), {
+                                        label: 'Total',
 
-            type: 'line',
+                                        data: @json($totalOrdersChart),
 
-            data: {
+                                        borderColor: '#2563eb',
 
-                labels: @json($labels),
+                                        backgroundColor: 'transparent',
 
-                datasets: [
+                                        tension: .4
 
-                    {
-                        label: 'Received',
-                        data: @json($paymentChart),
-                        borderColor: '#2563eb',
-                        backgroundColor: 'transparent',
-                        tension: .4
-                    }
+                                    },
 
-                ]
+                                    {
 
-            },
+                                        label: 'Web',
 
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
+                                        data: @json($webOrdersChart),
 
-        });
+                                        borderColor: '#16a34a',
 
+                                        backgroundColor: 'transparent',
 
-        new Chart(document.getElementById('sourceChart'), {
+                                        tension: .4
 
-            type: 'doughnut',
+                                    },
 
-            data: {
+                                    {
 
-                labels: [
-                    'Web',
-                    'WhatsApp'
-                ],
+                                        label: 'WhatsApp',
 
-                datasets: [{
+                                        data: @json($waOrdersChart),
 
-                    data: @json($sourceChart),
+                                        borderColor: '#7c3aed',
 
-                    backgroundColor: [
-                        '#2563eb',
-                        '#22c55e'
-                    ]
+                                        backgroundColor: 'transparent',
 
-                }]
+                                        tension: .4
 
-            },
+                                    }
 
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
+                                ]
 
-        });
+                            },
 
+                            options: {
 
+                                responsive: true,
 
-        new Chart(document.getElementById('statusChart'), {
+                                maintainAspectRatio: false
 
-            type: 'doughnut',
+                            }
 
-            data: {
+                        }
+                    );
 
-                labels: [
-                    'Delivered',
-                    'RTO',
-                    'Transit',
-                    'No Status'
-                ],
+                }
 
-                datasets: [{
 
-                    data: @json($statusChart),
+                /* =========================================================
+                   DELIVERY / RTO CHART
+                ========================================================== */
 
-                    backgroundColor: [
+                const deliveryChartEl =
+                    document.getElementById('deliveryChart');
 
-                        '#16a34a',
-                        '#ef4444',
-                        '#f59e0b',
-                        '#7c3aed'
+                if (deliveryChartEl) {
 
-                    ]
+                    new Chart(
+                        deliveryChartEl, {
 
-                }]
+                            type: 'line',
 
-            },
+                            data: {
 
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
+                                labels: @json($labels),
+
+                                datasets: [
+
+                                    {
+
+                                        label: 'Delivered',
+
+                                        data: @json($deliveryChart),
+
+                                        borderColor: '#16a34a',
+
+                                        backgroundColor: 'transparent',
+
+                                        tension: .4
+
+                                    },
+
+                                    {
+
+                                        label: 'RTO Intrasit',
+
+                                        data: @json($rtoChart),
+
+                                        borderColor: '#dc2626',
+
+                                        backgroundColor: 'transparent',
+
+                                        tension: .4
+
+                                    }
+
+                                ]
+
+                            },
+
+                            options: {
+
+                                responsive: true,
+
+                                maintainAspectRatio: false
+
+                            }
+
+                        }
+                    );
+
+                }
+
+
+                /* =========================================================
+                   STATUS CHART
+                ========================================================== */
+
+                const statusChartEl =
+                    document.getElementById('statusChart');
+
+                if (statusChartEl) {
+
+                    new Chart(
+                        statusChartEl, {
+
+                            type: 'doughnut',
+
+                            data: {
+
+                                labels: [
+
+                                    'Delivered',
+
+                                    'RTO Intrasit',
+
+                                    'RTO Received',
+
+                                    'Customer Intrasit',
+
+                                    'No Status'
+
+                                ],
+
+                                datasets: [
+
+                                    {
+
+                                        data: @json($statusChart),
+
+                                        backgroundColor: [
+
+                                            '#16a34a',
+
+                                            '#dc2626',
+
+                                            '#b91c1c',
+
+                                            '#2563eb',
+
+                                            '#7c3aed'
+
+                                        ]
+
+                                    }
+
+                                ]
+
+                            },
+
+                            options: {
+
+                                responsive: true,
+
+                                maintainAspectRatio: false
+
+                            }
+
+                        }
+                    );
+
+                }
+            @endif
 
         });
     </script>

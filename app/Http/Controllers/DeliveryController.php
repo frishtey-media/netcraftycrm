@@ -19,27 +19,80 @@ class DeliveryController extends Controller
 
         $query = Order::query();
 
+        /*
+    |--------------------------------------------------------------------------
+    | Client Filter
+    |--------------------------------------------------------------------------
+    */
+
         if ($request->filled('client_id')) {
-            $query->where('client_id', $request->client_id);
+            $query->where(
+                'client_id',
+                $request->client_id
+            );
         }
+
+        /*
+    |--------------------------------------------------------------------------
+    | From Date
+    |--------------------------------------------------------------------------
+    */
 
         if ($request->filled('from_date')) {
-            $query->whereDate('date', '>=', $request->from_date);
+            $query->whereDate(
+                'date',
+                '>=',
+                $request->from_date
+            );
         }
+
+        /*
+    |--------------------------------------------------------------------------
+    | To Date
+    |--------------------------------------------------------------------------
+    */
 
         if ($request->filled('to_date')) {
-            $query->whereDate('date', '<=', $request->to_date);
+            $query->whereDate(
+                'date',
+                '<=',
+                $request->to_date
+            );
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | Total Orders
+    |--------------------------------------------------------------------------
+    */
+
         $totalOrders = (clone $query)->count();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Delivered Orders
+    |--------------------------------------------------------------------------
+    */
 
         $deliveredOrders = (clone $query)
             ->where('delivery_status', 'Delivered')
             ->count();
 
+        /*
+    |--------------------------------------------------------------------------
+    | Payment Received
+    |--------------------------------------------------------------------------
+    */
+
         $paymentReceived = (clone $query)
             ->where('recivedpaysts', 1)
             ->sum('receivedcodamt');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Payment Pending
+    |--------------------------------------------------------------------------
+    */
 
         $paymentPending = (clone $query)
             ->where('delivery_status', 'Delivered')
@@ -49,44 +102,100 @@ class DeliveryController extends Controller
             })
             ->count();
 
+        /*
+    |--------------------------------------------------------------------------
+    | Total RTO
+    |--------------------------------------------------------------------------
+    |
+    | Matches:
+    | RTO-intrasit
+    | RTO Received
+    | RTO anything
+    |
+    */
+
         $totalRTO = (clone $query)
-            ->where('delivery_status', 'RTO')
+            ->where('delivery_status', 'LIKE', 'RTO%')
             ->count();
 
+        /*
+    |--------------------------------------------------------------------------
+    | RTO Received
+    |--------------------------------------------------------------------------
+    */
+
         $rtoReceived = (clone $query)
-            ->where('delivery_status', 'RTO')
+            ->where('delivery_status', 'RTO Received')
             ->where('rtorecivedsts', 1)
             ->count();
 
+        /*
+    |--------------------------------------------------------------------------
+    | RTO Pending
+    |--------------------------------------------------------------------------
+    */
+
         $rtoPending = (clone $query)
-            ->where('delivery_status', 'RTO')
+            ->where('delivery_status', 'RTO Received')
             ->where(function ($q) {
                 $q->whereNull('rtorecivedsts')
                     ->orWhere('rtorecivedsts', 0);
             })
             ->count();
 
+        /*
+    |--------------------------------------------------------------------------
+    | In Transit
+    |--------------------------------------------------------------------------
+    |
+    | These are the statuses from your India Post Excel
+    | which are considered active/in-transit statuses.
+    |
+    */
+
         $inTransit = (clone $query)
-            ->where('delivery_status', 'In Transit')
+            ->whereIn('delivery_status', [
+                'RTO-intrasit',
+                'Customer - Intrasit',
+                'Out for Delivery',
+                'On Hold'
+            ])
             ->count();
-        $lastDeliveryUpdate = Order::whereNotNull('delivery_status')
+
+        /*
+    |--------------------------------------------------------------------------
+    | Last Delivery Update
+    |--------------------------------------------------------------------------
+    */
+
+        $lastDeliveryUpdate = Order::whereNotNull('delivery_date')
             ->max('delivery_date');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Last Payment Update
+    |--------------------------------------------------------------------------
+    */
 
         $lastPaymentUpdate = Order::where('recivedpaysts', 1)
             ->max('updated_at');
-        return view('delivery.index', compact(
-            'clients',
-            'totalOrders',
-            'deliveredOrders',
-            'paymentReceived',
-            'paymentPending',
-            'totalRTO',
-            'rtoReceived',
-            'rtoPending',
-            'inTransit',
-            'lastDeliveryUpdate',
-            'lastPaymentUpdate'
-        ));
+
+        return view(
+            'delivery.index',
+            compact(
+                'clients',
+                'totalOrders',
+                'deliveredOrders',
+                'paymentReceived',
+                'paymentPending',
+                'totalRTO',
+                'rtoReceived',
+                'rtoPending',
+                'inTransit',
+                'lastDeliveryUpdate',
+                'lastPaymentUpdate'
+            )
+        );
     }
     public function report(Request $request, $type)
     {
@@ -163,24 +272,58 @@ class DeliveryController extends Controller
 
         $rows = Excel::toArray([], $request->file('file'));
 
+        if (empty($rows) || empty($rows[0])) {
+            return back()->with('error', 'Excel file is empty or invalid.');
+        }
+
         $updated = 0;
         $notFound = 0;
+        $skipped = 0;
 
         foreach ($rows[0] as $key => $row) {
 
-            // Skip Header
-            if ($key == 0) {
+            // Skip Excel Header
+            if ($key === 0) {
                 continue;
             }
 
-            // Excel Columns
-            $trackingNo = trim($row[1] ?? '');   // Article Number
-            $status     = trim($row[6] ?? '');   // Status
-            $lastEvent  = trim($row[7] ?? '');   // Last Event
+            /*
+        |--------------------------------------------------------------------------
+        | Excel Columns
+        |--------------------------------------------------------------------------
+        |
+        | 0 = Sr. No.
+        | 1 = Article Number
+        | 2 = Article Type
+        | 3 = Booked At
+        | 4 = Booked On
+        | 5 = Destination
+        | 6 = Status
+        | 7 = Last Event
+        |
+        */
 
-            if (empty($trackingNo)) {
+            $trackingNo = trim((string) ($row[1] ?? ''));
+            $status     = trim((string) ($row[6] ?? ''));
+            $lastEvent  = trim((string) ($row[7] ?? ''));
+
+            // Skip if Article Number is empty
+            if ($trackingNo === '') {
+                $skipped++;
                 continue;
             }
+
+            // Skip if Status is empty
+            if ($status === '') {
+                $skipped++;
+                continue;
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | Find Order By Article Number / Barcode
+        |--------------------------------------------------------------------------
+        */
 
             $order = Order::where('barcode', $trackingNo)->first();
 
@@ -189,63 +332,107 @@ class DeliveryController extends Controller
                 continue;
             }
 
-            $statusLower = strtolower(trim($status));
-            $eventLower  = strtolower(trim($lastEvent));
-
             /*
         |--------------------------------------------------------------------------
-        | CRM Status Mapping
+        | IMPORTANT:
+        | Save EXACT Excel Status
         |--------------------------------------------------------------------------
         */
 
-            if (
-                str_contains($eventLower, 'sender') ||
-                str_contains($eventLower, 'return to sender') ||
-                str_contains($eventLower, 'returned to sender')
-            ) {
+            $order->delivery_status = $status;
 
-                $crmStatus = 'RTO';
-            } elseif (
-                $statusLower == 'delivered' &&
-                str_contains($eventLower, 'addressee')
-            ) {
+            /*
+        |--------------------------------------------------------------------------
+        | Save Last Event / Remark
+        |--------------------------------------------------------------------------
+        */
 
-                $crmStatus = 'Delivered';
-            } elseif (
-                $statusLower == 'not delivered' ||
-                str_contains($eventLower, 'in transit') ||
-                str_contains($eventLower, 'out for delivery') ||
-                str_contains($eventLower, 'bagged') ||
-                str_contains($eventLower, 'received') ||
-                str_contains($eventLower, 'dispatched') ||
-                str_contains($eventLower, 'booked')
-            ) {
-
-                $crmStatus = 'In Transit';
-            } else {
-
-                $crmStatus = 'In Transit';
+            if ($lastEvent !== '') {
+                $order->delivery_remark = $lastEvent;
             }
 
             /*
         |--------------------------------------------------------------------------
-        | Extract Event Date
+        | Extract Date From Last Event
         |--------------------------------------------------------------------------
+        |
+        | Example:
+        | Item Delivered (Addressee) at Kahniwan SO on 21/08/2026 16:27:59
+        |
+        | Extracts:
+        | 21/08/2026
+        |
         */
 
             $eventDate = null;
 
-            if (preg_match('/(\d{2}\/\d{2}\/\d{4})/', $lastEvent, $matches)) {
-
+            if (
+                preg_match(
+                    '/(\d{2}\/\d{2}\/\d{4})/',
+                    $lastEvent,
+                    $matches
+                )
+            ) {
                 try {
-
                     $eventDate = Carbon::createFromFormat(
                         'd/m/Y',
                         $matches[1]
                     )->format('Y-m-d');
                 } catch (\Exception $e) {
-
                     $eventDate = null;
+                }
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | Delivered Date
+        |--------------------------------------------------------------------------
+        */
+
+            if (
+                strcasecmp($status, 'Delivered') === 0 &&
+                $eventDate
+            ) {
+                $order->delivery_date = $eventDate;
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | RTO Date
+        |--------------------------------------------------------------------------
+        |
+        | Any status beginning with RTO:
+        |
+        | RTO-intrasit
+        | RTO Received
+        |
+        */
+
+            if (
+                stripos($status, 'RTO') === 0 &&
+                $eventDate
+            ) {
+                $order->rtodate = $eventDate;
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | In Transit Date
+        |--------------------------------------------------------------------------
+        |
+        | Only set first time if currently empty.
+        |
+        */
+
+            if (
+                stripos($status, 'intransit') !== false ||
+                stripos($status, 'in transit') !== false
+            ) {
+                if (
+                    $eventDate &&
+                    empty($order->intransitdate)
+                ) {
+                    $order->intransitdate = $eventDate;
                 }
             }
 
@@ -255,31 +442,6 @@ class DeliveryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $order->delivery_status = $crmStatus;
-            $order->delivery_remark = $lastEvent;
-
-            // Delivered Date
-            if ($crmStatus == 'Delivered' && $eventDate) {
-
-                $order->delivery_date = $eventDate;
-            }
-
-            // RTO Date
-            if ($crmStatus == 'RTO' && $eventDate) {
-
-                if (empty($order->rtodate)) {
-                    $order->rtodate = $eventDate;
-                }
-            }
-
-            // Transit Date
-            if ($crmStatus == 'In Transit' && $eventDate) {
-
-                if (empty($order->intransitdate)) {
-                    $order->intransitdate = $eventDate;
-                }
-            }
-
             $order->save();
 
             $updated++;
@@ -287,7 +449,7 @@ class DeliveryController extends Controller
 
         return back()->with(
             'delivery_success',
-            "{$updated} records updated successfully. {$notFound} tracking numbers not found."
+            "{$updated} records updated successfully. {$notFound} tracking numbers not found. {$skipped} rows skipped."
         );
     }
     public function paymentupload(Request $request)

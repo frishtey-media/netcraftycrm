@@ -623,41 +623,41 @@
 
         <!--  <div class="row mb-4">
 
-                                                                                                                                                                                                                                                                @if (($showPostOffice ?? false) && !($showLabel ?? false))
+                                                                                                                                                                                                                                                                    @if (($showPostOffice ?? false) && !($showLabel ?? false))
     <div class="col-md-6">
-                                                                                                                                                                                                                                                                        <div class="card text-center shadow-sm mb-3">
+                                                                                                                                                                                                                                                                            <div class="card text-center shadow-sm mb-3">
 
-                                                                                                                                                                                                                                                                            <form action="{{ route('postoffice.export') }}" method="POST">
-                                                                                                                                                                                                                                                                                @csrf
+                                                                                                                                                                                                                                                                                <form action="{{ route('postoffice.export') }}" method="POST">
+                                                                                                                                                                                                                                                                                    @csrf
 
-                                                                                                                                                                                                                                                                                <button type="submit" class="btn btn-primary w-100 p-4">
+                                                                                                                                                                                                                                                                                    <button type="submit" class="btn btn-primary w-100 p-4">
 
-                                                                                                                                                                                                                                                                                    <h5>Export Post Office Format</h5>
+                                                                                                                                                                                                                                                                                        <h5>Export Post Office Format</h5>
+
+                                                                                                                                                                                                                                                                                    </button>
+
+                                                                                                                                                                                                                                                                                </form>
+
+                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                        </div>
+    @endif
+                                                                                                                                                                                                                                                                    @if ($showLabel ?? false)
+    <div class="col-md-6">
+
+                                                                                                                                                                                                                                                                            <div class="card text-center shadow-sm">
+
+                                                                                                                                                                                                                                                                                <button class="btn btn-success p-4 w-100" data-bs-toggle="modal" data-bs-target="#senderModal">
+
+                                                                                                                                                                                                                                                                                    <h5>Export Labels</h5>
 
                                                                                                                                                                                                                                                                                 </button>
 
-                                                                                                                                                                                                                                                                            </form>
+                                                                                                                                                                                                                                                                            </div>
 
                                                                                                                                                                                                                                                                         </div>
-                                                                                                                                                                                                                                                                    </div>
-    @endif
-                                                                                                                                                                                                                                                                @if ($showLabel ?? false)
-    <div class="col-md-6">
-
-                                                                                                                                                                                                                                                                        <div class="card text-center shadow-sm">
-
-                                                                                                                                                                                                                                                                            <button class="btn btn-success p-4 w-100" data-bs-toggle="modal" data-bs-target="#senderModal">
-
-                                                                                                                                                                                                                                                                                <h5>Export Labels</h5>
-
-                                                                                                                                                                                                                                                                            </button>
-
-                                                                                                                                                                                                                                                                        </div>
-
-                                                                                                                                                                                                                                                                    </div>
     @endif
 
-                                                                                                                                                                                                                                                            </div>-->
+                                                                                                                                                                                                                                                                </div>-->
 
         <table id="ordersTable" class="table table-bordered table-striped">
             <thead class="table-dark">
