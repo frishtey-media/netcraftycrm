@@ -813,6 +813,65 @@
 
                 </div>
 
+                <div class="col-lg col-md-4 col-sm-6">
+
+                    <div class="card stat-card h-100">
+
+                        <div class="card-body d-flex align-items-center">
+
+                            <div class="icon bg-danger-subtle text-danger">
+
+                                <i class="fas fa-truck"></i>
+
+                            </div>
+
+                            <div class="ms-3">
+
+                                <small class="text-muted">
+                                    Hold
+                                </small>
+
+                                <h3 class="mb-0 text-danger">
+                                    {{ number_format($hold) }}
+                                </h3>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+                <div class="col-lg col-md-4 col-sm-6">
+
+                    <div class="card stat-card h-100">
+
+                        <div class="card-body d-flex align-items-center">
+
+                            <div class="icon bg-danger-subtle text-danger">
+
+                                <i class="fas fa-truck"></i>
+
+                            </div>
+
+                            <div class="ms-3">
+
+                                <small class="text-muted">
+                                    OFD
+                                </small>
+
+                                <h3 class="mb-0 text-danger">
+                                    {{ number_format($ofd) }}
+                                </h3>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
 
                 {{-- NO STATUS --}}
                 <div class="col-lg col-md-4 col-sm-6">

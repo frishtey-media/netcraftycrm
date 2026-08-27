@@ -981,6 +981,18 @@ class OrderController extends Controller
                 'Customer - Intrasit'
             )
             ->count();
+        $ofd = (clone $query)
+            ->where(
+                'delivery_status',
+                'Out for Delivery'
+            )
+            ->count();
+        $hold = (clone $query)
+            ->where(
+                'delivery_status',
+                'On Hold'
+            )
+            ->count();
 
         $webTransit = (clone $query)
             ->where(
@@ -1783,6 +1795,8 @@ class OrderController extends Controller
                 'totalRtoReceivedPercent',
                 'totalTransitPercent',
                 'totalNoStatusPercent',
+                'ofd',
+                'hold',
 
                 'webDeliveredPercent',
                 'webRtoPercent',

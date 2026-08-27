@@ -140,6 +140,8 @@ Route::middleware(['auth'])->group(function () {
     )->name('record.customer.history');
 
 
+
+
     Route::get(
         '/order/staff-summary/export',
         [OrderController::class, 'exportStaffSummary']
