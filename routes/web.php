@@ -32,6 +32,7 @@ use App\Http\Controllers\RepeatCustomerController;
 use App\Models\Shipment;
 use Illuminate\Support\Facades\Storage;
 //dd(base_path());
+use App\Http\Controllers\OrdersReportController;
 
 require __DIR__ . '/inventory.php';
 
@@ -126,6 +127,17 @@ Route::middleware(['auth'])->group(function () {
         '/reports/delivered/export',
         [OrderController::class, 'deliverExport']
     )->name('delivered.export');
+
+
+    Route::get('/staff-performance-report', [
+        OrdersReportController::class,
+        'index'
+    ])->name('staff.performance.report');
+
+    Route::get('/staff-performance-report/export', [
+        OrdersReportController::class,
+        'export'
+    ])->name('staff.performance.export');
 
 
     Route::get(

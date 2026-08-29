@@ -210,10 +210,13 @@
                         <i class="bi bi-receipt"></i> RTO Reports
                     </a>
                     <a href="{{ route('performance.dashboard') }}">
-                        <i class="bi bi-graph-up"></i>Staff Performance
+                        <i class="bi bi-graph-up"></i>Staff Leads Performance
                     </a>
 
                     @if (auth()->user()->role == 'super_admin')
+                        <a href="{{ route('staff.performance.report') }}">
+                            <i class="bi bi-truck"></i>Overall Final Reports
+                        </a>
                         <a href="{{ route('delivered.index') }}">
                             <i class="bi bi-truck"></i>Delivery Reports
                         </a>
