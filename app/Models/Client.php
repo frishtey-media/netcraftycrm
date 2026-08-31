@@ -9,7 +9,11 @@ use App\Models\OrderAssignmentScheduler;
 class Client extends Model
 {
     protected $table = 'clients';
-
+    protected $casts = [
+        'token_expires_at' => 'datetime',
+        'token_updated_at' => 'datetime',
+        'shopify_last_sync_at' => 'datetime',
+    ];
 
     protected $fillable = [
         'client_name',
@@ -21,10 +25,18 @@ class Client extends Model
         'state',
         'pincode',
         'shopify_store_url',
+
+        'shopify_client_id',
+        'shopify_client_secret',
+
         'shopify_access_token',
-        'phone_number_id',
-        'whatsapp_number',
-        'webhook_secret',
+
+        'token_expires_at',
+        'token_updated_at',
+
+        'shopify_status',
+        'shopify_last_error',
+        'shopify_last_sync_at',
     ];
 
     public function products()

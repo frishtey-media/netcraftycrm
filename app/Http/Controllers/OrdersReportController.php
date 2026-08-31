@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Carbon\Carbon;
 
 class OrdersReportController extends Controller
 {
@@ -71,12 +72,19 @@ class OrdersReportController extends Controller
 
 
         if ($request->filled('client_id')) {
-
             $staffQuery->where(
                 'c.client_id',
                 $request->client_id
             );
         }
+
+        $staffQuery->whereBetween(
+            'c.updated_at',
+            [
+                Carbon::parse($dateFrom)->startOfDay(),
+                Carbon::parse($dateTo)->endOfDay()
+            ]
+        );
 
 
         $staffs = $staffQuery
@@ -91,11 +99,11 @@ class OrdersReportController extends Controller
         */
 
         $sources = [
-            'whatsapp',
-            'web',
-            'rto',
-            're-delivered',
-            'abandoned',
+            'web' => 'Web',
+            'whatsapp' => 'WhatsApp',
+            'rto' => 'RTO',
+            'deliveredreorder' => 'Re-delivered',
+            'shopify_abandoned_checkout' => 'Abandoned',
         ];
 
 
@@ -271,18 +279,17 @@ class OrdersReportController extends Controller
         |--------------------------------------------------------------------------
         | DATE
         |--------------------------------------------------------------------------
+        | Report date basis = callingorder.updated_at
+        | (same basis as the performance dashboard)
+        |--------------------------------------------------------------------------
         */
 
-        $query->whereDate(
-            'c.created_at',
-            '>=',
-            $dateFrom
-        );
-
-        $query->whereDate(
-            'c.created_at',
-            '<=',
-            $dateTo
+        $query->whereBetween(
+            'c.updated_at',
+            [
+                Carbon::parse($dateFrom)->startOfDay(),
+                Carbon::parse($dateTo)->endOfDay()
+            ]
         );
 
 
@@ -324,10 +331,39 @@ class OrdersReportController extends Controller
 
         if ($request->filled('order_source')) {
 
-            $query->where(
-                'c.order_source',
-                $request->order_source
-            );
+            if ($request->order_source === 'web') {
+
+                // NULL / empty order_source = WEB
+                $query->where(function ($q) {
+                    $q->whereNull('c.order_source')
+                        ->orWhere('c.order_source', '');
+                });
+            } else {
+
+                if ($request->order_source === 'deliveredreorder') {
+
+                    $query->whereIn('c.order_source', [
+                        'deliveredreorder',
+                        'redelivered',
+                        're delivered',
+                        're-delivered',
+                        're-delivred',
+                    ]);
+                } elseif ($request->order_source === 'shopify_abandoned_checkout') {
+
+                    $query->whereIn('c.order_source', [
+                        'shopify_abandoned_checkout',
+                        'abandoned',
+                        'abanded',
+                    ]);
+                } else {
+
+                    $query->where(
+                        'c.order_source',
+                        $request->order_source
+                    );
+                }
+            }
         }
 
 
@@ -388,7 +424,7 @@ class OrdersReportController extends Controller
         $rows = $query
             ->orderBy('c.client_id')
             ->orderBy('cu.name')
-            ->orderByDesc('c.created_at')
+            ->orderByDesc('c.updated_at')
             ->get();
 
 
@@ -731,17 +767,34 @@ class OrdersReportController extends Controller
                     [
                         'deliveredreorder',
                         'redelivered',
-                        're delivered'
-                    ]
+                        're delivered',
+                        're-delivered',
+                        're-delivred'
+                    ],
+                    true
                 );
             })->count(),
 
 
             'shopify_abandoned_checkout' =>
-            $this->sourceCount(
-                $rows,
-                'shopify_abandoned_checkout'
-            ),
+            $rows->filter(function ($row) {
+
+                $source = strtolower(
+                    trim(
+                        (string) $row->order_source
+                    )
+                );
+
+                return in_array(
+                    $source,
+                    [
+                        'shopify_abandoned_checkout',
+                        'abandoned',
+                        'abanded'
+                    ],
+                    true
+                );
+            })->count(),
 
         ];
     }
@@ -1295,16 +1348,12 @@ class OrdersReportController extends Controller
 
             ])
 
-            ->whereDate(
-                'c.created_at',
-                '>=',
-                $dateFrom
-            )
-
-            ->whereDate(
-                'c.created_at',
-                '<=',
-                $dateTo
+            ->whereBetween(
+                'c.updated_at',
+                [
+                    Carbon::parse($dateFrom)->startOfDay(),
+                    Carbon::parse($dateTo)->endOfDay()
+                ]
             );
 
 
@@ -1338,10 +1387,29 @@ class OrdersReportController extends Controller
                 });
             } else {
 
-                $query->where(
-                    'c.order_source',
-                    $request->order_source
-                );
+                if ($request->order_source === 'deliveredreorder') {
+
+                    $query->whereIn('c.order_source', [
+                        'deliveredreorder',
+                        'redelivered',
+                        're delivered',
+                        're-delivered',
+                        're-delivred',
+                    ]);
+                } elseif ($request->order_source === 'shopify_abandoned_checkout') {
+
+                    $query->whereIn('c.order_source', [
+                        'shopify_abandoned_checkout',
+                        'abandoned',
+                        'abanded',
+                    ]);
+                } else {
+
+                    $query->where(
+                        'c.order_source',
+                        $request->order_source
+                    );
+                }
             }
         }
 

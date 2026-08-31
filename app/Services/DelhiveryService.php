@@ -221,14 +221,14 @@ class DelhiveryService
 
                     'weight' => $weight,
 
-                    // Empty = Delhivery generates AWB
+
                     'waybill' => '',
 
                     'shipment_width' => '10',
                     'shipment_height' => '10',
                     'shipment_length' => '10',
 
-                    'shipping_mode' => 'Surface',
+                    'shipping_mode' => 'Express',
                 ],
             ],
         ];

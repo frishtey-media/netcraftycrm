@@ -42,6 +42,10 @@ return Application::configure(basePath: dirname(__DIR__))
             ->everyMinute()
             ->withoutOverlapping();
 
+        $schedule->command('shopify:refresh-tokens')
+            ->hourly()
+            ->withoutOverlapping();
+
         $schedule->call(function () {
 
             Shipment::where('courier', 'delhivery')
