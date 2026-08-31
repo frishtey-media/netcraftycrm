@@ -350,6 +350,18 @@ Route::middleware(['auth'])->group(function () {
     )->name('assignment.scheduler.delete');
 
 
+    /*
+|--------------------------------------------------------------------------
+| AUTO STAFF SUGGESTION
+|--------------------------------------------------------------------------
+*/
+
+    Route::get(
+        '/assignment-scheduler/suggestion',
+        [AdminController::class, 'assignmentSchedulerSuggestion']
+    )->name('assignment.scheduler.suggestion');
+
+
 
 
     Route::prefix('reports')->group(function () {

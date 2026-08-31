@@ -640,6 +640,880 @@ class AdminController extends Controller
             'Scheduler Deleted Successfully.'
         );
     }
+
+    public function assignmentSchedulerSuggestion(Request $request)
+    {
+        $request->validate([
+            'client_id' => 'required|integer|exists:clients,id',
+        ]);
+
+        $clientId = (int) $request->client_id;
+
+        /*
+    |--------------------------------------------------------------------------
+    | LAST 30 DAYS
+    |--------------------------------------------------------------------------
+    */
+
+        $from = Carbon::now()
+            ->subDays(30)
+            ->startOfDay();
+
+        $to = Carbon::now()
+            ->endOfDay();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | STAFF OF SELECTED CLIENT
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    | Selected client ke saare active staff show honge.
+    |
+    */
+
+        $allStaff = DB::table('calling_users as cu')
+            ->join(
+                'callingorder as c',
+                'c.assigned_to',
+                '=',
+                'cu.id'
+            )
+            ->where(
+                'c.client_id',
+                $clientId
+            )
+            ->where(
+                'cu.status',
+                1
+            )
+            ->select(
+                'cu.id',
+                'cu.name'
+            )
+            ->distinct()
+            ->orderBy('cu.name')
+            ->get();
+
+
+        if ($allStaff->isEmpty()) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No active staff found for this client.',
+                'staff' => [],
+            ]);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | LATEST ORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $latestOrders = DB::table('orders')
+            ->select(
+                'order_id',
+                DB::raw('MAX(id) as latest_id')
+            )
+            ->whereNotNull('order_id')
+            ->where('order_id', '!=', '')
+            ->groupBy('order_id');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT CALLING DATA
+    |--------------------------------------------------------------------------
+    */
+
+        $rows = DB::table('callingorder as c')
+
+            ->join(
+                'calling_users as cu',
+                'cu.id',
+                '=',
+                'c.assigned_to'
+            )
+
+            ->leftJoin(
+                'clients as cl',
+                'cl.id',
+                '=',
+                'c.client_id'
+            )
+
+            ->leftJoinSub(
+                $latestOrders,
+                'lo',
+                function ($join) {
+
+                    $join->on(
+                        'lo.order_id',
+                        '=',
+                        'c.order_id'
+                    );
+                }
+            )
+
+            ->leftJoin(
+                'orders as o',
+                'o.id',
+                '=',
+                'lo.latest_id'
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | SELECTED CLIENT
+        |--------------------------------------------------------------------------
+        */
+
+            ->where(
+                'c.client_id',
+                $clientId
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | LAST 30 DAYS
+        |--------------------------------------------------------------------------
+        */
+
+            ->whereBetween(
+                'c.updated_at',
+                [
+                    $from,
+                    $to
+                ]
+            )
+
+            ->select([
+                'c.id',
+                'c.client_id',
+                'cl.client_name',
+                'c.assigned_to as staff_id',
+                'cu.name as staff_name',
+                'c.order_id',
+                'c.order_source',
+                'c.status as call_status',
+                'o.delivery_status',
+                'c.created_at as calling_date',
+                'c.updated_at as calling_updated_at',
+                'o.updated_at as delivery_updated_at',
+            ])
+
+            ->get();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | GROUP BY STAFF
+    |--------------------------------------------------------------------------
+    */
+
+        $grouped =
+            $rows->groupBy('staff_id');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | BUILD PERFORMANCE
+    |--------------------------------------------------------------------------
+    */
+
+        $staffPerformance = [];
+
+
+        foreach ($allStaff as $staff) {
+
+            /*
+        | Selected client ke is staff ka data
+        */
+
+            $staffRows =
+                $grouped->get(
+                    $staff->id,
+                    collect()
+                );
+
+
+            $total =
+                $staffRows->count();
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | CALL STATUS
+        |--------------------------------------------------------------------------
+        */
+
+            $verified =
+                $staffRows->filter(
+                    function ($row) {
+
+                        return in_array(
+                            strtolower(
+                                trim(
+                                    (string)
+                                    $row->call_status
+                                )
+                            ),
+                            [
+                                'verified',
+                                'confirm',
+                                'confirmed'
+                            ],
+                            true
+                        );
+                    }
+                )->count();
+
+
+            $pending =
+                $staffRows->filter(
+                    function ($row) {
+
+                        return strtolower(
+                            trim(
+                                (string)
+                                $row->call_status
+                            )
+                        ) === 'pending';
+                    }
+                )->count();
+
+
+            $cancel =
+                $staffRows->filter(
+                    function ($row) {
+
+                        return in_array(
+                            strtolower(
+                                trim(
+                                    (string)
+                                    $row->call_status
+                                )
+                            ),
+                            [
+                                'cancel',
+                                'cancelled',
+                                'canceled'
+                            ],
+                            true
+                        );
+                    }
+                )->count();
+
+
+            $notReachable =
+                $staffRows->filter(
+                    function ($row) {
+
+                        return in_array(
+                            strtolower(
+                                trim(
+                                    (string)
+                                    $row->call_status
+                                )
+                            ),
+                            [
+                                'not reachable',
+                                'not_reachable',
+                                'not-reachable'
+                            ],
+                            true
+                        );
+                    }
+                )->count();
+
+
+            $sameOrder =
+                $staffRows->filter(
+                    function ($row) {
+
+                        return in_array(
+                            strtolower(
+                                trim(
+                                    (string)
+                                    $row->call_status
+                                )
+                            ),
+                            [
+                                'same order',
+                                'same_order'
+                            ],
+                            true
+                        );
+                    }
+                )->count();
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | DELIVERY
+        |--------------------------------------------------------------------------
+        */
+
+            $delivered =
+                $staffRows->filter(
+                    function ($row) {
+
+                        return trim(
+                            (string)
+                            $row->delivery_status
+                        ) === 'Delivered';
+                    }
+                )->count();
+
+
+            $rtoIntransit =
+                $staffRows->filter(
+                    function ($row) {
+
+                        return trim(
+                            (string)
+                            $row->delivery_status
+                        ) === 'RTO-intrasit';
+                    }
+                )->count();
+
+
+            $rtoReceived =
+                $staffRows->filter(
+                    function ($row) {
+
+                        return trim(
+                            (string)
+                            $row->delivery_status
+                        ) === 'RTO Received';
+                    }
+                )->count();
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | RATES
+        |--------------------------------------------------------------------------
+        */
+
+            $confirmationRate =
+                $total > 0
+                ? (
+                    $verified /
+                    $total
+                ) * 100
+                : 0;
+
+
+            $reachable =
+                max(
+                    0,
+                    $total -
+                        $notReachable
+                );
+
+
+            $reachabilityRate =
+                $total > 0
+                ? (
+                    $reachable /
+                    $total
+                ) * 100
+                : 0;
+
+
+            $cancelRate =
+                $total > 0
+                ? (
+                    $cancel /
+                    $total
+                ) * 100
+                : 0;
+
+
+            $deliveryRate =
+                $verified > 0
+                ? (
+                    $delivered /
+                    $verified
+                ) * 100
+                : 0;
+
+
+            $rtoTotal =
+                $rtoIntransit +
+                $rtoReceived;
+
+
+            $rtoRate =
+                $verified > 0
+                ? (
+                    $rtoTotal /
+                    $verified
+                ) * 100
+                : 0;
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | VOLUME
+        |--------------------------------------------------------------------------
+        */
+
+            $volumeScore =
+                min(
+                    (
+                        $total /
+                        100
+                    ) * 5,
+                    5
+                );
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | FINAL SCORE
+        |--------------------------------------------------------------------------
+        */
+
+            $score =
+
+                ($confirmationRate * 0.30)
+
+                +
+
+                ($deliveryRate * 0.30)
+
+                +
+
+                ($reachabilityRate * 0.15)
+
+                +
+
+                ((100 - $cancelRate) * 0.10)
+
+                +
+
+                ((100 - $rtoRate) * 0.10)
+
+                +
+
+                $volumeScore;
+
+
+            $score =
+                min(
+                    round(
+                        $score,
+                        2
+                    ),
+                    100
+                );
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | RATING
+        |--------------------------------------------------------------------------
+        */
+
+            if ($score >= 80) {
+
+                $rating = 'Excellent';
+            } elseif ($score >= 70) {
+
+                $rating = 'Very Good';
+            } elseif ($score >= 60) {
+
+                $rating = 'Good';
+            } elseif ($score >= 50) {
+
+                $rating = 'Average';
+            } else {
+
+                $rating = 'Needs Improvement';
+            }
+
+
+            $staffPerformance[] = [
+
+                'staff_id' =>
+                (int) $staff->id,
+
+                'staff_name' =>
+                $staff->name,
+
+                'leads' =>
+                $total,
+
+                'pending' =>
+                $pending,
+
+                'verified' =>
+                $verified,
+
+                'cancel' =>
+                $cancel,
+
+                'not_reachable' =>
+                $notReachable,
+
+                'same_order' =>
+                $sameOrder,
+
+                'delivered' =>
+                $delivered,
+
+                'rto_intransit' =>
+                $rtoIntransit,
+
+                'rto_received' =>
+                $rtoReceived,
+
+                'confirmation_rate' =>
+                round(
+                    $confirmationRate,
+                    2
+                ),
+
+                'reachability_rate' =>
+                round(
+                    $reachabilityRate,
+                    2
+                ),
+
+                'cancel_rate' =>
+                round(
+                    $cancelRate,
+                    2
+                ),
+
+                'delivery_rate' =>
+                round(
+                    $deliveryRate,
+                    2
+                ),
+
+                'rto_rate' =>
+                round(
+                    $rtoRate,
+                    2
+                ),
+
+                'score' =>
+                $score,
+
+                'rating' =>
+                $rating,
+
+                'suggested_percentage' =>
+                0,
+
+                'top_five' =>
+                false,
+            ];
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | SORT STAFF
+    |--------------------------------------------------------------------------
+    |
+    | Highest performance first.
+    |
+    */
+
+        usort(
+            $staffPerformance,
+            function ($a, $b) {
+
+                /*
+            | First score
+            */
+
+                if (
+                    $a['score'] !=
+                    $b['score']
+                ) {
+
+                    return
+                        $b['score']
+                        <=>
+                        $a['score'];
+                }
+
+
+                /*
+            | Then verified
+            */
+
+                if (
+                    $a['verified'] !=
+                    $b['verified']
+                ) {
+
+                    return
+                        $b['verified']
+                        <=>
+                        $a['verified'];
+                }
+
+
+                /*
+            | Then leads
+            */
+
+                return
+                    $b['leads']
+                    <=>
+                    $a['leads'];
+            }
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOP 5 STAFF
+    |--------------------------------------------------------------------------
+    |
+    | Only staff having actual performance data.
+    |
+    */
+
+        $topFive =
+            collect(
+                $staffPerformance
+            )
+            ->filter(
+                function ($staff) {
+
+                    return
+                        $staff['leads'] > 0;
+                }
+            )
+            ->take(5)
+            ->values();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOP 5 TOTAL SCORE
+    |--------------------------------------------------------------------------
+    */
+
+        $topFiveScore =
+            $topFive->sum(
+                function ($staff) {
+
+                    return max(
+                        0,
+                        (float)
+                        $staff['score']
+                    );
+                }
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | DISTRIBUTE 100% AMONG TOP 5
+    |--------------------------------------------------------------------------
+    */
+
+        if (
+            $topFiveScore > 0
+        ) {
+
+            $assignedPercentage = 0;
+
+            $topFiveCount =
+                $topFive->count();
+
+
+            foreach (
+                $topFive
+                as $index => $topStaff
+            ) {
+
+                $percentage =
+                    (
+                        $topStaff['score'] /
+                        $topFiveScore
+                    ) * 100;
+
+
+                /*
+            | Round
+            */
+
+                $percentage =
+                    round(
+                        $percentage,
+                        2
+                    );
+
+
+                /*
+            | Last staff gets remaining
+            | percentage so total is exactly 100.
+            */
+
+                if (
+                    $index ===
+                    ($topFiveCount - 1)
+                ) {
+
+                    $percentage =
+                        round(
+                            100 -
+                                $assignedPercentage,
+                            2
+                        );
+                }
+
+
+                /*
+            | Find original array index
+            */
+
+                foreach (
+                    $staffPerformance
+                    as $staffIndex => $staff
+                ) {
+
+                    if (
+                        $staff['staff_id'] ===
+                        $topStaff['staff_id']
+                    ) {
+
+                        $staffPerformance[$staffIndex]['suggested_percentage'] =
+                            $percentage;
+
+                        $staffPerformance[$staffIndex]['top_five'] =
+                            true;
+
+                        break;
+                    }
+                }
+
+
+                $assignedPercentage +=
+                    $percentage;
+            }
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | SORT AGAIN
+    |--------------------------------------------------------------------------
+    |
+    | Top performers first, but ALL staff remain visible.
+    |
+    */
+
+        usort(
+            $staffPerformance,
+            function ($a, $b) {
+
+                if (
+                    $a['top_five'] !=
+                    $b['top_five']
+                ) {
+
+                    return
+                        $b['top_five']
+                        <=>
+                        $a['top_five'];
+                }
+
+
+                return
+                    $b['score']
+                    <=>
+                    $a['score'];
+            }
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL
+    |--------------------------------------------------------------------------
+    */
+
+        $totalPercentage =
+            round(
+                array_sum(
+                    array_column(
+                        $staffPerformance,
+                        'suggested_percentage'
+                    )
+                ),
+                2
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | BEST STAFF
+    |--------------------------------------------------------------------------
+    */
+
+        $bestStaff =
+            $topFive->first();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | RESPONSE
+    |--------------------------------------------------------------------------
+    */
+
+        return response()->json([
+
+            'success' =>
+            true,
+
+            'client_id' =>
+            $clientId,
+
+            'period' => [
+
+                'from' =>
+                $from->format('Y-m-d'),
+
+                'to' =>
+                $to->format('Y-m-d'),
+
+                'days' =>
+                30,
+            ],
+
+            'total_staff' =>
+            count(
+                $staffPerformance
+            ),
+
+            'top_five_count' =>
+            $topFive->count(),
+
+            'best_staff' =>
+            $bestStaff,
+
+            'staff' =>
+            array_values(
+                $staffPerformance
+            ),
+
+            'total_suggested_percentage' =>
+            $totalPercentage,
+        ]);
+    }
     public function dashboard()
     {
         $dashboardQuery = Order::query();
