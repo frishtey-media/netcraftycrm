@@ -25,7 +25,9 @@ class DelhiveryBookingJob implements ShouldQueue
     public int $timeout = 120;
 
     public function __construct(
-        public int $importId
+        public int $importId,
+        public string $packageType = 'flyer',
+        public string $shippingMode = 'express'
     ) {}
 
     public function handle(
@@ -153,13 +155,63 @@ class DelhiveryBookingJob implements ShouldQueue
 
         /*
         |--------------------------------------------------------------------------
+        | FINAL SHIPPING RATE FOR SELECTED MODE
+        |--------------------------------------------------------------------------
+        | The preview rate is informational. Before booking we calculate the
+        | rate again using the exact Surface/Express option selected by user.
+        */
+
+        $rate = $service->calculateShippingCost(
+            $item,
+            $this->shippingMode
+        );
+
+        $rateResponse = $rate['data'] ?? [];
+
+        if (!is_array($rateResponse)) {
+            $rateResponse = [];
+        }
+
+        $rateResponse['_crm'] = [
+            'shipping_mode' => strtolower($this->shippingMode) === 'surface'
+                ? 'surface'
+                : 'express',
+            'payment_mode' => $payment,
+            'calculated_at' => now()->toIso8601String(),
+            'success' => (bool) ($rate['success'] ?? false),
+            'http_status' => $rate['status'] ?? null,
+            'message' => $rate['message'] ?? null,
+            'request' => $rate['request'] ?? [],
+        ];
+
+        $item->shipping_cost_response = json_encode(
+            $rateResponse,
+            JSON_UNESCAPED_UNICODE
+        );
+
+        $item->shipping_cost = $rate['cost'];
+
+        if (!($rate['success'] ?? false)) {
+            $item->status = 'rate_failed';
+            $item->error_message = $rate['message']
+                ?: 'Delhivery shipping cost could not be calculated.';
+            $item->save();
+            return;
+        }
+
+        $item->save();
+
+        /*
+        |--------------------------------------------------------------------------
         | BOOK SHIPMENT
         |--------------------------------------------------------------------------
         */
 
         $result =
             $service->book(
-                $item
+                $item,
+                $this->packageType,
+                $this->shippingMode
             );
 
         /*

@@ -23,7 +23,7 @@ use App\Http\Controllers\CallingOrderController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\StaffChatController;
 use App\Http\Controllers\DeliveryController;
-use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Reportcontroller;
 use App\Models\CallingOrder;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExtreportController;
@@ -183,16 +183,18 @@ Route::middleware(['auth'])->group(function () {
 
 
     Route::post('/whatsapp-excel-import', [ShopifyOrderController::class, 'whatsappExcelImport'])->name('whatsapp.excel.import');
-    Route::post('/delhivery-excel-import', [ShopifyOrderController::class, 'delhiveryExcelImport'])->name('delhivery.excel.import');
+    Route::post(
+        '/delhivery/import',
+        [ShopifyOrderController::class, 'delhiveryExcelImport']
+    )->name('delhivery.import');
     Route::get(
-        '/delhivery-import-status',
-        [
-            ShopifyOrderController::class,
-            'delhiveryImportStatus'
-        ]
-    )->name(
-        'delhivery.import.status'
-    );
+        '/delhivery/import/preview',
+        [ShopifyOrderController::class, 'delhiveryImportPreview']
+    )->name('delhivery.import.preview');
+    Route::get(
+        '/delhivery/import/status',
+        [ShopifyOrderController::class, 'delhiveryImportStatus']
+    )->name('delhivery.import.status');
     Route::get(
         '/delhivery/label/{shipment}/download',
         function (Shipment $shipment) {
@@ -234,11 +236,22 @@ Route::middleware(['auth'])->group(function () {
     )->name(
         'delhivery.pickup'
     );
+    Route::post(
+        '/delhivery/import/confirm',
+        [ShopifyOrderController::class, 'confirmDelhiveryImport']
+    )->name('delhivery.import.confirm');
+    Route::post(
+        '/delhivery/import/retry/{id}',
+        [ShopifyOrderController::class, 'retryDelhiveryImport']
+    )->name('delhivery.import.retry');
 
+    Route::get(
+        '/delhivery/import/summary',
+        [ShopifyOrderController::class, 'delhiveryImportSummary']
+    )->name('delhivery.import.summary');
 
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
     Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
-
 
     Route::get('/rto/details', [RTOController::class, 'details'])
         ->name('rto.details');

@@ -6,6 +6,8 @@ use App\Models\DelhiveryImport;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class DelhiveryExcelImport implements ToCollection, WithHeadingRow
 {
@@ -26,6 +28,120 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
         protected int $clientId,
         protected string $importDate
     ) {}
+
+    /**
+     * Parse Excel date correctly.
+     *
+     * Excel can provide dates as:
+     * 1. Excel serial number
+     * 2. d-m-Y
+     * 3. d/m/Y
+     * 4. Y-m-d
+     * 5. DateTime / Carbon
+     */
+    private function parseOrderDate($value): ?Carbon
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Carbon / DateTime
+        |--------------------------------------------------------------------------
+        */
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance(
+                \DateTime::createFromInterface($value)
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Excel Numeric Date
+        |--------------------------------------------------------------------------
+        */
+        if (is_numeric($value)) {
+            try {
+                $date = ExcelDate::excelToDateTimeObject(
+                    (float) $value
+                );
+
+                return Carbon::instance($date);
+            } catch (\Throwable $e) {
+                return null;
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | String Date
+        |--------------------------------------------------------------------------
+        */
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $formats = [
+            'd-m-Y H:i:s',
+            'd-m-Y H:i',
+            'd-m-Y',
+
+            'd/m/Y H:i:s',
+            'd/m/Y H:i',
+            'd/m/Y',
+
+            'd.m.Y H:i:s',
+            'd.m.Y H:i',
+            'd.m.Y',
+
+            'd-m-y H:i:s',
+            'd-m-y H:i',
+            'd-m-y',
+
+            'd/m/y H:i:s',
+            'd/m/y H:i',
+            'd/m/y',
+
+            'Y-m-d H:i:s',
+            'Y-m-d H:i',
+            'Y-m-d',
+        ];
+
+        foreach ($formats as $format) {
+            try {
+                $date = Carbon::createFromFormat(
+                    $format,
+                    $value
+                );
+
+                if ($date !== false && $date->year >= 2000) {
+                    return $date;
+                }
+            } catch (\Throwable $e) {
+                // Try next format
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Last fallback
+        |--------------------------------------------------------------------------
+        */
+        try {
+            $date = Carbon::parse($value);
+
+            if ($date->year >= 2000) {
+                return $date;
+            }
+        } catch (\Throwable $e) {
+            // Invalid date
+        }
+
+        return null;
+    }
 
     public function collection(Collection $rows)
     {
@@ -53,6 +169,46 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
                     )
                 );
 
+                /*
+                |--------------------------------------------------------------------------
+                | IMPORTANT DATE FIX
+                |--------------------------------------------------------------------------
+                |
+                | Your Excel column is "Date".
+                |
+                | WithHeadingRow:
+                | "Date"       => $row['date']
+                | "Order Date" => $row['order_date']
+                |
+                | So we support both.
+                |
+                */
+                $excelOrderDate =
+                    $row['date']
+                    ?? $row['order_date']
+                    ?? null;
+
+                /*
+                |--------------------------------------------------------------------------
+                | If Excel date is empty, use selected Import Date
+                |--------------------------------------------------------------------------
+                */
+                $orderDate = $this->parseOrderDate(
+                    $excelOrderDate
+                );
+
+                if (!$orderDate && !empty($this->importDate)) {
+                    $orderDate = $this->parseOrderDate(
+                        $this->importDate
+                    );
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Payment
+                |--------------------------------------------------------------------------
+                */
+
                 $payment = strtoupper(
                     trim(
                         (string) (
@@ -61,17 +217,35 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
                     )
                 );
 
+                /*
+                |--------------------------------------------------------------------------
+                | Phone
+                |--------------------------------------------------------------------------
+                */
+
                 $phone = trim(
                     (string) (
                         $row['customer_phone'] ?? ''
                     )
                 );
 
+                /*
+                |--------------------------------------------------------------------------
+                | Pincode
+                |--------------------------------------------------------------------------
+                */
+
                 $pincode = trim(
                     (string) (
                         $row['shipping_pincode'] ?? ''
                     )
                 );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Weight
+                |--------------------------------------------------------------------------
+                */
 
                 $weight = $row['weight_in_gm'] ?? null;
 
@@ -82,14 +256,12 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
                 */
 
                 if (!$orderId) {
-
                     throw new \Exception(
                         'Order ID missing'
                     );
                 }
 
                 if (strlen($orderId) > 50) {
-
                     throw new \Exception(
                         'Order ID cannot exceed 50 characters'
                     );
@@ -100,14 +272,12 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
                     ['COD', 'PREPAID'],
                     true
                 )) {
-
                     throw new \Exception(
                         'Payment Mode must be COD or PREPAID'
                     );
                 }
 
                 if (!$phone) {
-
                     throw new \Exception(
                         'Customer Phone missing'
                     );
@@ -117,7 +287,6 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
                     '/^\d{6}$/',
                     $pincode
                 )) {
-
                     throw new \Exception(
                         'Invalid Shipping Pincode'
                     );
@@ -128,7 +297,6 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
                     $weight === '' ||
                     (float) $weight <= 0
                 ) {
-
                     throw new \Exception(
                         'Weight (in GM) is required'
                     );
@@ -151,7 +319,6 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
                     )
                     ->exists()
                 ) {
-
                     throw new \Exception(
                         'Duplicate Delhivery Order ID'
                     );
@@ -171,9 +338,15 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
                     'order_id' =>
                     $orderId,
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | FIXED ORDER DATE
+                    |--------------------------------------------------------------------------
+                    */
                     'order_date' =>
-                    $row['date']
-                        ?? $this->importDate,
+                    $orderDate
+                        ? $orderDate->format('Y-m-d H:i:s')
+                        : null,
 
                     'shopify_order_id' =>
                     $row['shopify_order_id']
@@ -256,7 +429,6 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
 
                     'booking_response' =>
                     null,
-
                 ]);
 
                 /*
@@ -273,12 +445,6 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
 
                 $this->skipped++;
 
-                /*
-                |--------------------------------------------------------------------------
-                | Excel Error
-                |--------------------------------------------------------------------------
-                */
-
                 $this->errors[] = [
 
                     'type' =>
@@ -293,7 +459,6 @@ class DelhiveryExcelImport implements ToCollection, WithHeadingRow
 
                     'error' =>
                     $e->getMessage(),
-
                 ];
             }
         }

@@ -21,52 +21,57 @@ class DelhiveryPickupJob implements ShouldQueue
 
     public int $timeout = 120;
 
+
     public function handle(
         DelhiveryService $service
     ): void {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Pick all shipments ready for pickup
-        |--------------------------------------------------------------------------
-        */
-
-        $shipments = Shipment::where(
-            'courier',
-            'delhivery'
-        )
+        $shipments =
+            Shipment::where(
+                'courier',
+                'delhivery'
+            )
             ->whereNotNull('awb')
             ->whereNotNull('label_path')
             ->whereNull('pickup_request_id')
-            ->whereIn('status', [
-                'label_generated',
-                'booked',
-            ])
+            ->whereNull('picked_up_at')
+            ->whereIn(
+                'status',
+                [
+                    'booked',
+                    'label_generated',
+                ]
+            )
             ->get();
 
-        if ($shipments->isEmpty()) {
+
+        if (
+            $shipments->isEmpty()
+        ) {
             return;
         }
 
+
+        $date =
+            now()->format(
+                'Y-m-d'
+            );
+
+
+        $time =
+            config(
+                'services.delhivery.pickup_time',
+                '15:00:00'
+            );
+
+
+        $count =
+            $shipments->count();
+
+
         /*
         |--------------------------------------------------------------------------
-        | Pickup configuration
-        |--------------------------------------------------------------------------
-        */
-
-        $date = now()
-            ->format('Y-m-d');
-
-        $time = config(
-            'services.delhivery.pickup_time',
-            '15:00:00'
-        );
-
-        $count = $shipments->count();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create ONE pickup request
+        | ONE PICKUP REQUEST
         |--------------------------------------------------------------------------
         */
 
@@ -77,15 +82,21 @@ class DelhiveryPickupJob implements ShouldQueue
                 $count
             );
 
+
         /*
         |--------------------------------------------------------------------------
-        | Failed
+        | FAILED
         |--------------------------------------------------------------------------
         */
 
-        if (!$result['success']) {
+        if (
+            !$result['success']
+        ) {
 
-            foreach ($shipments as $shipment) {
+            foreach (
+                $shipments
+                as $shipment
+            ) {
 
                 $shipment->update([
 
@@ -97,8 +108,10 @@ class DelhiveryPickupJob implements ShouldQueue
 
                     'error_message' =>
                     $result['message']
-                        ?? $result['raw']
-                        ?? 'Pickup request failed.',
+                        ??
+                        $result['raw']
+                        ??
+                        'Pickup request failed.',
 
                     'pickup_response' =>
                     $result['data']
@@ -107,12 +120,14 @@ class DelhiveryPickupJob implements ShouldQueue
                 ]);
             }
 
+
             return;
         }
 
+
         /*
         |--------------------------------------------------------------------------
-        | Get Pickup Request ID
+        | PICKUP ID
         |--------------------------------------------------------------------------
         */
 
@@ -120,39 +135,46 @@ class DelhiveryPickupJob implements ShouldQueue
             $result['data']
             ?? [];
 
-        /*
-        | Different Delhivery responses can expose
-        | the pickup identifier differently.
-        */
 
         $pickupRequestId =
+
             data_get(
                 $data,
                 'pickup_request_id'
             )
+
             ??
+
             data_get(
                 $data,
                 'pickup_id'
             )
+
             ??
+
             data_get(
                 $data,
                 'pr_id'
             )
+
             ??
+
             data_get(
                 $data,
                 'request_id'
             );
 
+
         /*
         |--------------------------------------------------------------------------
-        | Save Pickup against all shipments
+        | SAVE
         |--------------------------------------------------------------------------
         */
 
-        foreach ($shipments as $shipment) {
+        foreach (
+            $shipments
+            as $shipment
+        ) {
 
             $shipment->update([
 

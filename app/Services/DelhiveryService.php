@@ -66,6 +66,9 @@ class DelhiveryService
                 'success' =>
                 $response->successful(),
 
+                'status' =>
+                $response->status(),
+
                 'data' =>
                 $data,
 
@@ -147,11 +150,191 @@ class DelhiveryService
 
     /*
     |--------------------------------------------------------------------------
+    | CALCULATE SHIPPING COST
+    |--------------------------------------------------------------------------
+    |
+    | Delhivery calculates an estimated domestic shipping charge before
+    | shipment manifestation. This method NEVER creates/book a shipment.
+    */
+
+    public function calculateShippingCost(
+        DelhiveryImport $item,
+        string $shippingMode = 'express'
+    ): array {
+
+        $payment = strtoupper(trim((string) $item->payment_mode));
+
+        if ($payment === 'COD') {
+            $paymentType = 'COD';
+        } elseif (in_array($payment, ['PREPAID', 'PRE-PAID', 'PRE PAID'], true)) {
+            $paymentType = 'Pre-paid';
+        } else {
+            return [
+                'success' => false,
+                'status' => 422,
+                'data' => null,
+                'raw' => null,
+                'cost' => null,
+                'message' => 'Invalid payment mode for Delhivery rate calculation.',
+            ];
+        }
+
+        $mode = strtolower(trim($shippingMode)) === 'surface'
+            ? 'surface'
+            : 'express';
+
+        $md = $mode === 'surface' ? 'S' : 'E';
+
+        $originPin = trim((string) config('services.delhivery.origin_pincode'));
+        $destinationPin = trim((string) $item->pincode);
+        $weight = (int) round((float) $item->weight);
+
+        if ($originPin === '' || !preg_match('/^\d{6}$/', $originPin)) {
+            return [
+                'success' => false,
+                'status' => 422,
+                'data' => null,
+                'raw' => null,
+                'cost' => null,
+                'message' => 'Delhivery origin_pincode is missing or invalid.',
+            ];
+        }
+
+        if (!preg_match('/^\d{6}$/', $destinationPin)) {
+            return [
+                'success' => false,
+                'status' => 422,
+                'data' => null,
+                'raw' => null,
+                'cost' => null,
+                'message' => 'Destination pincode is invalid.',
+            ];
+        }
+
+        if ($weight < 1) {
+            return [
+                'success' => false,
+                'status' => 422,
+                'data' => null,
+                'raw' => null,
+                'cost' => null,
+                'message' => 'Shipment weight must be greater than 0 grams.',
+            ];
+        }
+
+        $query = [
+            'md' => $md,
+            'ss' => 'Delivered',
+            'd_pin' => $destinationPin,
+            'o_pin' => $originPin,
+            'cgm' => $weight,
+            'pt' => $paymentType,
+        ];
+
+        try {
+            $response = $this->request()->get(
+                $this->baseUrl . '/api/kinko/v1/invoice/charges/.json',
+                $query
+            );
+
+            $data = $response->json();
+
+            $cost = $this->extractShippingCost($data);
+
+            Log::info('DELHIVERY SHIPPING COST RESPONSE', [
+                'order_id' => $item->order_id,
+                'shipping_mode' => $mode,
+                'query' => $query,
+                'http_status' => $response->status(),
+                'cost' => $cost,
+                'response' => $data,
+            ]);
+
+            $apiError =
+                data_get($data, 'error')
+                ?? data_get($data, 'message')
+                ?? data_get($data, 'rmk');
+
+            $success = $response->successful() && $cost !== null;
+
+            return [
+                'success' => $success,
+                'status' => $response->status(),
+                'data' => $data,
+                'raw' => $response->body(),
+                'cost' => $cost,
+                'message' => $success
+                    ? null
+                    : ($apiError ?: 'Delhivery did not return a numeric shipping cost.'),
+                'shipping_mode' => $mode,
+                'payment_type' => $paymentType,
+                'request' => $query,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Delhivery shipping cost exception', [
+                'order_id' => $item->order_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'status' => 500,
+                'data' => null,
+                'raw' => $e->getMessage(),
+                'cost' => null,
+                'message' => $e->getMessage(),
+                'shipping_mode' => $mode,
+                'payment_type' => $paymentType,
+                'request' => $query,
+            ];
+        }
+    }
+
+    private function extractShippingCost($data): ?float
+    {
+        if (!is_array($data)) {
+            return null;
+        }
+
+        $paths = [
+            'total_amount',
+            'amount',
+            'shipping_cost',
+            'shipment_cost',
+            'freight',
+            'freight_charges',
+            'total_cost',
+            'total_charges',
+            'charged_amount',
+            'cost',
+            'data.total_amount',
+            'data.amount',
+            'data.shipping_cost',
+            'data.total_cost',
+            'packages.0.total_amount',
+            'packages.0.amount',
+            'packages.0.shipping_cost',
+            'packages.0.cost',
+        ];
+
+        foreach ($paths as $path) {
+            $value = data_get($data, $path);
+
+            if (is_numeric($value)) {
+                return (float) $value;
+            }
+        }
+
+        return null;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | BOOK SHIPMENT
     |--------------------------------------------------------------------------
     */
 
-    public function book(DelhiveryImport $item): array
+    public function book(DelhiveryImport $item, string $packageType = 'flyer', string $shippingMode = 'express'): array
     {
         $payment = strtoupper(trim($item->payment_mode));
 
@@ -228,7 +411,20 @@ class DelhiveryService
                     'shipment_height' => '10',
                     'shipment_length' => '10',
 
-                    'shipping_mode' => 'Express',
+                    'shipping_mode' =>
+                    strtolower($shippingMode) === 'surface'
+                        ? 'Surface'
+                        : 'Express',
+
+                    /*
+                     * Internal packaging choice. It is also returned in
+                     * the saved CRM report. Delhivery receives the standard
+                     * CMU shipment fields above.
+                     */
+                    'package_type' =>
+                    strtolower($packageType) === 'box'
+                        ? 'box'
+                        : 'flyer',
                 ],
             ],
         ];
@@ -289,6 +485,18 @@ class DelhiveryService
                 'response' => $data,
             ]);
 
+            $apiMessage =
+                $data['rmk']
+                ?? $data['message']
+                ?? null;
+
+            $apiError =
+                $data['error']
+                ?? null;
+
+            $shippingCost =
+                $this->extractCost($data);
+
             return [
                 'success' => $success,
 
@@ -298,10 +506,11 @@ class DelhiveryService
 
                 'raw' => $response->body(),
 
-                'message' =>
-                $data['rmk']
-                    ?? $data['message']
-                    ?? null,
+                'message' => $apiMessage,
+
+                'error' => $apiError,
+
+                'shipping_cost' => $shippingCost,
             ];
         } catch (\Throwable $e) {
 
@@ -316,8 +525,40 @@ class DelhiveryService
                 'data' => null,
                 'raw' => $e->getMessage(),
                 'message' => $e->getMessage(),
+                'error' => $e->getMessage(),
+                'shipping_cost' => null,
             ];
         }
+    }
+
+    private function extractCost(array $data): ?float
+    {
+        $keys = [
+            'shipping_cost',
+            'shipment_cost',
+            'freight',
+            'freight_charges',
+            'total_cost',
+            'total_charges',
+            'charged_amount',
+            'cost',
+        ];
+
+        foreach ($keys as $key) {
+            $value = data_get($data, $key);
+
+            if (is_numeric($value)) {
+                return (float) $value;
+            }
+
+            $value = data_get($data, 'packages.0.' . $key);
+
+            if (is_numeric($value)) {
+                return (float) $value;
+            }
+        }
+
+        return null;
     }
 
     /*
