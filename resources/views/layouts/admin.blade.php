@@ -192,6 +192,10 @@
             <a href="{{ route('record.create') }}">
                 <i class="bi bi-upload"></i> Import Records
             </a>
+            <a href="{{ route('selloship.import.page') }}">
+                <i class="bi bi-file-earmark-spreadsheet"></i>
+                Selloship Import
+            </a>
             <a href="{{ route('barcodes') }}">
                 <i class="bi bi-upc-scan"></i> Barcodes
             </a>
@@ -216,6 +220,9 @@
                     @if (auth()->user()->role == 'super_admin')
                         <a href="{{ route('staff.performance.report') }}">
                             <i class="bi bi-truck"></i>Overall Final Reports
+                        </a>
+                        <a href="{{ route('delivered.index') }}">
+                            <i class="bi bi-truck"></i>Staff Combine Reports
                         </a>
                         <a href="{{ route('delivered.index') }}">
                             <i class="bi bi-truck"></i>Delivery Reports

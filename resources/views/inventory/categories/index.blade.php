@@ -49,13 +49,13 @@
                                         </a>
 
                                         <!--<form action="{{ route('categories.destroy', $category->id) }}" method="POST">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="btn btn-sm btn-danger"
-                                                    onclick="return confirm('Delete this category?')">
-                                                    Delete
-                                                </button>
-                                            </form>-->
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button class="btn btn-sm btn-danger"
+                                                        onclick="return confirm('Delete this category?')">
+                                                        Delete
+                                                    </button>
+                                                </form>-->
                                     </div>
                                 </td>
                             </tr>

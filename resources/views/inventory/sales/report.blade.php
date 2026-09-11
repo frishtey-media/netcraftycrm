@@ -24,9 +24,14 @@
             <div class="col-md-3">
                 <select name="product_id" class="form-control">
                     <option value="">All Products</option>
+
                     @foreach ($products as $product)
+                        @php
+                            $productName = $clientProductNames[$product->name] ?? $product->name;
+                        @endphp
+
                         <option value="{{ $product->id }}" {{ request('product_id') == $product->id ? 'selected' : '' }}>
-                            {{ $product->name }}
+                            {{ $productName }}
                         </option>
                     @endforeach
                 </select>
@@ -78,8 +83,8 @@
 
                         {{-- Product Header --}}
                         <tr class="table-primary">
-                            <td colspan="8">
-                                <strong>Product: {{ $product->name }}</strong>
+                            <td colspan="9">
+                                <strong>{{ $product->clientProduct->shopify_product_name ?? 'N/A' }}</strong>
                             </td>
                         </tr>
 
@@ -95,8 +100,11 @@
                             <tr>
                                 <td>{{ $sr++ }}</td>
                                 <td>{{ $product->warehouse->name ?? '' }}</td>
-                                <td>{{ $product->client->name ?? '' }}</td>
-                                <td>{{ $product->name }}</td>
+                                <td>
+                                    {{ $product->client->client_name ?? 'N/A' }}
+                                </td>
+                                <td>{{ $item->product->clientProduct->shopify_product_name ?? 'N/A' }}</td>
+
                                 <td>₹ {{ number_format($item->price, 2) }}</td>
                                 <td>{{ $qty }}</td>
                                 <td>₹ {{ number_format($value, 2) }}</td>

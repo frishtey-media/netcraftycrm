@@ -149,11 +149,181 @@
 
                 </div>
             @endforeach
+            {{-- SELLOSHIP RECORDS --}}
+
+            {{-- SELLOSHIP RECORDS --}}
+            @foreach ($ordersData as $data)
+                <div class="col-md-4">
+
+                    <div class="dashboard-card card-green"
+                        onclick="openSelloshipAssignModal(
+                {{ $data['client_id'] }},
+                {{ $data['selloship_records'] ?? 0 }}
+            )">
+
+                        <div>
+
+                            <div class="card-title">
+                                <i class="bi bi-file-earmark-spreadsheet"></i>
+                                Selloship Records
+                            </div>
+
+                            <span>
+                                {{ $data['client_name'] }}
+                            </span>
+
+                            <div class="card-count">
+                                {{ $data['selloship_records'] ?? 0 }}
+                            </div>
+
+                            <small>
+                                Pending Assignment
+                            </small>
+
+                        </div>
+
+                        <i class="bi bi-file-earmark-arrow-up card-icon"></i>
+
+                    </div>
+
+                </div>
+            @endforeach
+        </div>
+
+    </div>
+    {{-- =========================================================
+     SELLOSHIP ASSIGN MODAL
+========================================================= --}}
+
+    <div class="modal fade" id="selloshipAssignModal" tabindex="-1" aria-labelledby="selloshipAssignModalLabel"
+        aria-hidden="true">
+
+        <div class="modal-dialog modal-dialog-centered">
+
+            <div class="modal-content">
+
+                {{-- HEADER --}}
+                <div class="modal-header">
+
+                    <h5 class="modal-title" id="selloshipAssignModalLabel">
+
+                        <i class="bi bi-file-earmark-spreadsheet me-2"></i>
+                        Assign Selloship Records
+
+                    </h5>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    </button>
+
+                </div>
+
+
+                {{-- FORM --}}
+                <form id="selloshipAssignForm">
+
+                    @csrf
+
+                    <div class="modal-body">
+
+                        {{-- CLIENT ID --}}
+                        <input type="hidden" name="client_id" id="selloship_client_id">
+
+
+                        {{-- AVAILABLE RECORDS --}}
+                        <div class="alert alert-info">
+
+                            <span>
+                                Available Records:
+                            </span>
+
+                            <strong id="selloshipTotalOrders">
+                                0
+                            </strong>
+
+                        </div>
+
+
+                        {{-- STAFF LIST --}}
+                        <div id="selloshipStaffList">
+
+                            @forelse ($allStaff as $member)
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+
+                                    <div>
+
+                                        <strong>
+                                            {{ $member->name }}
+                                        </strong>
+
+                                        <div class="text-muted small">
+                                            Staff ID: {{ $member->id }}
+                                        </div>
+
+                                    </div>
+
+
+                                    <input type="number" name="assign[{{ $member->id }}]" min="0" max="99999"
+                                        value="0" class="form-control selloship-qty"
+                                        data-staff-id="{{ $member->id }}" style="width:125px;">
+
+                                </div>
+
+                            @empty
+
+                                <div class="alert alert-danger">
+                                    No active staff found.
+                                </div>
+                            @endforelse
+
+                        </div>
+
+
+                        {{-- WARNING --}}
+                        <div class="alert alert-warning" id="selloshipAssignmentWarning">
+
+                            Enter quantity for at least one staff.
+
+                        </div>
+
+
+                        {{-- ERROR --}}
+                        <div class="alert alert-danger d-none" id="selloshipAssignmentError">
+                        </div>
+
+
+                        {{-- SUCCESS --}}
+                        <div class="alert alert-success d-none" id="selloshipAssignmentSuccess">
+                        </div>
+
+                    </div>
+
+
+                    {{-- FOOTER --}}
+                    <div class="modal-footer">
+
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+
+                            Cancel
+
+                        </button>
+
+
+                        <button type="submit" id="assignSelloshipBtn" class="btn btn-primary">
+
+                            <i class="bi bi-person-check me-1"></i>
+                            Assign Selloship Orders
+
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
 
         </div>
 
     </div>
-
     {{-- ASSIGN MODAL --}}
     <div class="modal fade" id="assignModal">
         <div class="modal-dialog">
@@ -267,7 +437,7 @@
 
             <div class="modal-content p-3">
 
-                <h5>Assign Repeat Customers</h5>
+                <h5>Abandoned checkouts</h5>
 
                 <p>
                     Total Orders:
@@ -306,6 +476,382 @@
         </div>
 
     </div>
+    <script>
+        /*
+                    |--------------------------------------------------------------------------
+                    | Open Selloship Assignment Modal
+                    |--------------------------------------------------------------------------
+                    */
+
+        function openSelloshipAssignModal(clientId, count) {
+
+            // Set client ID
+            $('#selloship_client_id').val(clientId);
+
+            // Set available count
+            $('#selloshipTotalOrders').text(count);
+
+            // Reset all quantities
+            $('.selloship-qty').val(0);
+
+            // Reset messages
+            $('#selloshipAssignmentWarning')
+                .removeClass('d-none');
+
+            $('#selloshipAssignmentError')
+                .addClass('d-none')
+                .text('');
+
+            $('#selloshipAssignmentSuccess')
+                .addClass('d-none')
+                .text('');
+
+            // Enable button
+            $('#assignSelloshipBtn')
+                .prop('disabled', false)
+                .html(
+                    '<i class="bi bi-person-check me-1"></i>' +
+                    ' Assign Selloship Orders'
+                );
+
+            // Open Bootstrap modal
+            const modalElement =
+                document.getElementById('selloshipAssignModal');
+
+            const modal =
+                bootstrap.Modal.getOrCreateInstance(modalElement);
+
+            modal.show();
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Selloship Assignment Form Submit
+        |--------------------------------------------------------------------------
+        */
+
+        $(document).on(
+            'submit',
+            '#selloshipAssignForm',
+            function(e) {
+
+                e.preventDefault();
+
+                let clientId =
+                    $('#selloship_client_id').val();
+
+                let available =
+                    parseInt(
+                        $('#selloshipTotalOrders').text()
+                    ) || 0;
+
+                let assignments = {};
+
+                let totalRequested = 0;
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Collect Staff Quantities
+                |--------------------------------------------------------------------------
+                */
+
+                $('.selloship-qty').each(function() {
+
+                    let staffId =
+                        $(this).data('staff-id');
+
+                    let quantity =
+                        parseInt($(this).val()) || 0;
+
+                    if (quantity < 0) {
+                        quantity = 0;
+                    }
+
+                    if (quantity > 0) {
+
+                        assignments[staffId] =
+                            quantity;
+
+                        totalRequested += quantity;
+                    }
+
+                });
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Validation
+                |--------------------------------------------------------------------------
+                */
+
+                $('#selloshipAssignmentError')
+                    .addClass('d-none')
+                    .text('');
+
+                $('#selloshipAssignmentSuccess')
+                    .addClass('d-none')
+                    .text('');
+
+
+                if (!clientId) {
+
+                    showSelloshipError(
+                        'Client ID is missing.'
+                    );
+
+                    return;
+                }
+
+
+                if (totalRequested <= 0) {
+
+                    showSelloshipError(
+                        'Enter quantity for at least one staff.'
+                    );
+
+                    return;
+                }
+
+
+                if (totalRequested > available) {
+
+                    showSelloshipError(
+                        'You requested ' +
+                        totalRequested +
+                        ' records, but only ' +
+                        available +
+                        ' records are available.'
+                    );
+
+                    return;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Disable Button
+                |--------------------------------------------------------------------------
+                */
+
+                $('#assignSelloshipBtn')
+                    .prop('disabled', true)
+                    .html(
+                        '<span class="spinner-border spinner-border-sm me-1"></span>' +
+                        ' Assigning...'
+                    );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | AJAX
+                |--------------------------------------------------------------------------
+                */
+
+                $.ajax({
+
+                    url: "{{ route('assign.selloship.orders') }}",
+
+                    type: 'POST',
+
+                    data: {
+
+                        _token: "{{ csrf_token() }}",
+
+                        client_id: clientId,
+
+                        assign: assignments
+
+                    },
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Success
+                    |--------------------------------------------------------------------------
+                    */
+
+                    success: function(response) {
+
+                        console.log(
+                            'Selloship Assignment:',
+                            response
+                        );
+
+
+                        if (
+                            response &&
+                            response.success
+                        ) {
+
+                            let assigned =
+                                response.assigned ||
+                                totalRequested;
+
+                            let remaining =
+                                response.remaining !== undefined ?
+                                response.remaining :
+                                available - assigned;
+
+
+                            $('#selloshipAssignmentWarning')
+                                .addClass('d-none');
+
+
+                            $('#selloshipAssignmentSuccess')
+                                .removeClass('d-none')
+                                .text(
+                                    assigned +
+                                    ' Selloship records assigned successfully.'
+                                );
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Update count
+                            |--------------------------------------------------------------------------
+                            */
+
+                            $('#selloshipTotalOrders')
+                                .text(remaining);
+
+
+                            /*
+                            |--------------------------------------------------------------------------
+                            | Close + Reload
+                            |--------------------------------------------------------------------------
+                            */
+
+                            setTimeout(function() {
+
+                                const modalElement =
+                                    document.getElementById(
+                                        'selloshipAssignModal'
+                                    );
+
+                                const modal =
+                                    bootstrap.Modal
+                                    .getOrCreateInstance(
+                                        modalElement
+                                    );
+
+                                modal.hide();
+
+                                location.reload();
+
+                            }, 800);
+
+
+                        } else {
+
+                            showSelloshipError(
+                                response.message ||
+                                'Unable to assign Selloship records.'
+                            );
+
+                            enableSelloshipButton();
+                        }
+
+                    },
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Error
+                    |--------------------------------------------------------------------------
+                    */
+
+                    error: function(xhr) {
+
+                        console.error(
+                            'Selloship Assignment Error:',
+                            xhr
+                        );
+
+
+                        let message =
+                            'Something went wrong while assigning records.';
+
+
+                        if (
+                            xhr.responseJSON &&
+                            xhr.responseJSON.message
+                        ) {
+
+                            message =
+                                xhr.responseJSON.message;
+
+                        } else if (
+                            xhr.responseText
+                        ) {
+
+                            console.error(
+                                xhr.responseText
+                            );
+                        }
+
+
+                        showSelloshipError(message);
+
+                        enableSelloshipButton();
+
+                    },
+
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Complete
+                    |--------------------------------------------------------------------------
+                    */
+
+                    complete: function() {
+
+                        // Only enable if not successful
+                        // Successful request reloads page.
+                    }
+
+                });
+
+            }
+        );
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Show Error
+        |--------------------------------------------------------------------------
+        */
+
+        function showSelloshipError(message) {
+
+            $('#selloshipAssignmentError')
+                .removeClass('d-none')
+                .text(message);
+
+            $('#selloshipAssignmentSuccess')
+                .addClass('d-none');
+
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Enable Button
+        |--------------------------------------------------------------------------
+        */
+
+        function enableSelloshipButton() {
+
+            $('#assignSelloshipBtn')
+                .prop('disabled', false)
+                .html(
+                    '<i class="bi bi-person-check me-1"></i>' +
+                    ' Assign Selloship Orders'
+                );
+
+        }
+    </script>
     <script>
         function openAssignModal(clientId, totalOrders) {
             document.getElementById('client_id').value = clientId;

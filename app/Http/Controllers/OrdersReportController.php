@@ -9,29 +9,16 @@ use Carbon\Carbon;
 
 class OrdersReportController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | MAIN REPORT
-    |--------------------------------------------------------------------------
-    */
-
     public function index(Request $request)
     {
+
+
         $dateFrom = $request->date_from
             ?: now()->format('Y-m-d');
 
         $dateTo = $request->date_to
             ?: now()->format('Y-m-d');
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CLIENTS
-        |--------------------------------------------------------------------------
-        |
-        | callingorder.client_id -> clients.id
-        |
-        */
 
         $clients = DB::table('clients')
             ->select(
@@ -41,20 +28,6 @@ class OrdersReportController extends Controller
             ->orderBy('client_name')
             ->get();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | STAFF
-        |--------------------------------------------------------------------------
-        |
-        | Staff belongs to callingorder.assigned_to
-        | calling_users.id
-        |
-        | If client selected:
-        | only staff who have orders for that client
-        | will be shown.
-        |
-        */
 
         $staffQuery = DB::table('calling_users as cu')
             ->join(
@@ -70,8 +43,8 @@ class OrdersReportController extends Controller
             ->where('cu.status', 1)
             ->distinct();
 
-
         if ($request->filled('client_id')) {
+
             $staffQuery->where(
                 'c.client_id',
                 $request->client_id
@@ -86,32 +59,28 @@ class OrdersReportController extends Controller
             ]
         );
 
-
         $staffs = $staffQuery
             ->orderBy('cu.name')
             ->get();
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | SOURCE FILTER
-        |--------------------------------------------------------------------------
-        */
-
         $sources = [
-            'web' => 'Web',
-            'whatsapp' => 'WhatsApp',
-            'rto' => 'RTO',
-            'deliveredreorder' => 'Re-delivered',
-            'shopify_abandoned_checkout' => 'Abandoned',
+            'web' =>
+            'Web',
+
+            'whatsapp' =>
+            'WhatsApp',
+
+            'rto' =>
+            'RTO',
+
+            'deliveredreorder' =>
+            'Re-delivered',
+
+            'shopify_abandoned_checkout' =>
+            'Abandoned',
         ];
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CALL STATUS FILTER
-        |--------------------------------------------------------------------------
-        */
 
         $callStatuses = [
             'pending',
@@ -121,13 +90,6 @@ class OrdersReportController extends Controller
             'same order',
             'other',
         ];
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | DELIVERY STATUS FILTER
-        |--------------------------------------------------------------------------
-        */
 
         $deliveryStatuses = [
             'Delivered',
@@ -139,38 +101,26 @@ class OrdersReportController extends Controller
             'No Status',
         ];
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | LATEST ORDER
-        |--------------------------------------------------------------------------
-        |
-        | If same order_id has multiple records in orders,
-        | latest ID is taken.
-        |
-        */
-
         $latestOrders = DB::table('orders')
             ->select(
-                'order_id',
-                DB::raw('MAX(id) as latest_id')
+                DB::raw(
+                    'TRIM(order_id) as normalized_order_id'
+                ),
+                DB::raw(
+                    'MAX(id) as latest_id'
+                )
             )
             ->whereNotNull('order_id')
-            ->where('order_id', '!=', '')
-            ->groupBy('order_id');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | MAIN QUERY
-        |--------------------------------------------------------------------------
-        */
+            ->whereRaw(
+                "TRIM(order_id) <> ''"
+            )
+            ->groupBy(
+                DB::raw('TRIM(order_id)')
+            );
 
         $query = DB::table('callingorder as c')
 
-            /*
-            | STAFF
-            */
+
             ->join(
                 'calling_users as cu',
                 'cu.id',
@@ -178,9 +128,6 @@ class OrdersReportController extends Controller
                 'c.assigned_to'
             )
 
-            /*
-            | CLIENT
-            */
             ->leftJoin(
                 'clients as cl',
                 'cl.id',
@@ -188,25 +135,21 @@ class OrdersReportController extends Controller
                 'c.client_id'
             )
 
-            /*
-            | LATEST ORDER
-            */
             ->leftJoinSub(
                 $latestOrders,
                 'lo',
                 function ($join) {
 
                     $join->on(
-                        'lo.order_id',
+                        'lo.normalized_order_id',
                         '=',
-                        'c.order_id'
+                        DB::raw(
+                            'TRIM(c.order_id)'
+                        )
                     );
                 }
             )
 
-            /*
-            | ORDER
-            */
             ->leftJoin(
                 'orders as o',
                 'o.id',
@@ -218,31 +161,13 @@ class OrdersReportController extends Controller
 
                 'c.id',
 
-                /*
-                |--------------------------------------------------------------------------
-                | CLIENT
-                |--------------------------------------------------------------------------
-                */
-
                 'c.client_id',
 
                 'cl.client_name',
 
-                /*
-                |--------------------------------------------------------------------------
-                | STAFF
-                |--------------------------------------------------------------------------
-                */
-
                 'c.assigned_to as staff_id',
 
                 'cu.name as staff_name',
-
-                /*
-                |--------------------------------------------------------------------------
-                | CALLING ORDER
-                |--------------------------------------------------------------------------
-                */
 
                 'c.order_id',
 
@@ -260,29 +185,15 @@ class OrdersReportController extends Controller
 
                 'c.updated_at as calling_updated_at',
 
-                /*
-                |--------------------------------------------------------------------------
-                | ORDER
-                |--------------------------------------------------------------------------
-                */
-
                 'o.delivery_status',
+
+                'o.payment_mode',
 
                 'o.created_at as order_date',
 
                 'o.updated_at as delivery_updated_at',
 
             ]);
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | DATE
-        |--------------------------------------------------------------------------
-        | Report date basis = callingorder.updated_at
-        | (same basis as the performance dashboard)
-        |--------------------------------------------------------------------------
-        */
 
         $query->whereBetween(
             'c.updated_at',
@@ -292,13 +203,6 @@ class OrdersReportController extends Controller
             ]
         );
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CLIENT
-        |--------------------------------------------------------------------------
-        */
-
         if ($request->filled('client_id')) {
 
             $query->where(
@@ -306,13 +210,6 @@ class OrdersReportController extends Controller
                 $request->client_id
             );
         }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | STAFF
-        |--------------------------------------------------------------------------
-        */
 
         if ($request->filled('staff_id')) {
 
@@ -323,39 +220,52 @@ class OrdersReportController extends Controller
         }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | SOURCE
-        |--------------------------------------------------------------------------
-        */
-
         if ($request->filled('order_source')) {
 
-            if ($request->order_source === 'web') {
+            if (
+                $request->order_source === 'web'
+            ) {
 
-                // NULL / empty order_source = WEB
                 $query->where(function ($q) {
-                    $q->whereNull('c.order_source')
-                        ->orWhere('c.order_source', '');
+
+                    $q->whereNull(
+                        'c.order_source'
+                    )
+                        ->orWhere(
+                            'c.order_source',
+                            ''
+                        );
                 });
             } else {
 
-                if ($request->order_source === 'deliveredreorder') {
+                if (
+                    $request->order_source ===
+                    'deliveredreorder'
+                ) {
 
-                    $query->whereIn('c.order_source', [
-                        'deliveredreorder',
-                        'redelivered',
-                        're delivered',
-                        're-delivered',
-                        're-delivred',
-                    ]);
-                } elseif ($request->order_source === 'shopify_abandoned_checkout') {
+                    $query->whereIn(
+                        'c.order_source',
+                        [
+                            'deliveredreorder',
+                            'redelivered',
+                            're delivered',
+                            're-delivered',
+                            're-delivred',
+                        ]
+                    );
+                } elseif (
+                    $request->order_source ===
+                    'shopify_abandoned_checkout'
+                ) {
 
-                    $query->whereIn('c.order_source', [
-                        'shopify_abandoned_checkout',
-                        'abandoned',
-                        'abanded',
-                    ]);
+                    $query->whereIn(
+                        'c.order_source',
+                        [
+                            'shopify_abandoned_checkout',
+                            'abandoned',
+                            'abanded',
+                        ]
+                    );
                 } else {
 
                     $query->where(
@@ -366,13 +276,6 @@ class OrdersReportController extends Controller
             }
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CALL STATUS
-        |--------------------------------------------------------------------------
-        */
-
         if ($request->filled('call_status')) {
 
             $query->where(
@@ -381,29 +284,22 @@ class OrdersReportController extends Controller
             );
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | DELIVERY STATUS
-        |--------------------------------------------------------------------------
-        */
-
         if ($request->filled('delivery_status')) {
 
             if (
-                $request->delivery_status === 'No Status'
+                $request->delivery_status ===
+                'No Status'
             ) {
 
                 $query->where(function ($q) {
 
                     $q->whereNull(
                         'o.delivery_status'
-                    );
-
-                    $q->orWhere(
-                        'o.delivery_status',
-                        ''
-                    );
+                    )
+                        ->orWhere(
+                            'o.delivery_status',
+                            ''
+                        );
                 });
             } else {
 
@@ -414,94 +310,313 @@ class OrdersReportController extends Controller
             }
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | GET DATA
-        |--------------------------------------------------------------------------
-        */
-
         $rows = $query
             ->orderBy('c.client_id')
             ->orderBy('cu.name')
             ->orderByDesc('c.updated_at')
             ->get();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | OVERALL CALLING
-        |--------------------------------------------------------------------------
-        */
-
         $overall = $this->callingStats(
             $rows
         );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | OVERALL DELIVERY
-        |--------------------------------------------------------------------------
-        */
 
         $delivery = $this->deliveryStats(
             $rows
         );
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | SOURCE
-        |--------------------------------------------------------------------------
-        */
-
         $sourceStats = $this->sourceStats(
             $rows
         );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | STAFF PERFORMANCE
-        |--------------------------------------------------------------------------
-        |
-        | Client + Staff wise
-        |
-        */
 
         $staffReport = $rows
             ->groupBy(function ($row) {
 
                 return
-                    $row->client_id .
-                    '_' .
-                    $row->staff_id;
+                    $row->client_id
+                    . '_'
+                    . $row->staff_id;
             })
+
             ->map(function ($staffRows) {
 
-                return $this->staffPerformance(
+                $performance =
+                    $this->staffPerformance(
+                        $staffRows
+                    );
+
+                $verifiedStaffRows =
+                    $staffRows->filter(
+                        function ($row) {
+
+                            $status =
+                                strtolower(
+                                    trim(
+                                        (string)
+                                        ($row->call_status ?? '')
+                                    )
+                                );
+
+                            return in_array(
+                                $status,
+                                [
+                                    'verified',
+                                    'confirm',
+                                    'confirmed'
+                                ],
+                                true
+                            );
+                        }
+                    );
+
+                $paymentStats =
+                    $this->paymentStats(
+                        $verifiedStaffRows
+                    );
+
+                $codPoints =
+                    (
+                        (int)
+                        (
+                            $paymentStats['pure_cod']
+                            ?? 0
+                        )
+                    ) * 2;
+
+                $vppPoints =
+                    (
+                        (int)
+                        (
+                            $paymentStats['vpp']
+                            ?? 0
+                        )
+                    ) * 2;
+
+                $prepaidPoints =
+                    (
+                        (int)
+                        (
+                            $paymentStats['prepaid']
+                            ?? 0
+                        )
+                    ) * 4;
+
+                $deliveredCount =
+                    $verifiedStaffRows
+                    ->filter(function ($row) {
+
+                        return strtolower(
+                            trim(
+                                (string)
+                                ($row->delivery_status ?? '')
+                            )
+                        ) === 'delivered';
+                    })
+                    ->unique(function ($row) {
+
+                        return trim(
+                            (string)
+                            ($row->order_id ?? '')
+                        );
+                    })
+                    ->count();
+
+
+                $deliveredPoints =
+                    $deliveredCount * 4;
+
+                $rtoPointCount =
                     $staffRows
-                );
+                    ->filter(function ($row) {
+
+                        return strtolower(
+                            trim(
+                                (string)
+                                ($row->delivery_status ?? '')
+                            )
+                        ) === 'rto-intrasit';
+                    })
+                    ->unique(function ($row) {
+
+                        return trim(
+                            (string)
+                            ($row->order_id ?? '')
+                        );
+                    })
+                    ->count();
+
+
+                $rtoPoints =
+                    $rtoPointCount * -1;
+
+                $performance['cod_orders'] =
+                    $paymentStats['pure_cod']
+                    ?? 0;
+
+
+                $performance['vpp_orders'] =
+                    $paymentStats['vpp']
+                    ?? 0;
+
+
+                $performance['cod_vpp_orders'] =
+                    $paymentStats['cod']
+                    ?? 0;
+
+
+                $performance['cod_rate'] =
+                    $paymentStats['cod_rate']
+                    ?? 0;
+
+
+                $performance['prepaid_orders'] =
+                    $paymentStats['prepaid']
+                    ?? 0;
+
+
+                $performance['prepaid_rate'] =
+                    $paymentStats['prepaid_rate']
+                    ?? 0;
+
+
+                $performance['payment_orders'] =
+                    $paymentStats['total']
+                    ?? 0;
+
+                $performance['delivered_orders'] =
+                    $deliveredCount;
+
+
+                $performance['delivered_points'] =
+                    $deliveredPoints;
+
+                $performance['rto_point_count'] =
+                    $rtoPointCount;
+
+
+                $performance['rto_points'] =
+                    $rtoPoints;
+
+
+                $performance['cod_points'] =
+                    $codPoints;
+
+
+                $performance['vpp_points'] =
+                    $vppPoints;
+
+
+                $performance['prepaid_points'] =
+                    $prepaidPoints;
+
+                $performance['points'] =
+                    $codPoints
+                    + $vppPoints
+                    + $prepaidPoints
+                    + $deliveredPoints
+                    + $rtoPoints;
+
+
+                return $performance;
             })
-            ->sortByDesc('score')
+
+            ->sort(function ($a, $b) {
+
+                $scoreA =
+                    (float)
+                    ($a['score'] ?? 0);
+
+                $scoreB =
+                    (float)
+                    ($b['score'] ?? 0);
+
+
+                if ($scoreA != $scoreB) {
+
+                    return
+                        $scoreB
+                        <=>
+                        $scoreA;
+                }
+
+                $pointsA =
+                    (float)
+                    ($a['points'] ?? 0);
+
+                $pointsB =
+                    (float)
+                    ($b['points'] ?? 0);
+
+
+                return
+                    $pointsB
+                    <=>
+                    $pointsA;
+            })
             ->values();
 
+        $verifiedRows =
+            $rows->filter(function ($row) {
 
-        /*
-        |--------------------------------------------------------------------------
-        | BEST STAFF
-        |--------------------------------------------------------------------------
-        */
+                $status =
+                    strtolower(
+                        trim(
+                            (string)
+                            ($row->call_status ?? '')
+                        )
+                    );
 
-        $bestStaff = $staffReport->first();
+                return in_array(
+                    $status,
+                    [
+                        'verified',
+                        'confirm',
+                        'confirmed'
+                    ],
+                    true
+                );
+            });
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | OVERALL RATES
-        |--------------------------------------------------------------------------
-        */
+        $payment =
+            $this->paymentStats(
+                $verifiedRows
+            );
+
+        $bestStaff =
+            $staffReport
+            ->sort(function ($a, $b) {
+
+                $pointsA =
+                    (float)
+                    ($a['points'] ?? 0);
+
+                $pointsB =
+                    (float)
+                    ($b['points'] ?? 0);
+
+                if ($pointsA != $pointsB) {
+
+                    return
+                        $pointsB
+                        <=>
+                        $pointsA;
+                }
+
+                $scoreA =
+                    (float)
+                    ($a['score'] ?? 0);
+
+                $scoreB =
+                    (float)
+                    ($b['score'] ?? 0);
+
+
+                return
+                    $scoreB
+                    <=>
+                    $scoreA;
+            })
+            ->first();
 
         $confirmationRate =
             $overall['total'] > 0
@@ -516,7 +631,6 @@ class OrdersReportController extends Controller
             )
 
             : 0;
-
 
         $reachabilityRate =
             $overall['total'] > 0
@@ -536,7 +650,6 @@ class OrdersReportController extends Controller
 
             : 0;
 
-
         $deliveryRate =
             $overall['verified'] > 0
 
@@ -551,7 +664,6 @@ class OrdersReportController extends Controller
 
             : 0;
 
-
         $rtoTotal =
             ($delivery['rto_intransit'] ?? 0)
             +
@@ -560,13 +672,16 @@ class OrdersReportController extends Controller
 
         $rtoRate =
             $overall['verified'] > 0
+
             ? round(
                 (
-                    $rtoTotal /
+                    $rtoTotal
+                    /
                     $overall['verified']
                 ) * 100,
                 2
             )
+
             : 0;
 
 
@@ -576,7 +691,6 @@ class OrdersReportController extends Controller
 
                 'clients',
                 'staffs',
-
                 'sources',
                 'callStatuses',
                 'deliveryStatuses',
@@ -586,6 +700,7 @@ class OrdersReportController extends Controller
                 'overall',
                 'delivery',
                 'sourceStats',
+                'payment',
 
                 'staffReport',
                 'bestStaff',
@@ -601,13 +716,6 @@ class OrdersReportController extends Controller
             )
         );
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | CALLING STATISTICS
-    |--------------------------------------------------------------------------
-    */
 
     private function callingStats($rows)
     {
@@ -670,13 +778,6 @@ class OrdersReportController extends Controller
         ];
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | DELIVERY STATISTICS
-    |--------------------------------------------------------------------------
-    */
-
     private function deliveryStats($rows)
     {
         return [
@@ -714,18 +815,10 @@ class OrdersReportController extends Controller
         ];
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | SOURCE STATISTICS
-    |--------------------------------------------------------------------------
-    */
-
     private function sourceStats($rows)
     {
         return [
 
-            // NULL / empty source = WEB
             'web' =>
             $rows->filter(function ($row) {
 
@@ -799,12 +892,51 @@ class OrdersReportController extends Controller
         ];
     }
 
+    private function paymentStats($rows)
+    {
+        $normalize = function ($value) {
+            $value = strtolower(trim((string) $value));
+            $value = str_replace(['_', '-', '/'], ' ', $value);
+            $value = preg_replace('/\s+/', ' ', $value);
+            return trim($value);
+        };
 
-    /*
-    |--------------------------------------------------------------------------
-    | STAFF PERFORMANCE
-    |--------------------------------------------------------------------------
-    */
+        $cod = $rows->filter(function ($row) use ($normalize) {
+            $mode = $normalize($row->payment_mode ?? '');
+            return in_array($mode, ['cod', 'vpp'], true);
+        })->count();
+
+        $pureCod = $rows->filter(function ($row) use ($normalize) {
+            return $normalize($row->payment_mode ?? '') === 'cod';
+        })->count();
+
+        $vpp = $rows->filter(function ($row) use ($normalize) {
+            return $normalize($row->payment_mode ?? '') === 'vpp';
+        })->count();
+
+        $prepaid = $rows->filter(function ($row) use ($normalize) {
+            $mode = $normalize($row->payment_mode ?? '');
+            return in_array($mode, [
+                'prepaid',
+                'pre paid',
+                'online',
+                'paid',
+            ], true);
+        })->count();
+
+        $total = $cod + $prepaid;
+
+        return [
+            'total' => $total,
+            'cod' => $cod,
+            'pure_cod' => $pureCod,
+            'vpp' => $vpp,
+            'prepaid' => $prepaid,
+            'cod_rate' => $total > 0 ? round(($cod / $total) * 100, 2) : 0,
+            'prepaid_rate' => $total > 0 ? round(($prepaid / $total) * 100, 2) : 0,
+        ];
+    }
+
 
     private function staffPerformance($rows)
     {
@@ -823,13 +955,6 @@ class OrdersReportController extends Controller
         $total =
             $calling['total'];
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CONFIRMATION %
-        |--------------------------------------------------------------------------
-        */
-
         $confirmationRate =
             $total > 0
 
@@ -840,13 +965,6 @@ class OrdersReportController extends Controller
             ) * 100
 
             : 0;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | REACHABILITY %
-        |--------------------------------------------------------------------------
-        */
 
         $reachable =
             $total
@@ -865,13 +983,6 @@ class OrdersReportController extends Controller
 
             : 0;
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CANCEL %
-        |--------------------------------------------------------------------------
-        */
-
         $cancelRate =
             $total > 0
 
@@ -883,13 +994,6 @@ class OrdersReportController extends Controller
 
             : 0;
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | DELIVERY %
-        |--------------------------------------------------------------------------
-        */
-
         $deliveryRate =
             $calling['verified'] > 0
 
@@ -900,13 +1004,6 @@ class OrdersReportController extends Controller
             ) * 100
 
             : 0;
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | RTO %
-        |--------------------------------------------------------------------------
-        */
 
         $rtoTotal =
             $delivery['rto_intransit']
@@ -925,36 +1022,11 @@ class OrdersReportController extends Controller
 
             : 0;
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | VOLUME SCORE
-        |--------------------------------------------------------------------------
-        |
-        | Maximum 5 points.
-        |
-        */
-
         $volumeScore =
             min(
                 ($total / 100) * 5,
                 5
             );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | FINAL SCORE
-        |--------------------------------------------------------------------------
-        |
-        | Confirmation     30
-        | Delivery         30
-        | Reachability     15
-        | Cancellation     10
-        | RTO              10
-        | Volume            5
-        |
-        */
 
         $score =
 
@@ -987,13 +1059,6 @@ class OrdersReportController extends Controller
                 100
             );
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | RATING
-        |--------------------------------------------------------------------------
-        */
-
         if ($score >= 80) {
 
             $rating = 'Excellent';
@@ -1014,12 +1079,6 @@ class OrdersReportController extends Controller
 
         return [
 
-            /*
-            |--------------------------------------------------------------------------
-            | CLIENT
-            |--------------------------------------------------------------------------
-            */
-
             'client_id' =>
             $rows->first()->client_id,
 
@@ -1027,26 +1086,12 @@ class OrdersReportController extends Controller
             $rows->first()->client_name
                 ?: 'Unknown Client',
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | STAFF
-            |--------------------------------------------------------------------------
-            */
-
             'staff_id' =>
             $rows->first()->staff_id,
 
             'staff_name' =>
             $rows->first()->staff_name
                 ?: 'Unknown Staff',
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | CALLING
-            |--------------------------------------------------------------------------
-            */
 
             'total' =>
             $total,
@@ -1070,12 +1115,6 @@ class OrdersReportController extends Controller
             $calling['other'],
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | SOURCE
-            |--------------------------------------------------------------------------
-            */
-
             'whatsapp' =>
             $sources['whatsapp'],
 
@@ -1090,13 +1129,6 @@ class OrdersReportController extends Controller
 
             'shopify_abandoned_checkout' =>
             $sources['shopify_abandoned_checkout'],
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | DELIVERY
-            |--------------------------------------------------------------------------
-            */
 
             'delivered' =>
             $delivery['delivered'] ?? 0,
@@ -1121,13 +1153,6 @@ class OrdersReportController extends Controller
 
             'no_status' =>
             $delivery['no_status'] ?? 0,
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | RATES
-            |--------------------------------------------------------------------------
-            */
 
             'confirmation_rate' =>
             round(
@@ -1159,13 +1184,6 @@ class OrdersReportController extends Controller
                 2
             ),
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | SCORE
-            |--------------------------------------------------------------------------
-            */
-
             'volume_score' =>
             round(
                 $volumeScore,
@@ -1181,12 +1199,579 @@ class OrdersReportController extends Controller
         ];
     }
 
+    public function staffDetails(Request $request, $staffId)
+    {
 
-    /*
-    |--------------------------------------------------------------------------
-    | CALL STATUS COUNT
-    |--------------------------------------------------------------------------
-    */
+        $dateFrom = $request->date_from
+            ?: now()->startOfMonth()->format('Y-m-d');
+
+        $dateTo = $request->date_to
+            ?: now()->format('Y-m-d');
+
+        $staff = DB::table('calling_users')
+            ->where('id', $staffId)
+            ->first();
+
+        if (!$staff) {
+            abort(404, 'Staff not found.');
+        }
+
+        $clientId = $request->filled('client_id')
+            ? $request->client_id
+            : null;
+
+
+        $clientName = null;
+
+        if ($clientId) {
+
+            $client = DB::table('clients')
+                ->where('id', $clientId)
+                ->first();
+
+            $clientName = $client->client_name ?? null;
+        }
+
+        $latestOrders = DB::table('orders')
+            ->select(
+                DB::raw(
+                    'TRIM(order_id) as normalized_order_id'
+                ),
+                DB::raw(
+                    'MAX(id) as latest_id'
+                )
+            )
+            ->whereNotNull('order_id')
+            ->whereRaw(
+                "TRIM(order_id) <> ''"
+            )
+            ->groupBy(
+                DB::raw('TRIM(order_id)')
+            );
+
+        $query = DB::table('callingorder as c')
+
+            ->leftJoinSub(
+                $latestOrders,
+                'lo',
+                function ($join) {
+
+                    $join->on(
+                        'lo.normalized_order_id',
+                        '=',
+                        DB::raw(
+                            'TRIM(c.order_id)'
+                        )
+                    );
+                }
+            )
+
+            ->leftJoin(
+                'orders as o',
+                'o.id',
+                '=',
+                'lo.latest_id'
+            )
+
+            ->where(
+                'c.assigned_to',
+                $staffId
+            )
+
+            ->whereBetween(
+                'c.updated_at',
+                [
+                    Carbon::parse($dateFrom)
+                        ->startOfDay(),
+
+                    Carbon::parse($dateTo)
+                        ->endOfDay()
+                ]
+            );
+
+        if ($clientId) {
+
+            $query->where(
+                'c.client_id',
+                $clientId
+            );
+        }
+
+        $rows = $query
+            ->select([
+
+                'c.id',
+
+                'c.client_id',
+
+                'c.order_id',
+
+                'c.status as call_status',
+
+                'c.updated_at as activity_date',
+
+                'o.payment_mode',
+
+                'o.delivery_status',
+
+            ])
+            ->orderBy('c.updated_at')
+            ->get();
+
+        $normalizePayment = function ($value) {
+
+            $value = strtolower(
+                trim((string) $value)
+            );
+
+            $value = str_replace(
+                ['_', '-', '/'],
+                ' ',
+                $value
+            );
+
+            $value = preg_replace(
+                '/\s+/',
+                ' ',
+                $value
+            );
+
+            return trim($value);
+        };
+
+        $verifiedRows = $rows->filter(
+            function ($row) {
+
+                $status = strtolower(
+                    trim(
+                        (string)
+                        ($row->call_status ?? '')
+                    )
+                );
+
+                return in_array(
+                    $status,
+                    [
+                        'verified',
+                        'confirm',
+                        'confirmed'
+                    ],
+                    true
+                );
+            }
+        );
+
+        $totalCod = $verifiedRows
+            ->filter(function ($row) use ($normalizePayment) {
+
+                return $normalizePayment(
+                    $row->payment_mode ?? ''
+                ) === 'cod';
+            })
+            ->count();
+
+
+        $totalVpp = $verifiedRows
+            ->filter(function ($row) use ($normalizePayment) {
+
+                return $normalizePayment(
+                    $row->payment_mode ?? ''
+                ) === 'vpp';
+            })
+            ->count();
+
+
+        $totalPrepaid = $verifiedRows
+            ->filter(function ($row) use ($normalizePayment) {
+
+                $mode = $normalizePayment(
+                    $row->payment_mode ?? ''
+                );
+
+                return in_array(
+                    $mode,
+                    [
+                        'prepaid',
+                        'pre paid',
+                        'online',
+                        'paid'
+                    ],
+                    true
+                );
+            })
+            ->count();
+
+        $totalDelivered = $rows
+            ->filter(function ($row) {
+
+                return strtolower(
+                    trim(
+                        (string)
+                        ($row->delivery_status ?? '')
+                    )
+                ) === 'delivered';
+            })
+            ->count();
+
+        $totalRto = $rows
+            ->filter(function ($row) {
+
+                return strtolower(
+                    trim(
+                        (string)
+                        ($row->delivery_status ?? '')
+                    )
+                ) === 'rto-intrasit';
+            })
+            ->count();
+
+        $totalCodPoints =
+            $totalCod * 2;
+
+        $totalVppPoints =
+            $totalVpp * 2;
+
+        $totalPrepaidPoints =
+            $totalPrepaid * 4;
+
+        $totalDeliveredPoints =
+            $totalDelivered * 4;
+
+        $totalRtoPoints =
+            $totalRto * -1;
+
+
+        $totalPoints =
+            $totalCodPoints
+            + $totalVppPoints
+            + $totalPrepaidPoints
+            + $totalDeliveredPoints
+            + $totalRtoPoints;
+
+        $paymentTotal =
+            $totalCod
+            + $totalVpp
+            + $totalPrepaid;
+
+
+        $codVppTotal =
+            $totalCod
+            + $totalVpp;
+
+
+        $codRate =
+            $paymentTotal > 0
+            ? round(
+                ($codVppTotal / $paymentTotal) * 100,
+                2
+            )
+            : 0;
+
+
+        $prepaidRate =
+            $paymentTotal > 0
+            ? round(
+                ($totalPrepaid / $paymentTotal) * 100,
+                2
+            )
+            : 0;
+
+        $dailyPoints = collect();
+
+
+        $start =
+            Carbon::parse($dateFrom)
+            ->startOfDay();
+
+        $end =
+            Carbon::parse($dateTo)
+            ->startOfDay();
+
+
+        while ($start->lte($end)) {
+
+            $date =
+                $start->format('Y-m-d');
+
+            $dayRows =
+                $rows->filter(
+                    function ($row) use ($date) {
+
+                        return Carbon::parse(
+                            $row->activity_date
+                        )->format('Y-m-d') === $date;
+                    }
+                );
+
+            $verifiedDayRows =
+                $dayRows->filter(
+                    function ($row) {
+
+                        $status =
+                            strtolower(
+                                trim(
+                                    (string)
+                                    ($row->call_status ?? '')
+                                )
+                            );
+
+                        return in_array(
+                            $status,
+                            [
+                                'verified',
+                                'confirm',
+                                'confirmed'
+                            ],
+                            true
+                        );
+                    }
+                );
+
+            $cod =
+                $verifiedDayRows
+                ->filter(
+                    function ($row)
+                    use ($normalizePayment) {
+
+                        return $normalizePayment(
+                            $row->payment_mode ?? ''
+                        ) === 'cod';
+                    }
+                )
+                ->count();
+
+            $vpp =
+                $verifiedDayRows
+                ->filter(
+                    function ($row)
+                    use ($normalizePayment) {
+
+                        return $normalizePayment(
+                            $row->payment_mode ?? ''
+                        ) === 'vpp';
+                    }
+                )
+                ->count();
+
+            $prepaid =
+                $verifiedDayRows
+                ->filter(
+                    function ($row)
+                    use ($normalizePayment) {
+
+                        $mode =
+                            $normalizePayment(
+                                $row->payment_mode ?? ''
+                            );
+
+                        return in_array(
+                            $mode,
+                            [
+                                'prepaid',
+                                'pre paid',
+                                'online',
+                                'paid'
+                            ],
+                            true
+                        );
+                    }
+                )
+                ->count();
+
+            $delivered =
+                $dayRows
+                ->filter(
+                    function ($row) {
+
+                        return strtolower(
+                            trim(
+                                (string)
+                                ($row->delivery_status ?? '')
+                            )
+                        ) === 'delivered';
+                    }
+                )
+                ->count();
+
+            $rto =
+                $dayRows
+                ->filter(
+                    function ($row) {
+
+                        return strtolower(
+                            trim(
+                                (string)
+                                ($row->delivery_status ?? '')
+                            )
+                        ) === 'rto-intrasit';
+                    }
+                )
+                ->count();
+
+            $codPoints =
+                $cod * 2;
+
+            $vppPoints =
+                $vpp * 2;
+
+            $prepaidPoints =
+                $prepaid * 4;
+
+            $deliveredPoints =
+                $delivered * 4;
+
+            $rtoPoints =
+                $rto * -1;
+
+
+            $points =
+                $codPoints
+                + $vppPoints
+                + $prepaidPoints
+                + $deliveredPoints
+                + $rtoPoints;
+
+            $dailyPoints->push([
+
+                'date' =>
+                $date,
+
+                'display_date' =>
+                Carbon::parse($date)
+                    ->format('d M'),
+
+                'day' =>
+                Carbon::parse($date)
+                    ->format('D'),
+
+                'cod' =>
+                $cod,
+
+                'vpp' =>
+                $vpp,
+
+                'prepaid' =>
+                $prepaid,
+
+                'delivered' =>
+                $delivered,
+
+                'rto' =>
+                $rto,
+
+                'cod_points' =>
+                $codPoints,
+
+                'vpp_points' =>
+                $vppPoints,
+
+                'prepaid_points' =>
+                $prepaidPoints,
+
+                'delivered_points' =>
+                $deliveredPoints,
+
+                'rto_points' =>
+                $rtoPoints,
+
+                'points' =>
+                $points,
+
+            ]);
+
+
+            $start->addDay();
+        }
+
+        $runningPoints = 0;
+
+
+        $dailyPoints =
+            $dailyPoints->map(
+                function ($day) use (&$runningPoints) {
+
+                    $runningPoints +=
+                        $day['points'];
+
+                    $day['cumulative_points'] =
+                        $runningPoints;
+
+                    return $day;
+                }
+            );
+
+        $chartLabels =
+            $dailyPoints
+            ->pluck('display_date')
+            ->values()
+            ->toArray();
+
+
+        $chartPoints =
+            $dailyPoints
+            ->pluck('points')
+            ->values()
+            ->toArray();
+
+
+        $chartCumulative =
+            $dailyPoints
+            ->pluck('cumulative_points')
+            ->values()
+            ->toArray();
+
+        return view(
+            'reports.staff-performance-detail',
+            compact(
+
+                'staff',
+
+                'clientId',
+
+                'clientName',
+
+                'dateFrom',
+
+                'dateTo',
+
+                'dailyPoints',
+
+                'totalPoints',
+
+                'totalCod',
+
+                'totalVpp',
+
+                'totalPrepaid',
+
+                'totalDelivered',
+
+                'totalRto',
+
+                'totalCodPoints',
+
+                'totalVppPoints',
+
+                'totalPrepaidPoints',
+
+                'totalDeliveredPoints',
+
+                'totalRtoPoints',
+
+                'paymentTotal',
+
+                'codRate',
+
+                'prepaidRate',
+
+                'chartLabels',
+
+                'chartPoints',
+
+                'chartCumulative'
+            )
+        );
+    }
 
     private function callStatusCount(
         $rows,
@@ -1219,12 +1804,6 @@ class OrdersReportController extends Controller
         )->count();
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | DELIVERY STATUS COUNT
-    |--------------------------------------------------------------------------
-    */
     private function deliveryStatusCount($rows, $status)
     {
         return $rows->filter(function ($row) use ($status) {
@@ -1236,12 +1815,6 @@ class OrdersReportController extends Controller
             );
         })->count();
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | SOURCE COUNT
-    |--------------------------------------------------------------------------
-    */
 
     private function sourceCount(
         $rows,
@@ -1261,12 +1834,6 @@ class OrdersReportController extends Controller
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT
-    |--------------------------------------------------------------------------
-    */
-
     public function export(Request $request)
     {
         $dateFrom = $request->date_from
@@ -1278,12 +1845,12 @@ class OrdersReportController extends Controller
 
         $latestOrders = DB::table('orders')
             ->select(
-                'order_id',
+                DB::raw('TRIM(order_id) as normalized_order_id'),
                 DB::raw('MAX(id) as latest_id')
             )
             ->whereNotNull('order_id')
-            ->where('order_id', '!=', '')
-            ->groupBy('order_id');
+            ->whereRaw("TRIM(order_id) <> ''")
+            ->groupBy(DB::raw('TRIM(order_id)'));
 
 
         $query = DB::table('callingorder as c')
@@ -1308,9 +1875,9 @@ class OrdersReportController extends Controller
                 function ($join) {
 
                     $join->on(
-                        'lo.order_id',
+                        'lo.normalized_order_id',
                         '=',
-                        'c.order_id'
+                        DB::raw('TRIM(c.order_id)')
                     );
                 }
             )
@@ -1341,6 +1908,8 @@ class OrdersReportController extends Controller
                 'c.status as call_status',
 
                 'o.delivery_status',
+
+                'o.payment_mode',
 
                 'c.created_at as calling_date',
 
@@ -1498,6 +2067,7 @@ class OrdersReportController extends Controller
                         'Source',
                         'Call Status',
                         'Delivery Status',
+                        'Payment Mode',
                         'Calling Date',
                         'Delivery Updated',
 
@@ -1529,6 +2099,9 @@ class OrdersReportController extends Controller
 
                             $row->delivery_status
                                 ?: 'No Status',
+
+                            $row->payment_mode
+                                ?: '-',
 
                             $row->calling_date,
 

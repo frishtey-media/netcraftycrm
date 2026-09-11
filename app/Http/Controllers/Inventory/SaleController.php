@@ -14,6 +14,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\SalesReportExport;
 //use App\Models\Client;
 
+use App\Models\ClientProduct;
+
 class SaleController extends Controller
 {
     public function index()
@@ -41,7 +43,12 @@ class SaleController extends Controller
 
     public function salesreport(Request $request)
     {
-        $query = SaleItem::with(['sale', 'product.warehouse', 'product.client']);
+        $query = SaleItem::with([
+            'sale',
+            'product.warehouse',
+            'product.client',
+            'product.clientProduct'
+        ]);
 
         // Date filter
         if ($request->from && $request->to) {
@@ -62,9 +69,27 @@ class SaleController extends Controller
             ->groupBy('product_id');
 
         // Send products for dropdown
-        $products = Product::all();
+        $products = Product::orderBy('id', 'desc')->get();
 
-        return view('inventory.sales.report', compact('sales', 'products'));
+        $clientProductNames = ClientProduct::whereIn(
+            'id',
+            $products
+                ->pluck('name')
+                ->filter()
+                ->map(fn($id) => (int) $id)
+                ->unique()
+                ->values()
+        )
+            ->pluck('shopify_product_name', 'id');
+
+        return view(
+            'inventory.sales.report',
+            compact(
+                'sales',
+                'products',
+                'clientProductNames'
+            )
+        );
     }
 
 
@@ -141,23 +166,88 @@ class SaleController extends Controller
 
     public function exportsalesReport(Request $request)
     {
-        $query = SaleItem::with(['sale', 'product']);
+        $query = SaleItem::with([
+            'sale',
+            'product'
+        ]);
 
-        if ($request->from_date) {
-            $query->whereDate('created_at', '>=', $request->from_date);
+
+        /*
+    |--------------------------------------------------------------------------
+    | From Date
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('from_date')) {
+
+            $query->whereDate(
+                'created_at',
+                '>=',
+                $request->from_date
+            );
         }
 
-        if ($request->to_date) {
-            $query->whereDate('created_at', '<=', $request->to_date);
+
+        /*
+    |--------------------------------------------------------------------------
+    | To Date
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('to_date')) {
+
+            $query->whereDate(
+                'created_at',
+                '<=',
+                $request->to_date
+            );
         }
 
-        $salesreport = $query->orderBy('product_id')
-            ->latest()
+
+        /*
+    |--------------------------------------------------------------------------
+    | Product Filter
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('product_id')) {
+
+            $query->where(
+                'product_id',
+                $request->product_id
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Get Report
+    |--------------------------------------------------------------------------
+    */
+
+        $salesreport = $query
+            ->orderBy(
+                'product_id'
+            )
+            ->orderBy(
+                'created_at'
+            )
             ->get();
 
+
+        /*
+    |--------------------------------------------------------------------------
+    | Export
+    |--------------------------------------------------------------------------
+    */
+
         return Excel::download(
-            new SalesReportExport($salesreport),
-            'sales_report_' . now()->format('d-m-Y') . '.xlsx'
+            new SalesReportExport(
+                $salesreport
+            ),
+            'sales_report_' .
+                now()->format('d-m-Y') .
+                '.xlsx'
         );
     }
 }

@@ -33,6 +33,7 @@ use App\Models\Shipment;
 use Illuminate\Support\Facades\Storage;
 //dd(base_path());
 use App\Http\Controllers\OrdersReportController;
+use App\Http\Controllers\SelloshipImportController;
 
 require __DIR__ . '/inventory.php';
 
@@ -117,6 +118,10 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/admin/orders/delete', [OrderController::class, 'deleteOrdersWithLog'])->name('admin.orders.delete');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.list');
 
+    Route::get(
+        '/day-wise-staff-performance',
+        [AdminController::class, 'dayWiseStaffPerformance']
+    )->name('admin.day-wise-staff-performance');
 
     Route::get(
         '/reports/delivered',
@@ -133,6 +138,12 @@ Route::middleware(['auth'])->group(function () {
         OrdersReportController::class,
         'index'
     ])->name('staff.performance.report');
+
+
+    Route::get(
+        '/staff-performance/{staffId}',
+        [OrdersReportController::class, 'staffDetails']
+    )->name('staff.performance.detail');
 
     Route::get('/staff-performance-report/export', [
         OrdersReportController::class,
@@ -152,6 +163,25 @@ Route::middleware(['auth'])->group(function () {
     )->name('record.customer.history');
 
 
+
+    /*------------------------------selloship---------------------*/
+    Route::get(
+        '/selloship-import',
+        [AdminController::class, 'selloshipImportPage']
+    )->name('selloship.import.page');
+
+
+    Route::post(
+        '/selloship-import',
+        [AdminController::class, 'selloshipImport']
+    )->name('selloship.import');
+
+    Route::post(
+        '/assign-selloship-orders',
+        [AdminController::class, 'assignSelloshipOrders']
+    )->name('assign.selloship.orders');
+
+    /*------------------------------selloship end---------------------*/
 
 
     Route::get(
@@ -404,11 +434,10 @@ Route::middleware(['auth'])->group(function () {
         [DeliveryController::class, 'export']
     )->name('delivery.export');
 
-    // GET → form open
     Route::get('/client_assign_staff', [ClientController::class, 'clientStaffForm'])
         ->name('client_staff_form');
 
-    // POST → save mapping
+
     Route::post('/client_assign_staff.', [ClientController::class, 'saveClientStaff'])
         ->name('client_staff_save');
 
@@ -468,9 +497,25 @@ Route::middleware('calling_user')->group(function () {
     Route::get('/calling/orders', [CallingUserAuthController::class, 'orders'])
         ->name('calling.orders');
 
+    Route::get('/calling/orders/ofd', [CallingUserAuthController::class, 'ofd'])
+        ->name('calling.ofd');
+
+    Route::get('/calling/orders/onhold', [CallingUserAuthController::class, 'onhold'])
+        ->name('calling.onhold');
+
+    Route::get(
+        '/calling/order-counts',
+        [CallingUserAuthController::class, 'orderCounts']
+    )->name('calling.order.counts');
 
     Route::get('/calling/rtoorders', [CallingUserAuthController::class, 'rtoorders'])
         ->name('calling.rtoorders');
+
+    Route::get('/calling/weborders', [CallingUserAuthController::class, 'weborders'])
+        ->name('calling.weborders');
+
+    Route::get('/calling/WhatsApp', [CallingUserAuthController::class, 'WhatsApp'])
+        ->name('calling.WhatsApp');
 
     Route::get('/calling/deliverordersorders', [CallingUserAuthController::class, 'deliverordersorders'])
         ->name('calling.deliverorders');

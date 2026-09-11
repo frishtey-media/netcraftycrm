@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Inventory;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\Client;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 //use Illuminate\Validation\Rule;
@@ -20,72 +21,214 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $categories = Category::all();
-        $warehouses = Warehouse::all();
+        $clients = Client::orderBy('client_name')->get();
 
+        $warehouses = Warehouse::orderBy('name')->get();
 
-        $query = Product::with(['category', 'warehouse']);
+        $query = Product::with([
+            'client',
+            'clientProduct',
+            'warehouse'
+        ]);
 
-        if ($request->category_id) {
-            $query->where('category_id', $request->category_id);
+        // Search
+        if ($request->filled('search')) {
+
+            $search = $request->search;
+
+            $query->where(function ($q) use ($search) {
+
+                $q->whereHas('clientProduct', function ($q) use ($search) {
+                    $q->where(
+                        'shopify_product_name',
+                        'like',
+                        '%' . $search . '%'
+                    );
+                })
+
+                    ->orWhereHas('client', function ($q) use ($search) {
+                        $q->where(
+                            'client_name',
+                            'like',
+                            '%' . $search . '%'
+                        );
+                    });
+            });
         }
 
-        if ($request->warehouse_id) {
-            $query->where('warehouse_id', $request->warehouse_id);
+        // Client filter
+        if ($request->filled('client_id')) {
+            $query->where(
+                'client_id',
+                $request->client_id
+            );
         }
- 
+
+        // Warehouse filter
+        if ($request->filled('warehouse_id')) {
+            $query->where(
+                'warehouse_id',
+                $request->warehouse_id
+            );
+        }
+
         $products = $query
             ->latest()
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
-        return view('inventory.products.index', compact('products', 'categories', 'warehouses'));
+        return view(
+            'inventory.products.index',
+            compact(
+                'products',
+                'clients',
+                'warehouses'
+            )
+        );
     }
 
     public function productreport(Request $request)
     {
         $query = StockMovement::with([
             'product.warehouse',
-            'product.category'
-        ]);
+            'product.category',
+            'product.client',
+            'product.clientProduct',
+        ])
+            ->whereHas('product');
 
 
-        if ($request->filled('from_date') && $request->filled('to_date')) {
+        if (
+            $request->filled('from_date') &&
+            $request->filled('to_date')
+        ) {
+
             $query->whereBetween('movement_date', [
-                $request->from_date,
-                $request->to_date
+                $request->from_date . ' 00:00:00',
+                $request->to_date . ' 23:59:59'
             ]);
         }
 
-
         if ($request->filled('product_id')) {
-            $query->where('product_id', $request->product_id);
+
+            $query->where(
+                'product_id',
+                $request->product_id
+            );
         }
 
 
         if ($request->filled('product_name')) {
-            $query->whereHas('product', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->product_name . '%');
-            });
+
+            $search = $request->product_name;
+
+            $query->whereHas(
+                'product.clientProduct',
+                function ($q) use ($search) {
+
+                    $q->where(
+                        'shopify_product_name',
+                        'like',
+                        '%' . $search . '%'
+                    );
+                }
+            );
         }
 
 
-        $query->where(function ($q) {
-            $q->where('type', '!=', 'rto_restored')
-                ->orWhere(function ($sub) {
-                    $sub->where('type', 'rto_restored')
-                        ->where('quantity', '>', 0);
-                });
-        });
 
-        $products = $query->orderBy('product_id')
+        $query->whereIn('type', [
+            'created',
+            'updated',
+            'in',
+            'rto_restored'
+        ]);
+
+        $movements = $query
+            ->orderBy('product_id')
             ->orderBy('movement_date')
-            ->get()
-            ->groupBy('product_id');
+            ->get();
+
+        $products = $movements
+            ->groupBy('product_id')
+            ->map(function ($items) {
+
+                // ---------------------------------------------------------
+                // NORMAL MOVEMENTS
+                // ---------------------------------------------------------
+                $normalMovements = $items
+                    ->filter(function ($item) {
+                        return $item->type !== 'rto_restored';
+                    })
+                    ->values();
 
 
-        $allProducts = Product::all();
+                // ---------------------------------------------------------
+                // RTO MOVEMENTS
+                // SAME PRODUCT + SAME DATE = ONE ROW
+                // ---------------------------------------------------------
+                $rtoMovements = $items
+                    ->filter(function ($item) {
+                        return $item->type === 'rto_restored';
+                    })
+                    ->groupBy(function ($item) {
 
-        return view('inventory.products.report', compact('products', 'allProducts'));
+                        return $item->movement_date
+                            ? \Carbon\Carbon::parse($item->movement_date)->format('Y-m-d')
+                            : 'no-date';
+                    })
+                    ->map(function ($rtoItems) {
+
+                        // First RTO record as base
+                        $first = clone $rtoItems->first();
+
+                        // Total RTO quantity for that date
+                        $first->quantity = $rtoItems->sum(function ($item) {
+                            return (int) $item->quantity;
+                        });
+
+                        // Keep date same
+                        if ($first->movement_date) {
+                            $first->movement_date = \Carbon\Carbon::parse(
+                                $first->movement_date
+                            )->startOfDay();
+                        }
+
+                        return $first;
+                    })
+                    ->values();
+
+
+                // ---------------------------------------------------------
+                // MERGE NORMAL + COMBINED RTO
+                // ---------------------------------------------------------
+                return $normalMovements
+                    ->concat($rtoMovements)
+                    ->sortBy(function ($item) {
+
+                        return $item->movement_date
+                            ? \Carbon\Carbon::parse($item->movement_date)->timestamp
+                            : 0;
+                    })
+                    ->values();
+            })
+            ->filter(function ($items) {
+                return $items->count() > 0;
+            });
+
+        $allProducts = Product::with([
+            'clientProduct'
+        ])
+            ->orderBy('id')
+            ->get();
+
+        return view(
+            'inventory.products.report',
+            compact(
+                'products',
+                'allProducts'
+            )
+        );
     }
     public function exportProductReport(Request $request)
     {
@@ -132,9 +275,9 @@ class ProductController extends Controller
 
     {
         $Warehouse = Warehouse::all();
-        $categories = Category::all();
+        $Client = Client::all();
         $client_products = ClientProduct::all();
-        return view('inventory.products.create', compact('categories', 'Warehouse', 'client_products'));
+        return view('inventory.products.create', compact('Client', 'Warehouse', 'client_products'));
     }
 
 
@@ -142,34 +285,56 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|exists:client_products,id',
             'price' => 'required|numeric|min:0',
             'low_stock_alert' => 'required|integer|min:0',
-            'category_id' => 'required|exists:categories,id',
+            'client_id' => 'required|exists:clients,id',
             'warehouse_id' => 'required|exists:warehouses,id',
         ]);
 
+        // Client Product ID
+        $clientProduct = ClientProduct::findOrFail($request->name);
 
-        $exists = Product::where('name', $request->name)
+        // Duplicate check
+        $exists = Product::where('name', $clientProduct->id)
+            ->where('client_id', $request->client_id)
             ->where('warehouse_id', $request->warehouse_id)
             ->exists();
 
         if ($exists) {
-            return redirect()->route('products.index')
-                ->with('error', 'This product already exists in selected warehouse.');
+            return redirect()
+                ->route('products.index')
+                ->with(
+                    'error',
+                    'This product already exists for the selected client and warehouse.'
+                );
         }
 
-        DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request, $clientProduct) {
 
             $product = Product::create([
-                'name' => $request->name,
-                'price' => $request->price,
-                'low_stock_alert' => $request->low_stock_alert,
-                'total_price' => $request->price * $request->low_stock_alert,
-                'category_id' => $request->category_id,
+                // IMPORTANT:
+                // Store ClientProduct ID in name column
+                'name' => $clientProduct->id,
+
+                // Client ID
+                'client_id' => $request->client_id,
+
+                // Warehouse
                 'warehouse_id' => $request->warehouse_id,
+
+                // Price
+                'price' => $request->price,
+
+                // Stock
+                'low_stock_alert' => $request->low_stock_alert,
+
+                // Total
+                'total_price' =>
+                $request->price * $request->low_stock_alert,
             ]);
 
+            // Stock movement
             StockMovement::create([
                 'product_id' => $product->id,
                 'quantity' => $request->low_stock_alert,
@@ -179,8 +344,12 @@ class ProductController extends Controller
             ]);
         });
 
-        return redirect()->route('products.index')
-            ->with('success', 'Product created successfully');
+        return redirect()
+            ->route('products.index')
+            ->with(
+                'success',
+                'Product created successfully.'
+            );
     }
 
 
@@ -217,26 +386,44 @@ class ProductController extends Controller
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $product = Product::findOrFail($request->product_id);
 
-        // ✅ Add RTO stock to main stock
-        $product->low_stock_alert += $request->quantity;
+        DB::transaction(function () use ($request) {
 
-        // ✅ Update total price
-        $product->total_price = $product->price * $product->low_stock_alert;
+            $product = Product::findOrFail(
+                $request->product_id
+            );
 
-        $product->save();
 
-        // ✅ Stock movement log
-        StockMovement::create([
-            'product_id' => $product->id,
-            'quantity' => $request->quantity,
-            'type' => 'rto_restored',
-            'price' => $product->price,
-            'movement_date' => now(),
-        ]);
+            // Add RTO stock
+            $product->low_stock_alert =
+                $product->low_stock_alert +
+                $request->quantity;
 
-        return back()->with('success', 'RTO Stock added successfully');
+
+            // Recalculate total price
+            $product->total_price =
+                $product->price *
+                $product->low_stock_alert;
+
+
+            $product->save();
+
+
+            // Stock movement
+            StockMovement::create([
+                'product_id' => $product->id,
+                'quantity' => $request->quantity,
+                'type' => 'rto_restored',
+                'price' => $product->price,
+                'movement_date' => now(),
+            ]);
+        });
+
+
+        return back()->with(
+            'success',
+            'RTO Stock added successfully'
+        );
     }
 
 

@@ -7,8 +7,6 @@ use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\LabelSender;
 use App\Models\Client;
-//use Illuminate\Support\Facades\Http;
-//use GuzzleHttp\Client as GuzzleClient;
 use Carbon\Carbon;
 use App\Models\callingorder;
 use App\Models\User;
@@ -25,7 +23,7 @@ use Illuminate\Support\Facades\Log;
 
 use App\Models\RtoReport;
 use App\Models\OrderAssignmentScheduler;
-
+use App\Imports\SelloshipImport;
 
 class AdminController extends Controller
 {
@@ -39,7 +37,945 @@ class AdminController extends Controller
     {
         return auth()->user()?->client_id;
     }
+    public function dayWiseStaffPerformance(Request $request)
+    {
+        /*
+    |--------------------------------------------------------------------------
+    | DATE FILTER
+    |--------------------------------------------------------------------------
+    */
 
+        $dateFrom = $request->filled('date_from')
+            ? Carbon::parse($request->date_from)->format('Y-m-d')
+            : now()->format('Y-m-d');
+
+        $dateTo = $request->filled('date_to')
+            ? Carbon::parse($request->date_to)->format('Y-m-d')
+            : now()->format('Y-m-d');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | VALID DATE RANGE
+    |--------------------------------------------------------------------------
+    */
+
+        if (Carbon::parse($dateFrom)->gt(Carbon::parse($dateTo))) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT LIST
+    |--------------------------------------------------------------------------
+    |
+    | Existing schema:
+    |
+    | callingorder.client_id -> clients.id
+    |
+    */
+
+        /*
+|--------------------------------------------------------------------------
+| CLIENT LIST
+|--------------------------------------------------------------------------
+*/
+
+        if ($this->isClient()) {
+
+            $clients = DB::table('clients')
+                ->select(
+                    'id',
+                    'client_name'
+                )
+                ->where(
+                    'id',
+                    $this->clientId()
+                )
+                ->get();
+        } else {
+
+            $clients = DB::table('clients')
+                ->select(
+                    'id',
+                    'client_name'
+                )
+                ->orderBy('client_name')
+                ->get();
+        }
+
+
+        if ($this->isClient()) {
+
+            // Force logged-in client's ID
+            $clientId = (int) $this->clientId();
+        } else {
+
+            // Admin / Super Admin can select client
+            $clientId = $request->filled('client_id')
+                ? (int) $request->client_id
+                : null;
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | SELECTED STAFF
+    |--------------------------------------------------------------------------
+    |
+    | staff_id[] because multiple staff can be selected.
+    |
+    */
+
+        $selectedStaffIds = $request->input('staff_id', []);
+
+        if (!is_array($selectedStaffIds)) {
+            $selectedStaffIds = [$selectedStaffIds];
+        }
+
+        $selectedStaffIds = collect($selectedStaffIds)
+            ->filter(function ($id) {
+                return is_numeric($id) && (int) $id > 0;
+            })
+            ->map(function ($id) {
+                return (int) $id;
+            })
+            ->unique()
+            ->values()
+            ->toArray();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | STAFF LIST
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    |
+    | Staff are loaded ONLY according to selected client.
+    |
+    | We are NOT using all staff.
+    |
+    | No date restriction here because a staff member belonging
+    | to the selected client should remain selectable even if
+    | that staff has zero leads in the selected date range.
+    |
+    */
+
+        $staffs = collect();
+
+        if ($clientId) {
+
+            $staffs = DB::table('calling_users as cu')
+                ->join(
+                    'callingorder as c',
+                    'c.assigned_to',
+                    '=',
+                    'cu.id'
+                )
+                ->select(
+                    'cu.id',
+                    'cu.name'
+                )
+                ->where('cu.status', 1)
+                ->where(
+                    'c.client_id',
+                    $clientId
+                )
+                ->distinct()
+                ->orderBy('cu.name')
+                ->get();
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT REQUIRED
+    |--------------------------------------------------------------------------
+    |
+    | Don't show all data until a client is selected.
+    |
+    */
+
+        if (!$clientId) {
+
+            return view(
+                'reports.day-wise-staff-performance',
+                [
+                    'clients' => $clients,
+
+                    'clientId' => null,
+
+                    'staffs' => collect(),
+
+                    'selectedStaffIds' => [],
+
+                    'dateFrom' => $dateFrom,
+
+                    'dateTo' => $dateTo,
+
+                    'staffWiseReport' => collect(),
+
+                    'summary' => [
+                        'total_leads' => 0,
+                        'confirm' => 0,
+                        'confirm_percent' => 0,
+                        'delivery' => 0,
+                        'delivery_percent' => 0,
+                        'rto' => 0,
+                        'rto_percent' => 0,
+                    ],
+                ]
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | STAFF REQUIRED
+    |--------------------------------------------------------------------------
+    |
+    | User requested:
+    | "jo staff select hua hai uska hi data aye"
+    |
+    | Therefore, if no staff is selected, don't automatically
+    | load every staff into the report.
+    |
+    */
+
+        if (empty($selectedStaffIds)) {
+
+            return view(
+                'reports.day-wise-staff-performance',
+                [
+                    'clients' => $clients,
+
+                    'clientId' => $clientId,
+
+                    'staffs' => $staffs,
+
+                    'selectedStaffIds' => [],
+
+                    'dateFrom' => $dateFrom,
+
+                    'dateTo' => $dateTo,
+
+                    'staffWiseReport' => collect(),
+
+                    'summary' => [
+                        'total_leads' => 0,
+                        'confirm' => 0,
+                        'confirm_percent' => 0,
+                        'delivery' => 0,
+                        'delivery_percent' => 0,
+                        'rto' => 0,
+                        'rto_percent' => 0,
+                    ],
+                ]
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | KEEP ONLY STAFF BELONGING TO SELECTED CLIENT
+    |--------------------------------------------------------------------------
+    |
+    | Security/correctness check:
+    |
+    | Even if someone manually modifies staff_id[] in URL,
+    | only staff belonging to selected client will be used.
+    |
+    */
+
+        $selectedStaffIds = $staffs
+            ->whereIn(
+                'id',
+                $selectedStaffIds
+            )
+            ->pluck('id')
+            ->map(function ($id) {
+                return (int) $id;
+            })
+            ->values()
+            ->toArray();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | IF NO VALID STAFF REMAINS
+    |--------------------------------------------------------------------------
+    */
+
+        if (empty($selectedStaffIds)) {
+
+            return view(
+                'reports.day-wise-staff-performance',
+                [
+                    'clients' => $clients,
+
+                    'clientId' => $clientId,
+
+                    'staffs' => $staffs,
+
+                    'selectedStaffIds' => [],
+
+                    'dateFrom' => $dateFrom,
+
+                    'dateTo' => $dateTo,
+
+                    'staffWiseReport' => collect(),
+
+                    'summary' => [
+                        'total_leads' => 0,
+                        'confirm' => 0,
+                        'confirm_percent' => 0,
+                        'delivery' => 0,
+                        'delivery_percent' => 0,
+                        'rto' => 0,
+                        'rto_percent' => 0,
+                    ],
+                ]
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | LATEST ORDERS
+    |--------------------------------------------------------------------------
+    |
+    | Normalize order_id using TRIM().
+    |
+    | If multiple orders have:
+    |
+    | ABC123
+    |  ABC123
+    | ABC123
+    |
+    | they are treated as the same order_id.
+    |
+    | Latest record = MAX(id)
+    |
+    */
+
+        $latestOrders = DB::table('orders')
+            ->select(
+                DB::raw('TRIM(order_id) as normalized_order_id'),
+                DB::raw('MAX(id) as latest_id')
+            )
+            ->whereNotNull('order_id')
+            ->whereRaw("TRIM(order_id) <> ''")
+            ->groupBy(
+                DB::raw('TRIM(order_id)')
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | MAIN DATA QUERY
+    |--------------------------------------------------------------------------
+    |
+    | Existing report structure:
+    |
+    | callingorder
+    |      |
+    |      +-- client_id
+    |      |
+    |      +-- assigned_to
+    |      |
+    |      +-- updated_at
+    |      |
+    |      +-- order_id
+    |                |
+    |                v
+    |             latest orders
+    |
+    */
+
+        $query = DB::table('callingorder as c')
+
+            /*
+        |--------------------------------------------------------------------------
+        | STAFF
+        |--------------------------------------------------------------------------
+        */
+
+            ->join(
+                'calling_users as cu',
+                'cu.id',
+                '=',
+                'c.assigned_to'
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | CLIENT
+        |--------------------------------------------------------------------------
+        */
+
+            ->leftJoin(
+                'clients as cl',
+                'cl.id',
+                '=',
+                'c.client_id'
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | LATEST ORDER
+        |--------------------------------------------------------------------------
+        */
+
+            ->leftJoinSub(
+                $latestOrders,
+                'lo',
+                function ($join) {
+
+                    $join->on(
+                        'lo.normalized_order_id',
+                        '=',
+                        DB::raw('TRIM(c.order_id)')
+                    );
+                }
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | LATEST ORDER RECORD
+        |--------------------------------------------------------------------------
+        */
+
+            ->leftJoin(
+                'orders as o',
+                'o.id',
+                '=',
+                'lo.latest_id'
+            )
+
+            ->select([
+                'c.id',
+
+                'c.client_id',
+
+                'cl.client_name',
+
+                'c.assigned_to as staff_id',
+
+                'cu.name as staff_name',
+
+                'c.order_id',
+
+                'c.status as call_status',
+
+                'c.updated_at as calling_updated_at',
+
+                'o.delivery_status',
+            ])
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | CLIENT FILTER
+        |--------------------------------------------------------------------------
+        |
+        | REQUIRED.
+        |
+        */
+
+            ->where(
+                'c.client_id',
+                $clientId
+            )
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | DATE FILTER
+        |--------------------------------------------------------------------------
+        |
+        | Report date = callingorder.updated_at
+        |
+        */
+
+            ->whereBetween(
+                'c.updated_at',
+                [
+                    Carbon::parse($dateFrom)->startOfDay(),
+
+                    Carbon::parse($dateTo)->endOfDay(),
+                ]
+            )
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | STAFF FILTER
+        |--------------------------------------------------------------------------
+        |
+        | ONLY selected staff.
+        |
+        */
+
+            ->whereIn(
+                'c.assigned_to',
+                $selectedStaffIds
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | GET DATA
+    |--------------------------------------------------------------------------
+    */
+
+        $rows = $query
+            ->orderBy('cu.name')
+            ->orderBy('c.updated_at')
+            ->orderBy('c.id')
+            ->get();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | NORMALIZE STATUS
+    |--------------------------------------------------------------------------
+    */
+
+        $normalize = function ($value) {
+
+            return strtolower(
+                trim(
+                    (string) ($value ?? '')
+                )
+            );
+        };
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | GROUP CALLING DATA
+    |--------------------------------------------------------------------------
+    |
+    | Date + Staff
+    |
+    */
+
+        $groupedRows = $rows->groupBy(
+            function ($row) {
+
+                return Carbon::parse(
+                    $row->calling_updated_at
+                )->format('Y-m-d')
+                    . '_'
+                    . $row->staff_id;
+            }
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ONLY SELECTED STAFF OBJECTS
+    |--------------------------------------------------------------------------
+    */
+
+        $reportStaffs = $staffs
+            ->whereIn(
+                'id',
+                $selectedStaffIds
+            )
+            ->sortBy('name')
+            ->values();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | DAY-WISE REPORT
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    |
+    | Staff-wise separate sections.
+    |
+    | Every selected staff gets every day.
+    |
+    */
+
+        $staffWiseReport = collect();
+
+
+        $start = Carbon::parse(
+            $dateFrom
+        )->startOfDay();
+
+        $end = Carbon::parse(
+            $dateTo
+        )->startOfDay();
+
+
+        foreach ($reportStaffs as $staff) {
+
+            $staffDailyRows = collect();
+
+
+            $current = $start->copy();
+
+
+            while ($current->lte($end)) {
+
+                $currentDate = $current->format('Y-m-d');
+
+                $key = $currentDate . '_' . $staff->id;
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | DATA FOR THIS STAFF + THIS DAY
+            |--------------------------------------------------------------------------
+            */
+
+                $staffRows = $groupedRows->get(
+                    $key,
+                    collect()
+                );
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | TOTAL LEADS
+            |--------------------------------------------------------------------------
+            |
+            | Same source as existing staff performance:
+            | callingorder result rows.
+            |
+            */
+
+                $totalLeads = $staffRows->count();
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | CONFIRM
+            |--------------------------------------------------------------------------
+            |
+            | EXACT EXISTING CONFIRMATION STATUS LOGIC:
+            |
+            | verified
+            | confirm
+            | confirmed
+            |
+            | Existing controller uses these values for "verified".
+            |
+            */
+
+                $confirm = $staffRows
+                    ->filter(function ($row) use ($normalize) {
+
+                        return in_array(
+                            $normalize($row->call_status),
+                            [
+                                'verified',
+                                'confirm',
+                                'confirmed',
+                            ],
+                            true
+                        );
+                    })
+                    ->count();
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | DELIVERY
+            |--------------------------------------------------------------------------
+            |
+            | Existing Delivered status.
+            |
+            */
+
+                $delivery = $staffRows
+                    ->filter(function ($row) use ($normalize) {
+
+                        return $normalize(
+                            $row->delivery_status
+                        ) === 'delivered';
+                    })
+                    ->count();
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | RTO
+            |--------------------------------------------------------------------------
+            |
+            | DO NOT USE rto_reports.
+            |
+            | Use latest orders.delivery_status.
+            |
+            */
+
+                $rto = $staffRows
+                    ->filter(function ($row) use ($normalize) {
+
+                        return $normalize(
+                            $row->delivery_status
+                        ) === 'rto-intrasit';
+                    })
+                    ->count();
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | PERCENTAGES
+            |--------------------------------------------------------------------------
+            */
+
+                $confirmPercent = $totalLeads > 0
+                    ? round(
+                        ($confirm / $totalLeads) * 100,
+                        2
+                    )
+                    : 0;
+
+
+                $deliveryPercent = $totalLeads > 0
+                    ? round(
+                        ($delivery / $totalLeads) * 100,
+                        2
+                    )
+                    : 0;
+
+
+                $rtoPercent = $totalLeads > 0
+                    ? round(
+                        ($rto / $totalLeads) * 100,
+                        2
+                    )
+                    : 0;
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | ADD DAILY ROW
+            |--------------------------------------------------------------------------
+            */
+
+                $staffDailyRows->push([
+                    'date' => $currentDate,
+
+                    'staff_id' => $staff->id,
+
+                    'staff_name' => $staff->name,
+
+                    'total_leads' => $totalLeads,
+
+                    'confirm' => $confirm,
+
+                    'confirm_percent' => $confirmPercent,
+
+                    'delivery' => $delivery,
+
+                    'delivery_percent' => $deliveryPercent,
+
+                    'rto' => $rto,
+
+                    'rto_percent' => $rtoPercent,
+                ]);
+
+
+                $current->addDay();
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | STAFF TOTAL
+        |--------------------------------------------------------------------------
+        */
+
+            $staffTotalLeads = $staffDailyRows->sum(
+                'total_leads'
+            );
+
+            $staffConfirm = $staffDailyRows->sum(
+                'confirm'
+            );
+
+            $staffDelivery = $staffDailyRows->sum(
+                'delivery'
+            );
+
+            $staffRto = $staffDailyRows->sum(
+                'rto'
+            );
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | STAFF SUMMARY PERCENTAGES
+        |--------------------------------------------------------------------------
+        |
+        | Based on total counts.
+        | NOT average of daily percentages.
+        |
+        */
+
+            $staffConfirmPercent = $staffTotalLeads > 0
+                ? round(
+                    ($staffConfirm / $staffTotalLeads) * 100,
+                    2
+                )
+                : 0;
+
+
+            $staffDeliveryPercent = $staffTotalLeads > 0
+                ? round(
+                    ($staffDelivery / $staffTotalLeads) * 100,
+                    2
+                )
+                : 0;
+
+
+            $staffRtoPercent = $staffTotalLeads > 0
+                ? round(
+                    ($staffRto / $staffTotalLeads) * 100,
+                    2
+                )
+                : 0;
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | STAFF SECTION
+        |--------------------------------------------------------------------------
+        */
+
+            $staffWiseReport->push([
+
+                'staff_id' => $staff->id,
+
+                'staff_name' => $staff->name,
+
+                'rows' => $staffDailyRows,
+
+                'total_leads' => $staffTotalLeads,
+
+                'confirm' => $staffConfirm,
+
+                'confirm_percent' => $staffConfirmPercent,
+
+                'delivery' => $staffDelivery,
+
+                'delivery_percent' => $staffDeliveryPercent,
+
+                'rto' => $staffRto,
+
+                'rto_percent' => $staffRtoPercent,
+            ]);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | OVERALL SUMMARY
+    |--------------------------------------------------------------------------
+    |
+    | Selected staff + selected date range + selected client.
+    |
+    */
+
+        $summaryTotalLeads = $staffWiseReport->sum(
+            'total_leads'
+        );
+
+        $summaryConfirm = $staffWiseReport->sum(
+            'confirm'
+        );
+
+        $summaryDelivery = $staffWiseReport->sum(
+            'delivery'
+        );
+
+        $summaryRto = $staffWiseReport->sum(
+            'rto'
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | OVERALL PERCENTAGES
+    |--------------------------------------------------------------------------
+    */
+
+        $summaryConfirmPercent = $summaryTotalLeads > 0
+            ? round(
+                ($summaryConfirm / $summaryTotalLeads) * 100,
+                2
+            )
+            : 0;
+
+
+        $summaryDeliveryPercent = $summaryTotalLeads > 0
+            ? round(
+                ($summaryDelivery / $summaryTotalLeads) * 100,
+                2
+            )
+            : 0;
+
+
+        $summaryRtoPercent = $summaryTotalLeads > 0
+            ? round(
+                ($summaryRto / $summaryTotalLeads) * 100,
+                2
+            )
+            : 0;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | SUMMARY ARRAY
+    |--------------------------------------------------------------------------
+    */
+
+        $summary = [
+
+            'total_leads' => $summaryTotalLeads,
+
+            'confirm' => $summaryConfirm,
+
+            'confirm_percent' => $summaryConfirmPercent,
+
+            'delivery' => $summaryDelivery,
+
+            'delivery_percent' => $summaryDeliveryPercent,
+
+            'rto' => $summaryRto,
+
+            'rto_percent' => $summaryRtoPercent,
+        ];
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | VIEW
+    |--------------------------------------------------------------------------
+    */
+
+        return view(
+            'reports.day-wise-staff-performance',
+            compact(
+                'clients',
+                'clientId',
+                'staffs',
+                'selectedStaffIds',
+                'dateFrom',
+                'dateTo',
+                'staffWiseReport',
+                'summary'
+            )
+        );
+    }
     public function assignmentScheduler()
     {
         if ($this->isClient()) {
@@ -223,7 +1159,6 @@ class AdminController extends Controller
                 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
             ],
 
-            // IMPORTANT
             'staff_ids' => [
                 'nullable',
                 'array',
@@ -244,13 +1179,6 @@ class AdminController extends Controller
             ],
         ]);
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | CLIENT PERMISSION
-    |--------------------------------------------------------------------------
-    */
-
         if (
             $this->isClient() &&
             (int) $request->client_id !==
@@ -258,13 +1186,6 @@ class AdminController extends Controller
         ) {
             abort(403, 'Unauthorized Access');
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | TIME VALIDATION
-    |--------------------------------------------------------------------------
-    */
 
         if ($request->start_time >= $request->end_time) {
 
@@ -276,36 +1197,15 @@ class AdminController extends Controller
                 );
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | RTO CHECK
-    |--------------------------------------------------------------------------
-    */
-
         $isRtoScheduler = in_array(
             'rto',
             $request->order_types ?? [],
             true
         );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | STAFF ASSIGNMENTS
-    |--------------------------------------------------------------------------
-    */
-
         $staffAssignments = [];
 
         $totalPercentage = 0;
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | NORMAL ORDERS
-    |--------------------------------------------------------------------------
-    */
 
         if (!$isRtoScheduler) {
 
@@ -327,13 +1227,6 @@ class AdminController extends Controller
                 $totalPercentage += $percentage;
             }
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | NORMAL ORDERS MUST BE 100%
-        |--------------------------------------------------------------------------
-        */
-
             if (abs($totalPercentage - 100) > 0.01) {
 
                 return back()
@@ -346,37 +1239,14 @@ class AdminController extends Controller
             }
         } else {
 
-            /*
-        |--------------------------------------------------------------------------
-        | RTO
-        |--------------------------------------------------------------------------
-        |
-        | No staff percentage required.
-        |
-        */
-
             $staffAssignments = [];
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | CREATE / UPDATE SCHEDULER
-    |--------------------------------------------------------------------------
-    */
 
         $scheduler = $request->scheduler_id
             ? OrderAssignmentScheduler::findOrFail(
                 $request->scheduler_id
             )
             : new OrderAssignmentScheduler();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | EXISTING SCHEDULER PERMISSION
-    |--------------------------------------------------------------------------
-    */
 
         if (
             $scheduler->exists &&
@@ -418,15 +1288,86 @@ class AdminController extends Controller
             'Assignment Scheduler Saved Successfully.'
         );
     }
+
+    public function selloshipImportPage()
+    {
+        if ($this->isClient()) {
+
+            $clients = Client::where(
+                'id',
+                $this->clientId()
+            )
+                ->orderBy('client_name')
+                ->get();
+        } else {
+
+            $clients = Client::orderBy(
+                'client_name'
+            )->get();
+        }
+
+        return view(
+            'selloship-import',
+            compact('clients')
+        );
+    }
+
+    public function selloshipImport(
+        Request $request
+    ) {
+
+        $request->validate([
+
+            'client_id' =>
+            'required|exists:clients,id',
+
+            'file' =>
+            'required|file|mimes:xlsx,xls,csv|max:20480',
+
+        ]);
+
+        if (
+            $this->isClient() &&
+            (int) $request->client_id !==
+            (int) $this->clientId()
+        ) {
+
+            abort(
+                403,
+                'Unauthorized Access'
+            );
+        }
+
+
+        try {
+
+            Excel::import(
+
+                new SelloshipImport(
+                    $request->client_id
+                ),
+
+                $request->file('file')
+
+            );
+
+
+            return back()->with(
+                'success',
+                'Selloship records imported successfully.'
+            );
+        } catch (\Throwable $e) {
+
+            return back()->with(
+                'error',
+                'Selloship import failed: ' .
+                    $e->getMessage()
+            );
+        }
+    }
     public function rtoStaffAllocation($clientId)
     {
         try {
-
-            /*
-        |--------------------------------------------------------------------------
-        | Pending RTO + Original Calling Order Staff
-        |--------------------------------------------------------------------------
-        */
 
             $rtoOrders = DB::table('rto_reports')
                 ->join(
@@ -450,25 +1391,11 @@ class AdminController extends Controller
                 ->orderBy('rto_reports.id')
                 ->get();
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | Staff
-        |--------------------------------------------------------------------------
-        */
-
             $allStaff = CallingUser::orderBy('id')->get();
 
             $activeStaff = $allStaff
                 ->where('status', 1)
                 ->values();
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Calculate Allocation
-        |--------------------------------------------------------------------------
-        */
 
             $allocation = [];
 
@@ -477,8 +1404,6 @@ class AdminController extends Controller
 
                 $originalStaffId = $order->original_staff_id;
 
-
-                // Original calling order ka staff nahi mila
                 if (!$originalStaffId) {
                     continue;
                 }
@@ -489,13 +1414,6 @@ class AdminController extends Controller
                     $originalStaffId
                 );
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | Original Staff Active
-            |--------------------------------------------------------------------------
-            */
-
                 if (
                     $originalStaff &&
                     (int) $originalStaff->status === 1
@@ -504,27 +1422,12 @@ class AdminController extends Controller
                     $assignTo = (int) $originalStaff->id;
                 } else {
 
-                    /*
-                |--------------------------------------------------------------------------
-                | Original Staff Inactive
-                | Find NEXT Active Staff
-                |--------------------------------------------------------------------------
-                */
-
                     $replacement = $activeStaff
                         ->first(function ($staff) use ($originalStaffId) {
 
                             return (int) $staff->id >
                                 (int) $originalStaffId;
                         });
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | If no next active staff
-                | Start from first active staff
-                |--------------------------------------------------------------------------
-                */
 
                     if (!$replacement) {
                         $replacement = $activeStaff->first();
@@ -539,23 +1442,10 @@ class AdminController extends Controller
                     $assignTo = (int) $replacement->id;
                 }
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | Count
-            |--------------------------------------------------------------------------
-            */
-
                 $allocation[$assignTo] =
                     ($allocation[$assignTo] ?? 0) + 1;
             }
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | Prepare Staff List
-        |--------------------------------------------------------------------------
-        */
 
             $staff = $activeStaff->map(function ($member) use ($allocation) {
 
@@ -649,29 +1539,12 @@ class AdminController extends Controller
 
         $clientId = (int) $request->client_id;
 
-        /*
-    |--------------------------------------------------------------------------
-    | LAST 30 DAYS
-    |--------------------------------------------------------------------------
-    */
-
         $from = Carbon::now()
             ->subDays(30)
             ->startOfDay();
 
         $to = Carbon::now()
             ->endOfDay();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | STAFF OF SELECTED CLIENT
-    |--------------------------------------------------------------------------
-    |
-    | IMPORTANT:
-    | Selected client ke saare active staff show honge.
-    |
-    */
 
         $allStaff = DB::table('calling_users as cu')
             ->join(
@@ -706,13 +1579,6 @@ class AdminController extends Controller
             ]);
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | LATEST ORDER
-    |--------------------------------------------------------------------------
-    */
-
         $latestOrders = DB::table('orders')
             ->select(
                 'order_id',
@@ -721,13 +1587,6 @@ class AdminController extends Controller
             ->whereNotNull('order_id')
             ->where('order_id', '!=', '')
             ->groupBy('order_id');
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | CLIENT CALLING DATA
-    |--------------------------------------------------------------------------
-    */
 
         $rows = DB::table('callingorder as c')
 
@@ -765,22 +1624,10 @@ class AdminController extends Controller
                 'lo.latest_id'
             )
 
-            /*
-        |--------------------------------------------------------------------------
-        | SELECTED CLIENT
-        |--------------------------------------------------------------------------
-        */
-
             ->where(
                 'c.client_id',
                 $clientId
             )
-
-            /*
-        |--------------------------------------------------------------------------
-        | LAST 30 DAYS
-        |--------------------------------------------------------------------------
-        */
 
             ->whereBetween(
                 'c.updated_at',
@@ -807,31 +1654,13 @@ class AdminController extends Controller
 
             ->get();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | GROUP BY STAFF
-    |--------------------------------------------------------------------------
-    */
-
         $grouped =
             $rows->groupBy('staff_id');
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | BUILD PERFORMANCE
-    |--------------------------------------------------------------------------
-    */
 
         $staffPerformance = [];
 
 
         foreach ($allStaff as $staff) {
-
-            /*
-        | Selected client ke is staff ka data
-        */
 
             $staffRows =
                 $grouped->get(
@@ -842,13 +1671,6 @@ class AdminController extends Controller
 
             $total =
                 $staffRows->count();
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | CALL STATUS
-        |--------------------------------------------------------------------------
-        */
 
             $verified =
                 $staffRows->filter(
@@ -950,13 +1772,6 @@ class AdminController extends Controller
                     }
                 )->count();
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | DELIVERY
-        |--------------------------------------------------------------------------
-        */
-
             $delivered =
                 $staffRows->filter(
                     function ($row) {
@@ -991,13 +1806,6 @@ class AdminController extends Controller
                         ) === 'RTO Received';
                     }
                 )->count();
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | RATES
-        |--------------------------------------------------------------------------
-        */
 
             $confirmationRate =
                 $total > 0
@@ -1056,13 +1864,6 @@ class AdminController extends Controller
                 ) * 100
                 : 0;
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | VOLUME
-        |--------------------------------------------------------------------------
-        */
-
             $volumeScore =
                 min(
                     (
@@ -1071,13 +1872,6 @@ class AdminController extends Controller
                     ) * 5,
                     5
                 );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | FINAL SCORE
-        |--------------------------------------------------------------------------
-        */
 
             $score =
 
@@ -1112,13 +1906,6 @@ class AdminController extends Controller
                     ),
                     100
                 );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | RATING
-        |--------------------------------------------------------------------------
-        */
 
             if ($score >= 80) {
 
@@ -1217,23 +2004,9 @@ class AdminController extends Controller
             ];
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | SORT STAFF
-    |--------------------------------------------------------------------------
-    |
-    | Highest performance first.
-    |
-    */
-
         usort(
             $staffPerformance,
             function ($a, $b) {
-
-                /*
-            | First score
-            */
 
                 if (
                     $a['score'] !=
@@ -1246,11 +2019,6 @@ class AdminController extends Controller
                         $a['score'];
                 }
 
-
-                /*
-            | Then verified
-            */
-
                 if (
                     $a['verified'] !=
                     $b['verified']
@@ -1262,27 +2030,12 @@ class AdminController extends Controller
                         $a['verified'];
                 }
 
-
-                /*
-            | Then leads
-            */
-
                 return
                     $b['leads']
                     <=>
                     $a['leads'];
             }
         );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | TOP 5 STAFF
-    |--------------------------------------------------------------------------
-    |
-    | Only staff having actual performance data.
-    |
-    */
 
         $topFive =
             collect(
@@ -1298,13 +2051,6 @@ class AdminController extends Controller
             ->take(5)
             ->values();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | TOP 5 TOTAL SCORE
-    |--------------------------------------------------------------------------
-    */
-
         $topFiveScore =
             $topFive->sum(
                 function ($staff) {
@@ -1316,13 +2062,6 @@ class AdminController extends Controller
                     );
                 }
             );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | DISTRIBUTE 100% AMONG TOP 5
-    |--------------------------------------------------------------------------
-    */
 
         if (
             $topFiveScore > 0
@@ -1345,22 +2084,11 @@ class AdminController extends Controller
                         $topFiveScore
                     ) * 100;
 
-
-                /*
-            | Round
-            */
-
                 $percentage =
                     round(
                         $percentage,
                         2
                     );
-
-
-                /*
-            | Last staff gets remaining
-            | percentage so total is exactly 100.
-            */
 
                 if (
                     $index ===
@@ -1374,11 +2102,6 @@ class AdminController extends Controller
                             2
                         );
                 }
-
-
-                /*
-            | Find original array index
-            */
 
                 foreach (
                     $staffPerformance
@@ -1406,16 +2129,6 @@ class AdminController extends Controller
             }
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | SORT AGAIN
-    |--------------------------------------------------------------------------
-    |
-    | Top performers first, but ALL staff remain visible.
-    |
-    */
-
         usort(
             $staffPerformance,
             function ($a, $b) {
@@ -1439,13 +2152,6 @@ class AdminController extends Controller
             }
         );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | TOTAL
-    |--------------------------------------------------------------------------
-    */
-
         $totalPercentage =
             round(
                 array_sum(
@@ -1457,22 +2163,8 @@ class AdminController extends Controller
                 2
             );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | BEST STAFF
-    |--------------------------------------------------------------------------
-    */
-
         $bestStaff =
             $topFive->first();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | RESPONSE
-    |--------------------------------------------------------------------------
-    */
 
         return response()->json([
 
@@ -1518,7 +2210,7 @@ class AdminController extends Controller
     {
         $dashboardQuery = Order::query();
 
-        // Client Login
+
         if ($this->isClient()) {
 
             $dashboardQuery->where('client_id', $this->clientId());
@@ -1538,7 +2230,7 @@ class AdminController extends Controller
         }
         $dashboardQuery1 = Order::query();
 
-        // Last 30 Days Dashboard
+
         $dashboardQuery->whereDate(
             'created_at',
             '>=',
@@ -1567,9 +2259,7 @@ class AdminController extends Controller
             ->where('rtorecivedsts', 0)
             ->whereDate('rtodate', '<=', now()->subDays(5))
             ->count();
-        // $paymentCount = Payment::count();
 
-        // $paymentAmount = Payment::sum('cod_value');
 
         $paymentQuery = Payment::whereDate(
             'bill_date',
@@ -1595,12 +2285,10 @@ class AdminController extends Controller
     {
         $query = Order::query();
 
-        // Client Login
         if ($this->isClient()) {
             $query->where('client_id', $this->clientId());
         }
 
-        // Last 30 Days
         $query->whereDate(
             'created_at',
             '>=',
@@ -2681,7 +3369,6 @@ class AdminController extends Controller
 
             $repeatDays = ((int) $clientId === 2) ? 20 : 25;
 
-
             $orderPhone = "
             RIGHT(
                 REPLACE(
@@ -2712,12 +3399,6 @@ class AdminController extends Controller
                 10
             )
         ";
-
-            /*
-        |--------------------------------------------------------------------------
-        | Repeat Customers
-        |--------------------------------------------------------------------------
-        */
 
             return DB::table('orders')
 
@@ -2808,10 +3489,10 @@ class AdminController extends Controller
                         ->from('callingorder')
 
                         /*
-                    |--------------------------------------------------------------------------
-                    | Same Client
-                    |--------------------------------------------------------------------------
-                    */
+                |--------------------------------------------------------------------------
+                | Same Client
+                |--------------------------------------------------------------------------
+                */
 
                         ->whereColumn(
                             'callingorder.client_id',
@@ -2819,10 +3500,10 @@ class AdminController extends Controller
                         )
 
                         /*
-                    |--------------------------------------------------------------------------
-                    | Only Repeat Customer Assignment
-                    |--------------------------------------------------------------------------
-                    */
+                |--------------------------------------------------------------------------
+                | Only Repeat Customer Assignment
+                |--------------------------------------------------------------------------
+                */
 
                         ->where(
                             'callingorder.order_source',
@@ -2830,10 +3511,10 @@ class AdminController extends Controller
                         )
 
                         /*
-                    |--------------------------------------------------------------------------
-                    | Same Customer Phone
-                    |--------------------------------------------------------------------------
-                    */
+                |--------------------------------------------------------------------------
+                | Same Customer Phone
+                |--------------------------------------------------------------------------
+                */
 
                         ->whereRaw(
                             "{$callingPhone} = {$orderPhone}"
@@ -2844,10 +3525,6 @@ class AdminController extends Controller
             |--------------------------------------------------------------------------
             | UNIQUE CUSTOMER COUNT
             |--------------------------------------------------------------------------
-            |
-            | If same customer has multiple delivered orders,
-            | customer will count only once.
-            |
             */
 
                 ->selectRaw(
@@ -2876,19 +3553,34 @@ class AdminController extends Controller
             )
 
                 /*
+        |--------------------------------------------------------------------------
+        | COUNTS
+        |--------------------------------------------------------------------------
+        */
+
+                ->withCount([
+
+                    /*
             |--------------------------------------------------------------------------
             | Shopify Pending Orders
             |--------------------------------------------------------------------------
             */
 
-                ->withCount([
-
                     'orders as total_orders' => function ($q) use ($from, $to) {
 
                         $q->whereNull('assigned_to')
                             ->where('status', 'pending')
-                            ->whereBetween('order_date', [$from, $to]);
+                            ->whereBetween(
+                                'order_date',
+                                [$from, $to]
+                            );
                     },
+
+                    /*
+            |--------------------------------------------------------------------------
+            | Abandoned Orders
+            |--------------------------------------------------------------------------
+            */
 
                     'callingOrders as total_abandoned_orders' => function ($q) {
 
@@ -2898,7 +3590,34 @@ class AdminController extends Controller
                                 'order_source',
                                 'shopify_abandoned_checkout'
                             );
-                    }
+                    },
+
+                    /*
+            |--------------------------------------------------------------------------
+            | Selloship Records
+            |--------------------------------------------------------------------------
+            |
+            | Selloship orders are stored as:
+            |
+            | order_source = whatsapp
+            | remarks      = Selloship Import
+            |
+            |--------------------------------------------------------------------------
+            */
+
+                    'callingOrders as selloship_records' => function ($q) {
+
+                        $q->whereNull('assigned_to')
+                            ->where('status', 'pending')
+                            ->where(
+                                'order_source',
+                                'whatsapp'
+                            )
+                            ->where(
+                                'remarks',
+                                'Selloship Import'
+                            );
+                    },
 
                 ])
 
@@ -2907,10 +3626,10 @@ class AdminController extends Controller
                 ->map(function ($client) use ($getRepeatPending) {
 
                     /*
-                |--------------------------------------------------------------------------
-                | RTO Pending
-                |--------------------------------------------------------------------------
-                */
+            |--------------------------------------------------------------------------
+            | RTO Pending
+            |--------------------------------------------------------------------------
+            */
 
                     $rtoPending = DB::table('rto_reports')
 
@@ -2935,10 +3654,10 @@ class AdminController extends Controller
 
 
                     /*
-                |--------------------------------------------------------------------------
-                | Repeat Customer Pending
-                |--------------------------------------------------------------------------
-                */
+            |--------------------------------------------------------------------------
+            | Repeat Customer Pending
+            |--------------------------------------------------------------------------
+            */
 
                     $repeatPending = $getRepeatPending(
                         $client->id
@@ -2955,8 +3674,13 @@ class AdminController extends Controller
 
                         'total_orders' =>
                         (int) $client->total_orders,
+
                         'total_abandoned_orders' =>
                         (int) $client->total_abandoned_orders,
+
+                        'selloship_records' =>
+                        (int) $client->selloship_records,
+
                         'rto_pending' =>
                         (int) $rtoPending,
 
@@ -2967,10 +3691,10 @@ class AdminController extends Controller
 
 
             /*
-        |--------------------------------------------------------------------------
-        | WhatsApp Clients
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | WhatsApp Clients
+    |--------------------------------------------------------------------------
+    */
 
             $waClients = Conversation::select(
                 'client_id',
@@ -2999,10 +3723,10 @@ class AdminController extends Controller
 
 
             /*
-        |--------------------------------------------------------------------------
-        | Client Dashboard
-        |--------------------------------------------------------------------------
-        */
+    |--------------------------------------------------------------------------
+    | Client Dashboard
+    |--------------------------------------------------------------------------
+    */
 
             return view(
                 'ordersdashboard',
@@ -3028,19 +3752,19 @@ class AdminController extends Controller
 
 
         /*
-    |--------------------------------------------------------------------------
-    | SUPER ADMIN
-    |--------------------------------------------------------------------------
-    */
+ |--------------------------------------------------------------------------
+ | SUPER ADMIN
+ |--------------------------------------------------------------------------
+ */
 
         $query = Client::query();
 
 
         /*
-    |--------------------------------------------------------------------------
-    | Specific Client Selected
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| Specific Client Selected
+|--------------------------------------------------------------------------
+*/
 
         if ($client_id) {
 
@@ -3052,21 +3776,36 @@ class AdminController extends Controller
 
 
         /*
-    |--------------------------------------------------------------------------
-    | Orders Data
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| Orders Data
+|--------------------------------------------------------------------------
+*/
 
         $ordersData = $query
 
             ->withCount([
 
+                /*
+        |--------------------------------------------------------------------------
+        | Shopify Pending Orders
+        |--------------------------------------------------------------------------
+        */
+
                 'orders as total_orders' => function ($q) use ($from, $to) {
 
                     $q->whereNull('assigned_to')
                         ->where('status', 'pending')
-                        ->whereBetween('order_date', [$from, $to]);
+                        ->whereBetween(
+                            'order_date',
+                            [$from, $to]
+                        );
                 },
+
+                /*
+        |--------------------------------------------------------------------------
+        | Abandoned Orders
+        |--------------------------------------------------------------------------
+        */
 
                 'callingOrders as total_abandoned_orders' => function ($q) {
 
@@ -3076,7 +3815,27 @@ class AdminController extends Controller
                             'order_source',
                             'shopify_abandoned_checkout'
                         );
-                }
+                },
+
+                /*
+        |--------------------------------------------------------------------------
+        | Selloship Records
+        |--------------------------------------------------------------------------
+        */
+
+                'callingOrders as selloship_records' => function ($q) {
+
+                    $q->whereNull('assigned_to')
+                        ->where('status', 'pending')
+                        ->where(
+                            'order_source',
+                            'whatsapp'
+                        )
+                        ->where(
+                            'remarks',
+                            'Selloship Import'
+                        );
+                },
 
             ])
 
@@ -3085,10 +3844,10 @@ class AdminController extends Controller
             ->map(function ($client) use ($getRepeatPending) {
 
                 /*
-            |--------------------------------------------------------------------------
-            | RTO Pending
-            |--------------------------------------------------------------------------
-            */
+        |--------------------------------------------------------------------------
+        | RTO Pending
+        |--------------------------------------------------------------------------
+        */
 
                 $rtoPending = DB::table('rto_reports')
 
@@ -3113,10 +3872,10 @@ class AdminController extends Controller
 
 
                 /*
-            |--------------------------------------------------------------------------
-            | Repeat Customer Pending
-            |--------------------------------------------------------------------------
-            */
+        |--------------------------------------------------------------------------
+        | Repeat Customer Pending
+        |--------------------------------------------------------------------------
+        */
 
                 $repeatPending = $getRepeatPending(
                     $client->id
@@ -3133,8 +3892,18 @@ class AdminController extends Controller
 
                     'total_orders' =>
                     (int) $client->total_orders,
+
                     'total_abandoned_orders' =>
                     (int) $client->total_abandoned_orders,
+
+                    /*
+            |--------------------------------------------------------------------------
+            | Selloship Count
+            |--------------------------------------------------------------------------
+            */
+
+                    'selloship_records' =>
+                    (int) $client->selloship_records,
 
                     'rto_pending' =>
                     (int) $rtoPending,
@@ -3146,10 +3915,10 @@ class AdminController extends Controller
 
 
         /*
-    |--------------------------------------------------------------------------
-    | WhatsApp Clients
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| WhatsApp Clients
+|--------------------------------------------------------------------------
+*/
 
         $waClients = Conversation::select(
             'client_id',
@@ -3184,10 +3953,10 @@ class AdminController extends Controller
 
 
         /*
-    |--------------------------------------------------------------------------
-    | Staff Conversation Summary
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| Staff Conversation Summary
+|--------------------------------------------------------------------------
+*/
 
         $staff = Conversation::select(
             'assigned_to',
@@ -3210,11 +3979,6 @@ class AdminController extends Controller
             ->get();
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | SUPER ADMIN DASHBOARD
-    |--------------------------------------------------------------------------
-    */
 
         return view(
             'ordersdashboard',
@@ -3234,7 +3998,334 @@ class AdminController extends Controller
             ]
         );
     }
+    public function assignSelloshipOrders(Request $request)
+    {
+        $clientId = (int) $request->client_id;
 
+        $assignments = $request->input('assign', []);
+
+        if (!$clientId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Client ID is required.'
+            ], 422);
+        }
+
+        if (!is_array($assignments)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid staff assignment data.'
+            ], 422);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Clean Assignments
+    |--------------------------------------------------------------------------
+    */
+
+        $cleanAssignments = [];
+
+        $totalRequested = 0;
+
+        foreach ($assignments as $staffId => $quantity) {
+
+            $staffId = (int) $staffId;
+            $quantity = (int) $quantity;
+
+            if ($staffId <= 0 || $quantity <= 0) {
+                continue;
+            }
+
+            $cleanAssignments[$staffId] =
+                $quantity;
+
+            $totalRequested += $quantity;
+        }
+
+
+        if ($totalRequested <= 0) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                'Enter quantity for at least one staff.'
+            ], 422);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Get Available Selloship Records
+    |--------------------------------------------------------------------------
+    */
+
+        $orders = CallingOrder::where(
+            'client_id',
+            $clientId
+        )
+            ->whereNull('assigned_to')
+            ->where(
+                'status',
+                'pending'
+            )
+            ->where(
+                'order_source',
+                'whatsapp'
+            )
+            ->where(
+                'remarks',
+                'Selloship Import'
+            )
+            ->orderBy('id')
+            ->limit($totalRequested)
+            ->get();
+
+
+        $availableCount = $orders->count();
+
+
+        if ($availableCount < $totalRequested) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                "Only {$availableCount} Selloship records are available, but {$totalRequested} were requested."
+            ], 422);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Get Staff
+    |--------------------------------------------------------------------------
+    */
+
+        $staffMembers = CallingUser::whereIn(
+            'id',
+            array_keys($cleanAssignments)
+        )
+            ->get()
+            ->keyBy('id');
+
+
+        if (
+            $staffMembers->count() !==
+            count($cleanAssignments)
+        ) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                'One or more selected staff members were not found.'
+            ], 422);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Start Transaction
+    |--------------------------------------------------------------------------
+    */
+
+        DB::beginTransaction();
+
+        try {
+
+            $orderIndex = 0;
+
+            $assignedTotal = 0;
+
+
+            foreach (
+                $cleanAssignments as $staffId => $quantity
+            ) {
+
+                $staff =
+                    $staffMembers->get($staffId);
+
+
+
+                $name =
+                    trim($staff->name);
+
+
+                $nameParts =
+                    preg_split(
+                        '/\s+/',
+                        $name
+                    );
+
+
+                if (
+                    count($nameParts) >= 2
+                ) {
+
+                    $prefix =
+                        strtoupper(
+                            substr(
+                                $nameParts[0],
+                                0,
+                                1
+                            ) .
+                                substr(
+                                    end($nameParts),
+                                    0,
+                                    1
+                                )
+                        );
+                } else {
+
+                    $prefix =
+                        strtoupper(
+                            substr(
+                                $name,
+                                0,
+                                2
+                            )
+                        );
+                }
+
+
+                $date =
+                    now()->format('d-m-y');
+
+
+
+                for (
+                    $i = 0;
+                    $i < $quantity;
+                    $i++
+                ) {
+
+                    if (
+                        !isset(
+                            $orders[$orderIndex]
+                        )
+                    ) {
+                        break;
+                    }
+
+
+                    $callingOrder =
+                        $orders[$orderIndex];
+
+
+
+                    $lastSerial =
+                        CallingOrder::where(
+                            'order_id',
+                            'like',
+                            $prefix .
+                                '-' .
+                                $date .
+                                '-%'
+                        )
+                        ->pluck('order_id')
+                        ->map(function ($orderId) {
+
+                            $parts =
+                                explode(
+                                    '-',
+                                    $orderId
+                                );
+
+                            return
+                                isset($parts[3])
+                                ? (int) $parts[3]
+                                : 0;
+                        })
+                        ->max();
+
+
+                    $serial =
+                        ((int) $lastSerial) + 1;
+
+
+                    $newOrderId =
+                        $prefix .
+                        '-' .
+                        $date .
+                        '-' .
+                        $serial;
+
+
+
+
+                    $callingOrder->assigned_to =
+                        $staff->id;
+
+                    $callingOrder->order_id =
+                        $newOrderId;
+
+                    $callingOrder->status =
+                        'pending';
+
+                    $callingOrder->save();
+
+
+                    $orderIndex++;
+
+                    $assignedTotal++;
+                }
+            }
+
+
+            DB::commit();
+
+            $remaining =
+                CallingOrder::where(
+                    'client_id',
+                    $clientId
+                )
+                ->whereNull('assigned_to')
+                ->where(
+                    'status',
+                    'pending'
+                )
+                ->where(
+                    'order_source',
+                    'whatsapp'
+                )
+                ->where(
+                    'remarks',
+                    'Selloship Import'
+                )
+                ->count();
+
+
+            return response()->json([
+
+                'success' =>
+                true,
+
+                'message' =>
+                "{$assignedTotal} Selloship records assigned successfully.",
+
+                'assigned' =>
+                $assignedTotal,
+
+                'remaining' =>
+                $remaining,
+
+            ]);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+
+            return response()->json([
+
+                'success' =>
+                false,
+
+                'message' =>
+                $e->getMessage(),
+
+            ], 500);
+        }
+    }
     public function assignRtoOrders(Request $request)
     {
         DB::beginTransaction();
@@ -3288,7 +4379,7 @@ class AdminController extends Controller
                     $lastSerial++;
 
                     // Generate Order ID
-                    $callingOrderId = $prefix . '-' . $date . '-' . $lastSerial;
+                    $callingOrderId = $prefix . '-' . $date . '-' . $lastSerial . 'R';
 
                     CallingOrder::create([
 
@@ -3575,7 +4666,7 @@ class AdminController extends Controller
                     $lastOrder++;
 
                     $callingOrderId =
-                        $prefix . '-' . $date . '-' . $lastOrder;
+                        $prefix . '-' . $date . '-' . $lastOrder . 'D';
 
 
                     while (
@@ -3588,7 +4679,7 @@ class AdminController extends Controller
                         $lastOrder++;
 
                         $callingOrderId =
-                            $prefix . '-' . $date . '-' . $lastOrder;
+                            $prefix . '-' . $date . '-' . $lastOrder . 'D';
                     }
 
                     $alreadyAssigned = CallingOrder::where(

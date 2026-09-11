@@ -1274,11 +1274,11 @@
 
             </button>
 
-            <button class="btn btn-success" id="downloadLabel">
+            <!--   <button class="btn btn-success" id="downloadLabel">
 
-                Re-Download Label PDF
+                                        Re-Download Label PDF
 
-            </button>
+                                    </button>-->
 
             <button class="btn btn-primary" id="downloadExcel">
 

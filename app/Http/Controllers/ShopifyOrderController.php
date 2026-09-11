@@ -24,11 +24,18 @@ class ShopifyOrderController extends Controller
             $request->import_date
         );
 
-        Excel::import($import, $request->file('file'));
+        Excel::import(
+            $import,
+            $request->file('file')
+        );
 
         return back()->with([
-            'success' => "Imported: {$import->imported}, Skipped: {$import->skipped}",
-            'errors'  => $import->errors,
+            'success' =>
+            "Total Rows: {$import->totalRows} | " .
+                "Imported: {$import->imported} | " .
+                "Skipped: {$import->skipped}",
+
+            'errors' => $import->errors,
         ]);
     }
 

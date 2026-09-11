@@ -18,8 +18,18 @@ class DashboardController extends Controller
         $totalRTO = DB::table('stock_movements')
             ->where('type', 'rto_restored')
             ->sum('quantity');
-
-        $products = Product::pluck('name', 'id');
+        $products = Product::leftJoin(
+            'client_products',
+            'client_products.id',
+            '=',
+            DB::raw('CAST(products.name AS UNSIGNED)')
+        )
+            ->select(
+                'products.id',
+                'client_products.shopify_product_name'
+            )
+            ->get()
+            ->pluck('shopify_product_name', 'id');
 
         // ================= MONTHLY SALES =================
         $monthlySales = SaleItem::select(
@@ -42,19 +52,31 @@ class DashboardController extends Controller
             ->get();
 
 
-        // 👉 using products.stock (IMPORTANT)
-        $lowStockList = Product::leftJoin('warehouses', 'products.warehouse_id', '=', 'warehouses.id')
+
+        $lowStockList = Product::leftJoin(
+            'warehouses',
+            'products.warehouse_id',
+            '=',
+            'warehouses.id'
+        )
+            ->leftJoin(
+                'client_products',
+                'client_products.id',
+                '=',
+                DB::raw('CAST(products.name AS UNSIGNED)')
+            )
             ->where('products.low_stock_alert', '<=', 250)
             ->select(
-                'products.name as product_name',
+                'products.name as product_id',
+                'client_products.shopify_product_name as product_name',
                 'products.low_stock_alert',
                 'warehouses.name as warehouse_name'
             )
             ->get()
             ->map(function ($p) {
                 return [
-                    'name'      => $p->product_name,
-                    'qty'       => (int)$p->low_stock_alert,
+                    'name'      => $p->product_name ?? 'Product ID: ' . $p->product_id,
+                    'qty'       => (int) $p->low_stock_alert,
                     'warehouse' => $p->warehouse_name ?? 'N/A',
                 ];
             });
@@ -84,9 +106,35 @@ class DashboardController extends Controller
     // ================= API FOR AUTO ALERT =================
     public function lowStockApi()
     {
-        $data = Product::where('stock', '<=', 250)
-            ->select('id', 'name', 'stock')
-            ->get();
+        $data = Product::leftJoin(
+            'client_products',
+            'client_products.id',
+            '=',
+            DB::raw('CAST(products.name AS UNSIGNED)')
+        )
+            ->leftJoin(
+                'warehouses',
+                'products.warehouse_id',
+                '=',
+                'warehouses.id'
+            )
+            ->where('products.stock', '<=', 250)
+            ->select(
+                'products.id',
+                'products.name as product_id',
+                'client_products.shopify_product_name as product_name',
+                'products.stock',
+                'warehouses.name as warehouse_name'
+            )
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'id'        => $p->id,
+                    'name'      => $p->product_name ?? 'Product ID: ' . $p->product_id,
+                    'stock'     => (int) $p->stock,
+                    'warehouse' => $p->warehouse_name ?? 'N/A',
+                ];
+            });
 
         return response()->json([
             'status' => true,

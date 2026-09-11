@@ -39,8 +39,13 @@ class Order extends Model
         'manual_delivery_by',
 
         'manual_delivery_date',
+        'label_status',
+        'label_printed_at',
+        'label_print_count',
     ];
-
+    protected $casts = [
+        'label_printed_at' => 'datetime',
+    ];
     public function client()
     {
         return $this->belongsTo(

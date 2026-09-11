@@ -235,7 +235,13 @@
                         let html = `<h5>⚠ Low Stock Alert</h5><ul>`;
 
                         res.data.forEach(item => {
-                            html += `<li><b>${item.name}</b> - Only ${item.stock} left</li>`;
+                            html += `
+                            <li>
+                                <b>${item.name}</b>
+                                (Warehouse: <b>${item.warehouse}</b>)
+                                - Only ${item.stock} left
+                            </li>
+                        `;
                         });
 
                         html += `</ul>`;

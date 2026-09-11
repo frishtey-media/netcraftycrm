@@ -103,19 +103,30 @@
                         </a>
 
                     </div>
+                    <div class="col-md-2 col-6">
+                        <a href="{{ route('admin.day-wise-staff-performance') }}">
+                            <button type="button" class="btn btn-success">
 
+                                <i class="fas fa-file-excel"></i>
+                                Compare Staff Report
+
+                            </button>
+                        </a>
+
+
+                    </div>
                     <!-- <div class="col-md-2 col-6">
 
-                                                                                                                                                                                                                                                                                                <button type="button" class="btn btn-success" id="exportSelected">
+                                                    <button type="button" class="btn btn-success" id="exportSelected">
 
-                                                                                                                                                                                                                                                                                                    <i class="fas fa-file-excel"></i>
-                                                                                                                                                                                                                                                                                                    Export Verify Selected
+                                                        <i class="fas fa-file-excel"></i>
+                                                        Export Verify Selected
 
-                                                                                                                                                                                                                                                                                                </button>
+                                                    </button>
 
 
 
-                                                                                                                                                                                                                                                                                            </div>-->
+                                                </div>-->
 
 
                 </form>
@@ -300,18 +311,18 @@
 
             </div>
             <!--  <div class="col-md-2 col-6 mb-2">
-                                                                                                                                                                                                        <div class="card bg-dark text-white p-3">
-                                                                                                                                                                                                            <h6>WA Leads</h6>
-                                                                                                                                                                                                            <h3>{{ $totalWA }}</h3>
-                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                <div class="card bg-dark text-white p-3">
+                                                                                                                                                                                                                                                    <h6>WA Leads</h6>
+                                                                                                                                                                                                                                                    <h3>{{ $totalWA }}</h3>
+                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                            </div>
 
-                                                                                                                                                                                                    <div class="col-md-2 col-6 mb-2">
-                                                                                                                                                                                                        <div class="card bg-info text-white p-3">
-                                                                                                                                                                                                            <h6>WA Verified</h6>
-                                                                                                                                                                                                            <h3>{{ $verifiedWA }}</h3>
-                                                                                                                                                                                                        </div>
-                                                                                                                                                                                                    </div>-->
+                                                                                                                                                                                                                                            <div class="col-md-2 col-6 mb-2">
+                                                                                                                                                                                                                                                <div class="card bg-info text-white p-3">
+                                                                                                                                                                                                                                                    <h6>WA Verified</h6>
+                                                                                                                                                                                                                                                    <h3>{{ $verifiedWA }}</h3>
+                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                            </div>-->
 
         </div>
 
@@ -348,9 +359,9 @@
                             <th>Same Order</th>
                             <th>Other</th>
                             <!--  <th>WA Total</th>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <th>WA Verified</th>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                   <th>WA Pending</th>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                   <th>Combined %</th>-->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <th>WA Verified</th>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           <th>WA Pending</th>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           <th>Combined %</th>-->
                             <th>Order %</th>
                         </tr>
                     </thead>
@@ -465,21 +476,21 @@
                                 </span>
                             </td>
                             <!-- <td>
-                                                                                                                                                                                                                    <span class="badge bg-danger">
-                                                                                                                                                                                                                        {{ $staff->rto_orders }}
-                                                                                                                                                                                                                    </span>
-                                                                                                                                                                                                                </td>-->
+                                                                                                                                                                                                                                                            <span class="badge bg-danger">
+                                                                                                                                                                                                                                                                {{ $staff->rto_orders }}
+                                                                                                                                                                                                                                                            </span>
+                                                                                                                                                                                                                                                        </td>-->
                             <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->cancel }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->same_order }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->other }}</span></td>
                             <!--<td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                <td><strong>{{ $combinedRate }}%</strong></td>-->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><strong>{{ $combinedRate }}%</strong></td>-->
 
                             <td><small>{{ $success }}%</small></td>
 

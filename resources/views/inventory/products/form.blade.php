@@ -1,63 +1,86 @@
 <div class="row">
     <div class="col-md-6 mb-3">
-        <label class="form-label">Client *</label>
 
-        <select name="category_id" class="form-select @error('category_id') is-invalid @enderror" required>
+        <label class="form-label">
+            Client *
+        </label>
 
-            <option value="">Select Client</option>
+        <select name="client_id" class="form-select @error('client_id') is-invalid @enderror" required>
 
-            @foreach ($categories as $category)
-                <option value="{{ $category->id }}"
-                    {{ old('category_id', $product->category_id ?? '') == $category->id ? 'selected' : '' }}>
-                    {{ $category->name }}
+            <option value="">
+                Select Client
+            </option>
+
+            @foreach ($Client as $client)
+                <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
+                    {{ $client->client_name }}
                 </option>
             @endforeach
 
         </select>
 
-        @error('category_id')
-            <div class="invalid-feedback">{{ $message }}</div>
+        @error('client_id')
+            <div class="invalid-feedback">
+                {{ $message }}
+            </div>
         @enderror
+
     </div>
 
     <div class="col-md-6 mb-3">
-        <label class="form-label">Warehouse *</label>
+
+        <label class="form-label">
+            Warehouse *
+        </label>
 
         <select name="warehouse_id" class="form-select @error('warehouse_id') is-invalid @enderror" required>
 
-            <option value="">Select Warehouse</option>
+            <option value="">
+                Select Warehouse
+            </option>
 
-            @foreach ($Warehouse as $Warehouse)
-                <option value="{{ $Warehouse->id }}"
-                    {{ old('warehouse_id', $product->Warehouse ?? '') == $Warehouse->id ? 'selected' : '' }}>
-                    {{ $Warehouse->name }}
+            @foreach ($Warehouse as $warehouse)
+                <option value="{{ $warehouse->id }}"
+                    {{ old('warehouse_id', $product->warehouse_id ?? '') == $warehouse->id ? 'selected' : '' }}>
+                    {{ $warehouse->name }}
                 </option>
             @endforeach
 
         </select>
 
         @error('warehouse_id')
-            <div class="invalid-feedback">{{ $message }}</div>
+            <div class="invalid-feedback">
+                {{ $message }}
+            </div>
         @enderror
+
     </div>
     <div class="col-md-6 mb-3">
-        <label class="form-label">Product Name *</label>
+
+        <label class="form-label">
+            Product Name *
+        </label>
+
         <select name="name" class="form-select @error('name') is-invalid @enderror" required>
 
-            <option value="">Select Product</option>
+            <option value="">
+                Select Product
+            </option>
 
-            @foreach ($client_products as $client_products)
-                <option value="{{ $client_products->id }}">
-                    {{ $client_products->shopify_product_name }}
+            @foreach ($client_products as $clientProduct)
+                <option value="{{ $clientProduct->id }}" {{ old('name') == $clientProduct->id ? 'selected' : '' }}>
+                    {{ $clientProduct->shopify_product_name }}
                 </option>
             @endforeach
 
         </select>
 
         @error('name')
-            <div class="invalid-feedback">{{ $message }}</div>
+            <div class="invalid-feedback">
+                {{ $message }}
+            </div>
         @enderror
-        <!---<input type="text" name="name" class="form-control" value="{{ old('name', $product->name ?? '') }}">-->
+
     </div>
 
 

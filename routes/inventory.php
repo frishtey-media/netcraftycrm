@@ -53,15 +53,11 @@ Route::prefix('inventory')->group(function () {
         Route::get('/sales/{sale}/invoice', [SaleController::class, 'invoice'])
             ->name('sales.invoice');
 
-
-
         Route::resource('sales', SaleController::class);
         Route::get('/salesreport', [SaleController::class, 'salesreport'])
             ->name('sales.report');
         Route::get('/productreport', [ProductController::class, 'productreport'])
             ->name('products.report');
-
-
 
         Route::get(
             '/inventory/print-labels',

@@ -13,6 +13,7 @@ class CallingOrder extends Model
     protected $fillable = [
         'client_id',
         'order_id',
+        'source_order_id',
         'shopify_order_id',
         'shopify_checkout_id',
         'checkout_url',

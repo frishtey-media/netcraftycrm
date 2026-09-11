@@ -4,42 +4,91 @@ namespace App\Imports;
 
 use App\Models\ShopifyOrder;
 use App\Models\Barcode;
+
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+
 
 class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
 {
+    /*
+    |--------------------------------------------------------------------------
+    | COUNTERS
+    |--------------------------------------------------------------------------
+    */
+
+    public $totalRows = 0;
 
     public $imported = 0;
-    public $skipped  = 0;
-    public $errors   = [];
+
+    public $skipped = 0;
+
+    public $errors = [];
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | DUPLICATE ORDER IDS
+    |--------------------------------------------------------------------------
+    */
 
     protected $seenOrderIds = [];
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | CLIENT
+    |--------------------------------------------------------------------------
+    */
+
     protected $clientId;
+
     protected $importDate;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | CONSTRUCTOR
+    |--------------------------------------------------------------------------
+    */
 
     public function __construct($clientId, $importDate)
     {
         $this->clientId = $clientId;
-        $this->importDate = Carbon::parse($importDate)->startOfDay();
+
+        $this->importDate =
+            Carbon::parse($importDate)->startOfDay();
     }
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | COLLECTION
+    |--------------------------------------------------------------------------
+    */
+
     public function collection(Collection $rows)
     {
+        $this->totalRows = $rows->count();
 
-        //dd($rows->first()->toArray());
+
         DB::transaction(function () use ($rows) {
 
             foreach ($rows as $index => $row) {
 
                 $rowNumber = $index + 2;
 
-                /* ================= REQUIRED FIELDS ================= */
+
+                /*
+                |--------------------------------------------------------------------------
+                | REQUIRED FIELDS
+                |--------------------------------------------------------------------------
+                */
 
                 $required = [
                     'order_id',
@@ -55,9 +104,13 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
                     'shipping_pincode',
                 ];
 
+
                 foreach ($required as $field) {
 
-                    if (!isset($row[$field]) || trim($row[$field]) === '') {
+                    if (
+                        !isset($row[$field]) ||
+                        trim((string) $row[$field]) === ''
+                    ) {
 
                         $this->addError(
                             $rowNumber,
@@ -65,26 +118,45 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
                         );
 
                         $this->skipped++;
+
                         continue 2;
                     }
                 }
 
-                /* ================= DUPLICATE IN FILE ================= */
 
-                if (in_array($row['order_id'], $this->seenOrderIds)) {
+                /*
+                |--------------------------------------------------------------------------
+                | DUPLICATE IN EXCEL
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    in_array(
+                        $row['order_id'],
+                        $this->seenOrderIds
+                    )
+                ) {
 
                     $this->addError(
                         $rowNumber,
-                        "Duplicate order_id in Excel file"
+                        'Duplicate order_id in Excel file'
                     );
 
                     $this->skipped++;
+
                     continue;
                 }
 
-                $this->seenOrderIds[] = $row['order_id'];
 
-                /* ================= DUPLICATE IN DB ================= */
+                $this->seenOrderIds[] =
+                    $row['order_id'];
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | DUPLICATE IN DATABASE
+                |--------------------------------------------------------------------------
+                */
 
                 if (
                     ShopifyOrder::where(
@@ -95,143 +167,243 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
 
                     $this->addError(
                         $rowNumber,
-                        "order_id already exists in database"
+                        'order_id already exists in database'
                     );
 
                     $this->skipped++;
+
                     continue;
                 }
 
-                /* ================= PAYMENT MODE ================= */
-
-                $paymentMode = strtoupper(
-                    trim($row['payment_mode'] ?? 'COD')
-                );
 
                 /*
-                    VPP -> vpp barcode
-                    COD -> cod barcode
+                |--------------------------------------------------------------------------
+                | QUANTITY
+                |--------------------------------------------------------------------------
                 */
 
-                $barcodeType = $paymentMode == 'VPP'
-                    ? 'VPP'
-                    : 'COD';
-
-                /* ================= BARCODE ASSIGN ================= */
-
-                $barcode = Barcode::where('client_id', $this->clientId)
-                    ->where('barcode_type', $barcodeType)
-                    ->where('is_used', 0)
-                    ->orderBy('id', 'asc')
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$barcode) {
-
-                    $this->addError(
-                        $rowNumber,
-                        strtoupper($barcodeType) . " barcode not available"
+                $quantity =
+                    $this->parseQuantity(
+                        $row['quantity']
                     );
 
-                    $this->skipped++;
-                    continue;
-                }
-
-                /* ================= QUANTITY ================= */
-
-                $quantity = $this->parseQuantity($row['quantity']);
 
                 if ($quantity <= 0) {
 
                     $this->addError(
                         $rowNumber,
-                        "Invalid quantity"
+                        'Invalid quantity'
                     );
 
                     $this->skipped++;
+
                     continue;
                 }
 
-                /* ================= WEIGHT ================= */
 
-                $totalWeight = $this->parseWeight(
-                    $row['weight_in_gm']
-                );
+                /*
+                |--------------------------------------------------------------------------
+                | WEIGHT
+                |--------------------------------------------------------------------------
+                */
+
+                $totalWeight =
+                    $this->parseWeight(
+                        $row['weight_in_gm']
+                    );
+
 
                 if ($totalWeight <= 0) {
 
                     $this->addError(
                         $rowNumber,
-                        "Invalid weight"
+                        'Invalid weight'
                     );
 
                     $this->skipped++;
+
                     continue;
                 }
-                // dd($this->importDate);
-                /* ================= INSERT ORDER ================= */
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | PAYMENT MODE
+                |--------------------------------------------------------------------------
+                */
+
+                $paymentMode = strtoupper(
+                    trim(
+                        $row['payment_mode'] ?? 'COD'
+                    )
+                );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | BARCODE TYPE
+                |--------------------------------------------------------------------------
+                */
+
+                $barcodeType =
+                    $paymentMode === 'VPP'
+                    ? 'VPP'
+                    : 'COD';
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | BARCODE
+                |--------------------------------------------------------------------------
+                */
+
+                $barcode =
+                    Barcode::where(
+                        'client_id',
+                        $this->clientId
+                    )
+                    ->where(
+                        'barcode_type',
+                        $barcodeType
+                    )
+                    ->where(
+                        'is_used',
+                        0
+                    )
+                    ->orderBy('id', 'asc')
+                    ->lockForUpdate()
+                    ->first();
+
+
+                if (!$barcode) {
+
+                    $this->addError(
+                        $rowNumber,
+                        strtoupper($barcodeType) .
+                            ' barcode not available'
+                    );
+
+                    $this->skipped++;
+
+                    continue;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | CREATE ORDER
+                |--------------------------------------------------------------------------
+                |
+                | IMPORTANT:
+                | Stock is NOT deducted here.
+                |
+                */
 
                 ShopifyOrder::create([
 
-                    'client_id' => $this->clientId,
+                    'client_id' =>
+                    $this->clientId,
 
-                    'order_id' => $row['order_id'],
-                    'shopify_order_id' => $row['shopify_order_id'],
+                    'order_id' =>
+                    $row['order_id'],
 
-                    'order_date' => $this->importDate,
+                    'shopify_order_id' =>
+                    $row['shopify_order_id'] ?? null,
 
-                    'barcode' => $barcode->barcode,
+                    'order_date' =>
+                    $this->importDate,
 
-                    'product_name' => $row['product'],
+                    'barcode' =>
+                    $barcode->barcode,
 
-                    'shopify_product_name' => $row['product'],
+                    'product_name' =>
+                    $row['product'],
 
-                    'quantity' => $quantity,
+                    'shopify_product_name' =>
+                    $row['product'],
 
-                    'weight' => $totalWeight / $quantity,
+                    'quantity' =>
+                    $quantity,
 
-                    'total_weight' => $totalWeight,
+                    'weight' =>
+                    $totalWeight / $quantity,
 
-                    'payment_mode' => $paymentMode,
+                    'total_weight' =>
+                    $totalWeight,
 
-                    'amount' => $row['amount'] ?? 0,
+                    'payment_mode' =>
+                    $paymentMode,
 
-                    'customer_name' => $row['customer_name'],
-                    'age' => $row['age'],
+                    'amount' =>
+                    $row['amount'] ?? 0,
 
-                    'father_name' => $row['father_name'] ?? null,
+                    'customer_name' =>
+                    $row['customer_name'],
 
-                    'customer_phone' => $row['customer_phone'],
+                    'age' =>
+                    $row['age'] ?? null,
 
-                    'shipping_address' => $row['shipping_address'],
+                    'father_name' =>
+                    $row['father_name'] ?? null,
 
-                    'city' => $row['city'],
+                    'customer_phone' =>
+                    $row['customer_phone'],
 
-                    'state' => $row['state'],
+                    'shipping_address' =>
+                    $row['shipping_address'],
 
-                    'pincode' => $row['shipping_pincode'],
-                    'created_at' => $this->importDate,
+                    'city' =>
+                    $row['city'],
 
-                    'updated_at' => $this->importDate,
+                    'state' =>
+                    $row['state'],
+
+                    'pincode' =>
+                    $row['shipping_pincode'],
+
+                    'created_at' =>
+                    $this->importDate,
+
+                    'updated_at' =>
+                    $this->importDate,
                 ]);
 
-                /* ================= MARK BARCODE USED ================= */
+
+                /*
+                |--------------------------------------------------------------------------
+                | MARK BARCODE USED
+                |--------------------------------------------------------------------------
+                */
 
                 $barcode->update([
                     'is_used' => 1
                 ]);
+
 
                 $this->imported++;
             }
         });
     }
 
-    /* ================= HELPERS ================= */
+
+    /*
+    |--------------------------------------------------------------------------
+    | ERROR
+    |--------------------------------------------------------------------------
+    */
 
     private function addError($row, $message)
     {
-        $this->errors[] = "Row {$row}: {$message}";
+        $this->errors[] =
+            "Row {$row}: {$message}";
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | QUANTITY
+    |--------------------------------------------------------------------------
+    */
 
     private function parseQuantity($value)
     {
@@ -239,20 +411,47 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
             return (int) $value;
         }
 
-        if (str_contains($value, '+')) {
 
-            return collect(explode('+', $value))
-                ->map(fn($v) => (int) trim($v))
+        if (
+            is_string($value) &&
+            str_contains($value, '+')
+        ) {
+
+            return collect(
+                explode('+', $value)
+            )
+                ->map(
+                    fn($v) => (int) trim($v)
+                )
                 ->sum();
         }
+
 
         return 0;
     }
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | WEIGHT
+    |--------------------------------------------------------------------------
+    */
+
     private function parseWeight($value)
     {
-        return (int) preg_replace('/[^0-9]/', '', $value);
+        return (int) preg_replace(
+            '/[^0-9]/',
+            '',
+            $value
+        );
     }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | DATE
+    |--------------------------------------------------------------------------
+    */
 
     private function parseDate($value)
     {
@@ -260,15 +459,16 @@ class WhatsAppOrdersImport implements ToCollection, WithHeadingRow
             return now()->format('Y-m-d');
         }
 
+
         try {
 
-            // Handles: 2026-07-04 00:00:00
-            return Carbon::parse($value)->format('Y-m-d');
+            return Carbon::parse(
+                $value
+            )->format('Y-m-d');
         } catch (\Exception $e) {
 
             try {
 
-                // Handles: 04-Jul-26
                 return Carbon::createFromFormat(
                     'd-M-y',
                     trim($value)

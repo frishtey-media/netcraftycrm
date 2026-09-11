@@ -78,13 +78,6 @@ class CallingUserAuthController extends Controller
             ->where('assigned_to', $userId)
             ->whereBetween('updated_at', [$from, $to]);
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | SOURCE CONDITIONS
-    |--------------------------------------------------------------------------
-    */
-
         $webCondition = function ($q) {
             $q->whereNull('order_source')
                 ->orWhere('order_source', '')
@@ -122,13 +115,6 @@ class CallingUserAuthController extends Controller
             );
         };
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | HELPER - COUNT BY STATUS + SOURCE
-    |--------------------------------------------------------------------------
-    */
-
         $countBySource = function ($sourceCondition, $status = null) use ($baseQuery) {
 
             $query = clone $baseQuery;
@@ -143,20 +129,9 @@ class CallingUserAuthController extends Controller
         };
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | TOTAL ORDERS
-    |--------------------------------------------------------------------------
-    */
-
         $totalOrders = (clone $baseQuery)->count();
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | TOTAL SOURCE COUNTS
-    |--------------------------------------------------------------------------
-    */
 
         $webOrders = (clone $baseQuery)
             ->where($webCondition)
@@ -177,13 +152,6 @@ class CallingUserAuthController extends Controller
         $abandonedOrders = (clone $baseQuery)
             ->where($abandonedCondition)
             ->count();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | CALLING STATUS TOTALS
-    |--------------------------------------------------------------------------
-    */
 
         $pending = (clone $baseQuery)
             ->where('status', 'pending')
@@ -206,12 +174,6 @@ class CallingUserAuthController extends Controller
             ->count();
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | OTHER
-    |--------------------------------------------------------------------------
-    */
-
         $standardStatuses = [
             'pending',
             'verified',
@@ -227,13 +189,6 @@ class CallingUserAuthController extends Controller
                     ->orWhereNull('status');
             })
             ->count();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | PENDING WORK - SOURCE WISE
-    |--------------------------------------------------------------------------
-    */
 
         $pendingWeb = $countBySource($webCondition, 'pending');
 
@@ -257,13 +212,6 @@ class CallingUserAuthController extends Controller
             'pending'
         );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | VERIFIED - SOURCE WISE
-    |--------------------------------------------------------------------------
-    */
-
         $verifiedWeb = $countBySource($webCondition, 'verified');
 
         $verifiedWhatsapp = $countBySource(
@@ -286,13 +234,6 @@ class CallingUserAuthController extends Controller
             'verified'
         );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | CANCELLED - SOURCE WISE
-    |--------------------------------------------------------------------------
-    */
-
         $cancelledWeb = $countBySource($webCondition, 'cancel');
 
         $cancelledWhatsapp = $countBySource(
@@ -314,13 +255,6 @@ class CallingUserAuthController extends Controller
             $abandonedCondition,
             'cancel'
         );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | NOT CONNECTED - SOURCE WISE
-    |--------------------------------------------------------------------------
-    */
 
         $notConnectedWeb = $countBySource(
             $webCondition,
@@ -348,12 +282,6 @@ class CallingUserAuthController extends Controller
         );
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | SAME ORDER - SOURCE WISE
-    |--------------------------------------------------------------------------
-    */
-
         $sameOrderWeb = $countBySource(
             $webCondition,
             'same_order'
@@ -378,13 +306,6 @@ class CallingUserAuthController extends Controller
             $abandonedCondition,
             'same_order'
         );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | OTHER - SOURCE WISE
-    |--------------------------------------------------------------------------
-    */
 
         $otherQuery = function ($sourceCondition) use (
             $baseQuery,
@@ -415,91 +336,56 @@ class CallingUserAuthController extends Controller
         $otherAbandoned =
             $otherQuery($abandonedCondition);
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | CONVERSION
-    |--------------------------------------------------------------------------
-    */
-
         $successRate = $totalOrders > 0
             ? round(($verified / $totalOrders) * 100, 1)
             : 0;
 
 
-        /*
-    |--------------------------------------------------------------------------
-    | VIEW
-    |--------------------------------------------------------------------------
-    */
-
         return view('calling.dashboard', compact(
-
-            // Dates
             'fromDate',
             'toDate',
-
-            // Total
             'totalOrders',
-
-            // Sources
             'webOrders',
             'whatsappOrders',
             'rtoOrders',
             'deliveredReorderOrders',
             'abandonedOrders',
-
-            // Status totals
             'pending',
             'verified',
             'cancelled',
             'notConnected',
             'sameOrder',
             'other',
-
-            // Pending source wise
             'pendingWeb',
             'pendingWhatsapp',
             'pendingRto',
             'pendingDeliveredReorder',
             'pendingAbandoned',
-
-            // Verified source wise
             'verifiedWeb',
             'verifiedWhatsapp',
             'verifiedRto',
             'verifiedDeliveredReorder',
             'verifiedAbandoned',
-
-            // Cancelled source wise
             'cancelledWeb',
             'cancelledWhatsapp',
             'cancelledRto',
             'cancelledDeliveredReorder',
             'cancelledAbandoned',
-
-            // Not connected source wise
             'notConnectedWeb',
             'notConnectedWhatsapp',
             'notConnectedRto',
             'notConnectedDeliveredReorder',
             'notConnectedAbandoned',
-
-            // Same order source wise
             'sameOrderWeb',
             'sameOrderWhatsapp',
             'sameOrderRto',
             'sameOrderDeliveredReorder',
             'sameOrderAbandoned',
-
-            // Other source wise
             'otherWeb',
             'otherWhatsapp',
             'otherRto',
             'otherDeliveredReorder',
             'otherAbandoned',
-
-            // Conversion
             'successRate'
         ));
     }
@@ -537,6 +423,99 @@ class CallingUserAuthController extends Controller
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'RTO Pending Orders',
+            'statusClass' => 'warning',
+            'statusCount' => $orders->count()
+        ]);
+    }
+
+    public function weborders(Request $request)
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
+            ->where('assigned_to', $userId)
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', '');
+            })
+            ->where('status', 'pending')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
+
+
+        // Only Pending orders where order_source is NULL or empty
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', '');
+            })
+            ->where('status', 'pending');
+
+
+        // Client filter
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+
+
+        // Latest orders first
+        $orders = $query->latest()->get();
+
+
+        return view('calling.weborders', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'Web Pending Orders',
+            'statusClass' => 'warning',
+            'statusCount' => $orders->count()
+        ]);
+    }
+    public function WhatsApp(Request $request)
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
+            ->where('assigned_to', $userId)
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', 'WhatsApp');
+            })
+            ->where('status', 'pending')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
+
+
+        // Only Pending orders where order_source is NULL or empty
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', 'WhatsApp');
+            })
+            ->where('status', 'pending');
+
+
+        // Client filter
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+
+
+        // Latest orders first
+        $orders = $query->latest()->get();
+
+
+        return view('calling.WhatsApp', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'Whatsapp Pending Orders',
             'statusClass' => 'warning',
             'statusCount' => $orders->count()
         ]);
@@ -642,6 +621,104 @@ class CallingUserAuthController extends Controller
             'statusClass' => 'danger',
             'statusCount' => $orders->count()
         ]);
+    }
+    private function getStaffDeliveryOrders(Request $request, $deliveryStatus)
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        $query = DB::table('callingorder as co')
+            ->join('orders as o', 'o.order_id', '=', 'co.order_id')
+
+            // CURRENT LOGGED-IN STAFF
+            ->where('co.assigned_to', $userId)
+
+            // DELIVERY STATUS
+            ->where('o.delivery_status', $deliveryStatus)
+
+            ->select(
+                'co.id',
+                'co.order_id',
+                'co.client_id',
+                'co.assigned_to',
+
+                'o.customer_name',
+                'o.customer_phone',
+                'o.shipping_address',
+                'o.city',
+                'o.state',
+                'o.pincode',
+                'o.delivery_remark',
+                // IMPORTANT:
+                // orders table column is `product`
+                'o.product as product_name',
+
+                'o.quantity',
+                'o.amount',
+                'o.payment_mode',
+
+                // IMPORTANT:
+                // orders table column is `date`
+                'o.date as order_date',
+
+                'o.delivery_status'
+            )
+
+            ->orderByDesc('o.date');
+
+
+        // CLIENT FILTER
+        if ($request->filled('client_id')) {
+            $query->where('co.client_id', $request->client_id);
+        }
+
+        return $query->get();
+    }
+    private function getStaffDeliveryCounts()
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        $ofd = DB::table('callingorder as co')
+            ->join('orders as o', 'o.order_id', '=', 'co.order_id')
+            ->where('co.assigned_to', $userId)
+            ->where('o.delivery_status', 'Out for Delivery')
+            ->count();
+
+        $onhold = DB::table('callingorder as co')
+            ->join('orders as o', 'o.order_id', '=', 'co.order_id')
+            ->where('co.assigned_to', $userId)
+            ->where('o.delivery_status', 'On Hold')
+            ->count();
+
+        return [
+            'ofd' => $ofd,
+            'onhold' => $onhold,
+        ];
+    }
+    public function orderCounts()
+    {
+        $counts = $this->getStaffDeliveryCounts();
+
+        return response()->json($counts);
+    }
+    public function ofd(Request $request)
+    {
+        $orders = $this->getStaffDeliveryOrders(
+            $request,
+            'Out for Delivery'
+        );
+
+        return view('calling.ofd', compact('orders'));
+    }
+
+
+    public function onhold(Request $request)
+    {
+        $orders = $this->getStaffDeliveryOrders(
+            $request,
+            'On Hold'
+        );
+
+        return view('calling.onhold', compact('orders'));
     }
 
 
@@ -808,7 +885,7 @@ class CallingUserAuthController extends Controller
                 'max:255'
             ],
 
-            // OPTIONAL
+
             'father_name' => [
                 'nullable',
                 'string',

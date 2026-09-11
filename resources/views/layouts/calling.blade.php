@@ -47,11 +47,6 @@
             overflow-x: hidden;
         }
 
-
-        /* =====================================================
-           SIDEBAR
-        ===================================================== */
-
         .sidebar {
 
             width: 245px;
@@ -77,8 +72,6 @@
         }
 
 
-        /* Sidebar scrollbar */
-
         .sidebar::-webkit-scrollbar {
             width: 5px;
         }
@@ -92,10 +85,6 @@
             border-radius: 10px;
         }
 
-
-        /* =====================================================
-           USER PROFILE
-        ===================================================== */
 
         .user-profile {
 
@@ -694,14 +683,48 @@
             <span>Dashboard</span>
 
         </a>
+        {{-- OUT FOR DELIVERY --}}
+        <a href="{{ route('calling.ofd') }}"
+            class="menu-link d-flex justify-content-between align-items-center
+    {{ request()->routeIs('calling.ofd') ? 'active' : '' }}">
+
+            <span>
+                <i class="fa fa-list"></i>
+                <span>Out For Delivery</span>
+            </span>
+
+            <span id="ofd-count" class="badge bg-primary">
+                0
+            </span>
+
+        </a>
 
 
+        {{-- ON HOLD --}}
+        <a href="{{ route('calling.onhold') }}"
+            class="menu-link d-flex justify-content-between align-items-center
+    {{ request()->routeIs('calling.onhold') ? 'active' : '' }}">
+
+            <span>
+                <i class="fa fa-list"></i>
+                <span>On Hold</span>
+            </span>
+
+            <span id="onhold-count" class="badge bg-warning text-dark">
+                0
+            </span>
+
+        </a>
+
+
+        {{-- MY ORDERS --}}
         <a href="{{ route('calling.orders') }}"
-            class="menu-link {{ request()->routeIs('calling.orders') ? 'active' : '' }}">
+            class="menu-link
+    {{ request()->routeIs('calling.orders') ? 'active' : '' }}">
 
             <i class="bi bi-list-check"></i>
 
-            <span>My Orders</span>
+            <span>All Orders</span>
 
         </a>
 
@@ -710,7 +733,22 @@
             Orders
         </div>
 
+        <a href="{{ route('calling.weborders') }}"
+            class="menu-link {{ request()->routeIs('calling.weborders') ? 'active' : '' }}">
 
+            <i class="bi bi-arrow-return-left"></i>
+
+            <span>Web Orders</span>
+
+        </a>
+        <!--  <a href="{{ route('calling.WhatsApp') }}"
+            class="menu-link {{ request()->routeIs('calling.WhatsApp') ? 'active' : '' }}">
+
+            <i class="bi bi-arrow-return-left"></i>
+
+            <span>WhatsApp Pending</span>
+
+        </a>-->
         <a href="{{ route('calling.rtoorders') }}"
             class="menu-link {{ request()->routeIs('calling.rtoorders') ? 'active' : '' }}">
 
@@ -906,7 +944,42 @@
     <!-- =====================================================
          SIDEBAR JS
     ====================================================== -->
+    <script>
+        function loadCallingOrderCounts() {
 
+            fetch("{{ route('calling.order.counts') }}", {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+
+                    const ofdCount = document.getElementById('ofd-count');
+                    const onholdCount = document.getElementById('onhold-count');
+
+                    if (ofdCount) {
+                        ofdCount.innerText = data.ofd;
+                    }
+
+                    if (onholdCount) {
+                        onholdCount.innerText = data.onhold;
+                    }
+
+                })
+                .catch(error => {
+                    console.error('Order count error:', error);
+                });
+        }
+
+
+        // Load immediately
+        loadCallingOrderCounts();
+
+
+        // Refresh every 10 seconds
+        setInterval(loadCallingOrderCounts, 10000);
+    </script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
 

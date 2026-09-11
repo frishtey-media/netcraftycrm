@@ -60,6 +60,58 @@
             border-radius: 5px;
             font-size: 12px;
         }
+
+        .rto-alert {
+            border-left: 5px solid #198754;
+            border-radius: 10px;
+        }
+
+        .rto-success-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: #198754;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-right: 15px;
+        }
+
+        .rto-success-icon i {
+            line-height: 1;
+        }
+
+        .result-card .table th {
+            white-space: nowrap;
+        }
+
+        .result-card .table td {
+            vertical-align: middle;
+        }
+
+        .rto-stat-card {
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            background: #fff;
+        }
+
+        .rto-stat-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .rto-stock-positive {
+            color: #198754;
+            font-weight: 700;
+        }
     </style>
 
 
@@ -130,17 +182,21 @@
     ====================================================== --}}
 
         @if (session('rto_success'))
-            <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <div class="alert alert-success shadow-sm rto-alert">
 
                 <div class="d-flex align-items-start">
 
-                    <i class="bi bi-check-circle-fill fs-4 me-3"></i>
+                    <div class="rto-success-icon">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
 
-                    <div>
+                    <div class="flex-grow-1">
 
-                        <strong>RTO Upload Successful</strong>
+                        <h5 class="mb-2">
+                            RTO Received Successfully
+                        </h5>
 
-                        <div class="mt-1">
+                        <div>
                             {!! session('rto_success') !!}
                         </div>
 
@@ -148,13 +204,320 @@
 
                 </div>
 
-                <button type="button" class="btn-close" data-bs-dismiss="alert">
-                </button>
-
             </div>
         @endif
 
+        @if (session('rto_restore_details') && count(session('rto_restore_details')))
+            <div class="card result-card border-success">
 
+                <div class="card-header bg-success text-white">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <strong>
+                            <i class="bi bi-box-seam me-2"></i>
+                            Inventory Restored
+                        </strong>
+
+                        <span class="badge bg-light text-success">
+                            {{ count(session('rto_restore_details')) }} Items
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="card-body p-0">
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered table-hover mb-0">
+
+                            <thead class="table-light">
+
+                                <tr>
+
+                                    <th>#</th>
+
+                                    <th>Barcode</th>
+
+                                    <th>Order ID</th>
+
+                                    <th>Product</th>
+
+                                    <th>RTO Qty</th>
+
+                                    <th>Old Stock</th>
+
+                                    <th>Restored</th>
+
+                                    <th>New Stock</th>
+
+                                    <th>Status</th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                                @foreach (session('rto_restore_details') as $item)
+                                    {{-- =====================================================
+         COMBO PRODUCT
+    ====================================================== --}}
+                                    @if (isset($item['components']) && is_array($item['components']))
+                                        @foreach ($item['components'] as $component)
+                                            <tr>
+
+                                                <td>
+                                                    {{ $loop->parent->iteration }}
+                                                </td>
+
+                                                <td>
+                                                    <span class="badge bg-dark">
+                                                        {{ $item['barcode'] }}
+                                                    </span>
+                                                </td>
+
+                                                <td>
+                                                    {{ $item['order_id'] }}
+                                                </td>
+
+                                                <td class="fw-semibold">
+
+                                                    {{ $component['product'] ?? $item['product'] }}
+
+                                                </td>
+
+                                                <td class="text-center">
+
+                                                    <span class="badge bg-primary">
+                                                        {{ $component['quantity'] ?? ($item['quantity'] ?? 0) }}
+                                                    </span>
+
+                                                </td>
+
+                                                <td class="text-center">
+
+                                                    {{ $component['old_stock'] ?? 0 }}
+
+                                                </td>
+
+                                                <td class="text-center">
+
+                                                    <span class="text-success fw-bold">
+
+                                                        +{{ $component['quantity'] ?? ($item['quantity'] ?? 0) }}
+
+                                                    </span>
+
+                                                </td>
+
+                                                <td class="text-center">
+
+                                                    <span class="fw-bold">
+
+                                                        {{ $component['new_stock'] ?? 0 }}
+
+                                                    </span>
+
+                                                </td>
+
+                                                <td>
+
+                                                    <span class="badge bg-success">
+
+                                                        <i class="bi bi-check-circle me-1"></i>
+
+                                                        Restored
+
+                                                    </span>
+
+                                                </td>
+
+                                            </tr>
+                                        @endforeach
+
+
+                                        {{-- =====================================================
+         NORMAL PRODUCT
+    ====================================================== --}}
+                                    @else
+                                        <tr>
+
+                                            <td>
+                                                {{ $loop->iteration }}
+                                            </td>
+
+                                            <td>
+                                                <span class="badge bg-dark">
+                                                    {{ $item['barcode'] ?? '-' }}
+                                                </span>
+                                            </td>
+
+                                            <td>
+                                                {{ $item['order_id'] ?? '-' }}
+                                            </td>
+
+                                            <td class="fw-semibold">
+
+                                                {{ $item['product'] ?? '-' }}
+
+                                            </td>
+
+                                            <td class="text-center">
+
+                                                <span class="badge bg-primary">
+
+                                                    {{ $item['quantity'] ?? 0 }}
+
+                                                </span>
+
+                                            </td>
+
+                                            <td class="text-center">
+
+                                                {{ $item['old_stock'] ?? 0 }}
+
+                                            </td>
+
+                                            <td class="text-center">
+
+                                                <span class="text-success fw-bold">
+
+                                                    +{{ $item['quantity'] ?? 0 }}
+
+                                                </span>
+
+                                            </td>
+
+                                            <td class="text-center">
+
+                                                <span class="fw-bold">
+
+                                                    {{ $item['new_stock'] ?? 0 }}
+
+                                                </span>
+
+                                            </td>
+
+                                            <td>
+
+                                                <span class="badge bg-success">
+
+                                                    <i class="bi bi-check-circle me-1"></i>
+
+                                                    Restored
+
+                                                </span>
+
+                                            </td>
+
+                                        </tr>
+                                    @endif
+                                @endforeach
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+        @endif
+        @if (session('rto_mapping_errors') && count(session('rto_mapping_errors')))
+            <div class="card result-card border-danger">
+
+                <div class="card-header bg-danger text-white">
+
+                    <strong>
+
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+
+                        Inventory Restoration Errors
+
+                    </strong>
+
+                    <span class="badge bg-light text-danger ms-2">
+
+                        {{ count(session('rto_mapping_errors')) }}
+
+                    </span>
+
+                </div>
+
+
+                <div class="card-body p-0">
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered mb-0">
+
+                            <thead class="table-light">
+
+                                <tr>
+
+                                    <th>#</th>
+
+                                    <th>Barcode</th>
+
+                                    <th>Order ID</th>
+
+                                    <th>Product</th>
+
+                                    <th>Error</th>
+
+                                </tr>
+
+                            </thead>
+
+
+                            <tbody>
+
+                                @foreach (session('rto_mapping_errors') as $error)
+                                    <tr>
+
+                                        <td>
+                                            {{ $loop->iteration }}
+                                        </td>
+
+                                        <td>
+                                            <span class="badge bg-dark">
+                                                {{ $error['barcode'] }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            {{ $error['order_id'] }}
+                                        </td>
+
+                                        <td>
+                                            {{ $error['product'] }}
+                                        </td>
+
+                                        <td class="text-danger">
+
+                                            {{ $error['message'] }}
+
+                                        </td>
+
+                                    </tr>
+                                @endforeach
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+        @endif
         {{-- =====================================================
          VALIDATION ERRORS
     ====================================================== --}}
@@ -203,7 +566,12 @@
 
                     <i class="bi bi-file-earmark-excel me-2"></i>
 
-                    Upload RTO Barcode Excel
+                    Upload RTO Barcode Excel ( <small>
+
+                        Supported formats:
+                        <strong>.xls, .xlsx</strong>
+
+                    </small>)
 
                 </h5>
 
@@ -229,12 +597,7 @@
 
                             <input type="file" name="rtobarcodes" class="form-control" accept=".xls,.xlsx" required>
 
-                            <small class="text-muted">
 
-                                Supported formats:
-                                <strong>.xls, .xlsx</strong>
-
-                            </small>
 
                         </div>
 

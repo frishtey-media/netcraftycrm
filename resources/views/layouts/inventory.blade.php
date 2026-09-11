@@ -95,9 +95,9 @@
         <a href="{{ route('warehouses.index') }}">
             <i class="bi bi-building"></i> Warehouses
         </a>
-        <a href="{{ route('categories.index') }}">
+        <!--<a href="{{ route('categories.index') }}">
             <i class="bi bi-tags"></i> Clients
-        </a>
+        </a>-->
         <a href="{{ route('products.index') }}">
             <i class="bi bi-box"></i> Products
         </a>
@@ -107,11 +107,11 @@
 
         <!--<a href="{{ route('purchases.index') }}">
             <i class="bi bi-cart-plus"></i> Purchases
-        </a>-->
+        </a>
 
         <a href="{{ route('sales.index') }}">
             <i class="bi bi-cash-stack"></i> Sales
-        </a>
+        </a>-->
 
         <hr class="text-light">
 

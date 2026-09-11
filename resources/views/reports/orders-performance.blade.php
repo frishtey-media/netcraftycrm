@@ -2,11 +2,6 @@
 
 @section('content')
     <style>
-        /* =========================================================
-                                                                                                                                           STAFF PERFORMANCE REPORT
-                                                                                                                                           Bootstrap Grid Based Layout
-                                                                                                                                        ========================================================= */
-
         .staff-report {
             width: 100%;
             max-width: 100%;
@@ -22,10 +17,14 @@
             box-sizing: border-box;
         }
 
+        .content-area {
+            padding: 25px;
+            width: 62%;
+        }
 
         /* =========================================================
-                                                                                                                                           BOOTSTRAP ROW FIX
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               BOOTSTRAP ROW FIX
+                                                                                                                                                                                                                            ========================================================= */
 
         .staff-report .row {
             --bs-gutter-x: 10px;
@@ -36,10 +35,19 @@
             min-width: 0;
         }
 
+        .staff-name-link {
+            color: #111;
+            text-decoration: none;
+        }
+
+        .staff-name-link:hover {
+            color: #0d6efd;
+            text-decoration: underline;
+        }
 
         /* =========================================================
-                                                                                                                                           PAGE TITLE
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               PAGE TITLE
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-title {
             font-size: 20px;
@@ -50,8 +58,8 @@
 
 
         /* =========================================================
-                                                                                                                                           FILTER
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               FILTER
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-filter {
             background: #fff;
@@ -117,8 +125,8 @@
 
 
         /* =========================================================
-                                                                                                                                           SECTION TITLE
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               SECTION TITLE
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-section-title {
             margin: 8px 0 5px;
@@ -133,8 +141,8 @@
 
 
         /* =========================================================
-                                                                                                                                           STAT CARD
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               STAT CARD
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-stat {
             width: 100%;
@@ -199,8 +207,8 @@
 
 
         /* =========================================================
-                                                                                                                                           COLORS
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               COLORS
+                                                                                                                                                                                                                            ========================================================= */
 
         .stat-blue {
             background: #0d6efd;
@@ -239,8 +247,8 @@
 
 
         /* =========================================================
-                                                                                                                                           PROGRESS SECTION
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               PROGRESS SECTION
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-panel {
             width: 100%;
@@ -281,8 +289,8 @@
 
 
         /* =========================================================
-                                                                                                                                           PROGRESS BAR
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               PROGRESS BAR
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-progress {
             width: 100%;
@@ -305,8 +313,8 @@
 
 
         /* =========================================================
-                                                                                                                                           SMALL METRIC BOX
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               SMALL METRIC BOX
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-metric {
             width: 100%;
@@ -352,9 +360,6 @@
         }
 
 
-        /* =========================================================
-                                                                                                                                           BEST PERFORMER
-                                                                                                                                        ========================================================= */
 
         .best-performer {
             width: 100%;
@@ -417,8 +422,8 @@
 
 
         /* =========================================================
-                                                                                                                                           TABLE CONTAINER
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               TABLE CONTAINER
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-table-card {
             width: 100%;
@@ -438,8 +443,8 @@
 
 
         /* =========================================================
-                                                                                                                                           TABLE HEADER
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               TABLE HEADER
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-table-header {
             height: 35px;
@@ -458,8 +463,8 @@
 
 
         /* =========================================================
-                                                                                                                                           TABLE SCROLL
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               TABLE SCROLL
+                                                                                                                                                                                                                            ========================================================= */
 
         .report-table-scroll {
             width: 100%;
@@ -493,8 +498,8 @@
 
 
         /* =========================================================
-                                                                                                                                           STAFF RANKING TABLE
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               STAFF RANKING TABLE
+                                                                                                                                                                                                                            ========================================================= */
 
         .staff-ranking-table {
             width: max-content;
@@ -542,8 +547,8 @@
 
 
         /* =========================================================
-                                                                                                                                           ORDER DETAIL TABLE
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               ORDER DETAIL TABLE
+                                                                                                                                                                                                                            ========================================================= */
 
         .order-detail-table {
             width: max-content;
@@ -589,8 +594,8 @@
 
 
         /* =========================================================
-                                                                                                                                           TABLE PROGRESS
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               TABLE PROGRESS
+                                                                                                                                                                                                                            ========================================================= */
 
         .table-progress {
             width: 65px;
@@ -613,8 +618,8 @@
 
 
         /* =========================================================
-                                                                                                                                           BADGES
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               BADGES
+                                                                                                                                                                                                                            ========================================================= */
 
         .staff-report .badge {
             font-size: 9px;
@@ -628,8 +633,8 @@
 
 
         /* =========================================================
-                                                                                                                                           MOBILE / TABLET
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               MOBILE / TABLET
+                                                                                                                                                                                                                            ========================================================= */
 
         @media (max-width: 1199px) {
 
@@ -714,8 +719,8 @@
 
 
         /* =========================================================
-                                                                                                                                           PAGE LEVEL OVERFLOW PROTECTION
-                                                                                                                                        ========================================================= */
+                                                                                                                                                                                                                               PAGE LEVEL OVERFLOW PROTECTION
+                                                                                                                                                                                                                            ========================================================= */
 
         .staff-report,
         .staff-report>*,
@@ -1248,6 +1253,71 @@
 
 
         {{-- =====================================================
+         PAYMENT PERFORMANCE
+    ====================================================== --}}
+
+        <div class="report-section-title">Payment Performance</div>
+
+        <div class="report-panel">
+            <div class="report-panel-header">
+                <div class="report-panel-title">COD / VPP vs Prepaid Ratio</div>
+                <div class="report-panel-percent">{{ $payment['total'] ?? 0 }} Payment Orders</div>
+            </div>
+
+            <div class="report-progress">
+                <div class="progress-bar bg-danger" style="width: {{ min((float) ($payment['cod_rate'] ?? 0), 100) }}%;">
+                </div>
+            </div>
+
+            <div class="row g-2">
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6">
+                    <div class="report-stat stat-red">
+                        <div class="report-stat-body">
+                            <div class="report-stat-title">COD / VPP</div>
+                            <div class="report-stat-value">{{ $payment['cod'] ?? 0 }}</div>
+                            <div class="report-stat-sub">{{ $payment['cod_rate'] ?? 0 }}%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6">
+                    <div class="report-stat stat-dark">
+                        <div class="report-stat-body">
+                            <div class="report-stat-title">PURE COD</div>
+                            <div class="report-stat-value">{{ $payment['pure_cod'] ?? 0 }}</div>
+                            <div class="report-stat-sub">VPP: {{ $payment['vpp'] ?? 0 }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6">
+                    <div class="report-stat stat-green">
+                        <div class="report-stat-body">
+                            <div class="report-stat-title">PREPAID</div>
+                            <div class="report-stat-value">{{ $payment['prepaid'] ?? 0 }}</div>
+                            <div class="report-stat-sub">{{ $payment['prepaid_rate'] ?? 0 }}%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6">
+                    <div class="report-stat stat-blue">
+                        <div class="report-stat-body">
+                            <div class="report-stat-title">PAYMENT ORDERS</div>
+                            <div class="report-stat-value">{{ $payment['total'] ?? 0 }}</div>
+                            <div class="report-stat-sub">COD/VPP + Prepaid</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-2" style="font-size:10px;">
+                <span class="text-danger fw-semibold">● COD / VPP: {{ $payment['cod'] ?? 0 }}
+                    ({{ $payment['cod_rate'] ?? 0 }}%)</span>
+                <span class="text-success fw-semibold ms-3">● Prepaid: {{ $payment['prepaid'] ?? 0 }}
+                    ({{ $payment['prepaid_rate'] ?? 0 }}%)</span>
+            </div>
+        </div>
+
+
+        {{-- =====================================================
          LEAD CONFIRMATION
     ====================================================== --}}
 
@@ -1599,23 +1669,38 @@
                             {{ $bestStaff['client_name'] ?? '-' }}
                         </div>
 
-                        <span class="badge bg-success">
-                            {{ $bestStaff['rating'] ?? 'Good' }}
-                        </span>
+                        <!-- <span class="badge bg-success">
+                                                                                            {{ $bestStaff['rating'] ?? 'Good' }}
+                                                                                        </span>-->
 
                     </div>
 
 
-                    {{-- SCORE --}}
-
                     <div class="col-xl-2 col-lg-2 col-md-2 col-6">
 
                         <div class="best-score-label">
-                            Overall Score
+                            BEST POINTS
                         </div>
 
-                        <div class="best-score">
-                            {{ $bestStaff['score'] ?? 0 }}%
+                        <div class="best-score text-primary">
+                            {{ $bestStaff['points'] ?? 0 }}
+                        </div>
+
+                    </div>
+
+
+                    <div class="col-xl-2 col-lg-2 col-md-2 col-6">
+
+                        <div class="report-metric">
+
+                            <div class="report-metric-value">
+                                {{ $bestStaff['score'] ?? 0 }}%
+                            </div>
+
+                            <div class="report-metric-label">
+                                Overall Score
+                            </div>
+
                         </div>
 
                     </div>
@@ -1726,6 +1811,10 @@
                             <th>Client</th>
                             <th>Staff</th>
                             <th>Leads</th>
+                            <th>COD/VPP</th>
+                            <th>COD %</th>
+                            <th>Prepaid</th>
+                            <th>Prepaid %</th>
                             <th>Web</th>
                             <th>WhatsApp</th>
                             <th>RTO Source</th>
@@ -1748,8 +1837,10 @@
                             <th>OFD</th>
                             <th>Hold</th>
                             <th>No Status</th>
-                            <th>Score</th>
+
                             <th>Rating</th>
+                            <th>Score</th>
+                            <th>Final</th>
 
                         </tr>
 
@@ -1778,9 +1869,13 @@
 
 
                                 <td>
-                                    <strong>
-                                        {{ $staff['staff_name'] ?? '-' }}
-                                    </strong>
+                                    <a href="{{ route('staff.performance.detail', [
+                                        'staffId' => $staff['staff_id'],
+                                        'client_id' => $staff['client_id'],
+                                    ]) }}"
+                                        class="staff-name-link">
+                                        <strong>{{ $staff['staff_name'] ?? '-' }}</strong>
+                                    </a>
                                 </td>
 
 
@@ -1788,6 +1883,10 @@
                                     {{ $staff['total'] ?? 0 }}
                                 </td>
 
+                                <td>{{ $staff['cod_vpp_orders'] ?? 0 }}</td>
+                                <td>{{ $staff['cod_rate'] ?? 0 }}%</td>
+                                <td>{{ $staff['prepaid_orders'] ?? 0 }}</td>
+                                <td>{{ $staff['prepaid_rate'] ?? 0 }}%</td>
 
                                 <td>
                                     {{ $staff['web'] ?? 0 }}
@@ -1924,6 +2023,18 @@
 
 
                                 <td>
+                                    <span class="badge bg-primary">{{ $staff['points'] ?? 0 }}</span>
+                                    <div style="font-size:8px; margin-top:3px; color:#666;">
+                                        COD +{{ $staff['cod_points'] ?? 0 }}
+                                        | VPP +{{ $staff['vpp_points'] ?? 0 }}
+                                        | Prepaid +{{ $staff['prepaid_points'] ?? 0 }}
+                                        | Delivered +{{ $staff['delivered_points'] ?? 0 }}
+                                        | RTO {{ $staff['rto_points'] ?? 0 }}
+                                    </div>
+                                </td>
+
+
+                                <td>
 
                                     <span class="badge bg-info text-dark">
                                         {{ $staff['rating'] ?? '-' }}
@@ -1937,7 +2048,7 @@
 
                             <tr>
 
-                                <td colspan="27" class="text-center py-3">
+                                <td colspan="32" class="text-center py-3">
                                     No staff performance data found.
                                 </td>
 
