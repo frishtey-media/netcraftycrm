@@ -39,11 +39,6 @@ class AdminController extends Controller
     }
     public function dayWiseStaffPerformance(Request $request)
     {
-        /*
-    |--------------------------------------------------------------------------
-    | DATE FILTER
-    |--------------------------------------------------------------------------
-    */
 
         $dateFrom = $request->filled('date_from')
             ? Carbon::parse($request->date_from)->format('Y-m-d')
@@ -53,35 +48,9 @@ class AdminController extends Controller
             ? Carbon::parse($request->date_to)->format('Y-m-d')
             : now()->format('Y-m-d');
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | VALID DATE RANGE
-    |--------------------------------------------------------------------------
-    */
-
         if (Carbon::parse($dateFrom)->gt(Carbon::parse($dateTo))) {
             [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | CLIENT LIST
-    |--------------------------------------------------------------------------
-    |
-    | Existing schema:
-    |
-    | callingorder.client_id -> clients.id
-    |
-    */
-
-        /*
-|--------------------------------------------------------------------------
-| CLIENT LIST
-|--------------------------------------------------------------------------
-*/
-
         if ($this->isClient()) {
 
             $clients = DB::table('clients')
@@ -118,16 +87,6 @@ class AdminController extends Controller
                 : null;
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | SELECTED STAFF
-    |--------------------------------------------------------------------------
-    |
-    | staff_id[] because multiple staff can be selected.
-    |
-    */
-
         $selectedStaffIds = $request->input('staff_id', []);
 
         if (!is_array($selectedStaffIds)) {
@@ -144,24 +103,6 @@ class AdminController extends Controller
             ->unique()
             ->values()
             ->toArray();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | STAFF LIST
-    |--------------------------------------------------------------------------
-    |
-    | IMPORTANT:
-    |
-    | Staff are loaded ONLY according to selected client.
-    |
-    | We are NOT using all staff.
-    |
-    | No date restriction here because a staff member belonging
-    | to the selected client should remain selectable even if
-    | that staff has zero leads in the selected date range.
-    |
-    */
 
         $staffs = collect();
 
@@ -187,16 +128,6 @@ class AdminController extends Controller
                 ->orderBy('cu.name')
                 ->get();
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | CLIENT REQUIRED
-    |--------------------------------------------------------------------------
-    |
-    | Don't show all data until a client is selected.
-    |
-    */
 
         if (!$clientId) {
 
@@ -230,20 +161,6 @@ class AdminController extends Controller
             );
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | STAFF REQUIRED
-    |--------------------------------------------------------------------------
-    |
-    | User requested:
-    | "jo staff select hua hai uska hi data aye"
-    |
-    | Therefore, if no staff is selected, don't automatically
-    | load every staff into the report.
-    |
-    */
-
         if (empty($selectedStaffIds)) {
 
             return view(
@@ -275,19 +192,6 @@ class AdminController extends Controller
                 ]
             );
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | KEEP ONLY STAFF BELONGING TO SELECTED CLIENT
-    |--------------------------------------------------------------------------
-    |
-    | Security/correctness check:
-    |
-    | Even if someone manually modifies staff_id[] in URL,
-    | only staff belonging to selected client will be used.
-    |
-    */
 
         $selectedStaffIds = $staffs
             ->whereIn(
@@ -301,13 +205,6 @@ class AdminController extends Controller
             ->values()
             ->toArray();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | IF NO VALID STAFF REMAINS
-    |--------------------------------------------------------------------------
-    */
-
         if (empty($selectedStaffIds)) {
 
             return view(
@@ -340,26 +237,6 @@ class AdminController extends Controller
             );
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | LATEST ORDERS
-    |--------------------------------------------------------------------------
-    |
-    | Normalize order_id using TRIM().
-    |
-    | If multiple orders have:
-    |
-    | ABC123
-    |  ABC123
-    | ABC123
-    |
-    | they are treated as the same order_id.
-    |
-    | Latest record = MAX(id)
-    |
-    */
-
         $latestOrders = DB::table('orders')
             ->select(
                 DB::raw('TRIM(order_id) as normalized_order_id'),
@@ -371,36 +248,7 @@ class AdminController extends Controller
                 DB::raw('TRIM(order_id)')
             );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | MAIN DATA QUERY
-    |--------------------------------------------------------------------------
-    |
-    | Existing report structure:
-    |
-    | callingorder
-    |      |
-    |      +-- client_id
-    |      |
-    |      +-- assigned_to
-    |      |
-    |      +-- updated_at
-    |      |
-    |      +-- order_id
-    |                |
-    |                v
-    |             latest orders
-    |
-    */
-
         $query = DB::table('callingorder as c')
-
-            /*
-        |--------------------------------------------------------------------------
-        | STAFF
-        |--------------------------------------------------------------------------
-        */
 
             ->join(
                 'calling_users as cu',
@@ -409,24 +257,12 @@ class AdminController extends Controller
                 'c.assigned_to'
             )
 
-            /*
-        |--------------------------------------------------------------------------
-        | CLIENT
-        |--------------------------------------------------------------------------
-        */
-
             ->leftJoin(
                 'clients as cl',
                 'cl.id',
                 '=',
                 'c.client_id'
             )
-
-            /*
-        |--------------------------------------------------------------------------
-        | LATEST ORDER
-        |--------------------------------------------------------------------------
-        */
 
             ->leftJoinSub(
                 $latestOrders,
@@ -440,12 +276,6 @@ class AdminController extends Controller
                     );
                 }
             )
-
-            /*
-        |--------------------------------------------------------------------------
-        | LATEST ORDER RECORD
-        |--------------------------------------------------------------------------
-        */
 
             ->leftJoin(
                 'orders as o',
@@ -474,30 +304,10 @@ class AdminController extends Controller
                 'o.delivery_status',
             ])
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | CLIENT FILTER
-        |--------------------------------------------------------------------------
-        |
-        | REQUIRED.
-        |
-        */
-
             ->where(
                 'c.client_id',
                 $clientId
             )
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | DATE FILTER
-        |--------------------------------------------------------------------------
-        |
-        | Report date = callingorder.updated_at
-        |
-        */
 
             ->whereBetween(
                 'c.updated_at',
@@ -508,40 +318,16 @@ class AdminController extends Controller
                 ]
             )
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | STAFF FILTER
-        |--------------------------------------------------------------------------
-        |
-        | ONLY selected staff.
-        |
-        */
-
             ->whereIn(
                 'c.assigned_to',
                 $selectedStaffIds
             );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | GET DATA
-    |--------------------------------------------------------------------------
-    */
 
         $rows = $query
             ->orderBy('cu.name')
             ->orderBy('c.updated_at')
             ->orderBy('c.id')
             ->get();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | NORMALIZE STATUS
-    |--------------------------------------------------------------------------
-    */
 
         $normalize = function ($value) {
 
@@ -551,16 +337,6 @@ class AdminController extends Controller
                 )
             );
         };
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | GROUP CALLING DATA
-    |--------------------------------------------------------------------------
-    |
-    | Date + Staff
-    |
-    */
 
         $groupedRows = $rows->groupBy(
             function ($row) {
@@ -573,13 +349,6 @@ class AdminController extends Controller
             }
         );
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | ONLY SELECTED STAFF OBJECTS
-    |--------------------------------------------------------------------------
-    */
-
         $reportStaffs = $staffs
             ->whereIn(
                 'id',
@@ -587,20 +356,6 @@ class AdminController extends Controller
             )
             ->sortBy('name')
             ->values();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | DAY-WISE REPORT
-    |--------------------------------------------------------------------------
-    |
-    | IMPORTANT:
-    |
-    | Staff-wise separate sections.
-    |
-    | Every selected staff gets every day.
-    |
-    */
 
         $staffWiseReport = collect();
 
@@ -628,46 +383,12 @@ class AdminController extends Controller
 
                 $key = $currentDate . '_' . $staff->id;
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | DATA FOR THIS STAFF + THIS DAY
-            |--------------------------------------------------------------------------
-            */
-
                 $staffRows = $groupedRows->get(
                     $key,
                     collect()
                 );
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | TOTAL LEADS
-            |--------------------------------------------------------------------------
-            |
-            | Same source as existing staff performance:
-            | callingorder result rows.
-            |
-            */
-
                 $totalLeads = $staffRows->count();
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | CONFIRM
-            |--------------------------------------------------------------------------
-            |
-            | EXACT EXISTING CONFIRMATION STATUS LOGIC:
-            |
-            | verified
-            | confirm
-            | confirmed
-            |
-            | Existing controller uses these values for "verified".
-            |
-            */
 
                 $confirm = $staffRows
                     ->filter(function ($row) use ($normalize) {
@@ -684,16 +405,6 @@ class AdminController extends Controller
                     })
                     ->count();
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | DELIVERY
-            |--------------------------------------------------------------------------
-            |
-            | Existing Delivered status.
-            |
-            */
-
                 $delivery = $staffRows
                     ->filter(function ($row) use ($normalize) {
 
@@ -703,18 +414,6 @@ class AdminController extends Controller
                     })
                     ->count();
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | RTO
-            |--------------------------------------------------------------------------
-            |
-            | DO NOT USE rto_reports.
-            |
-            | Use latest orders.delivery_status.
-            |
-            */
-
                 $rto = $staffRows
                     ->filter(function ($row) use ($normalize) {
 
@@ -723,13 +422,6 @@ class AdminController extends Controller
                         ) === 'rto-intrasit';
                     })
                     ->count();
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | PERCENTAGES
-            |--------------------------------------------------------------------------
-            */
 
                 $confirmPercent = $totalLeads > 0
                     ? round(
@@ -753,13 +445,6 @@ class AdminController extends Controller
                         2
                     )
                     : 0;
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | ADD DAILY ROW
-            |--------------------------------------------------------------------------
-            */
 
                 $staffDailyRows->push([
                     'date' => $currentDate,
@@ -786,13 +471,6 @@ class AdminController extends Controller
 
                 $current->addDay();
             }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | STAFF TOTAL
-        |--------------------------------------------------------------------------
-        */
 
             $staffTotalLeads = $staffDailyRows->sum(
                 'total_leads'
@@ -4791,6 +4469,11 @@ class AdminController extends Controller
 
     public function performance(Request $request)
     {
+        /*
+    |--------------------------------------------------------------------------
+    | DATE FILTER
+    |--------------------------------------------------------------------------
+    */
 
         $from = $request->filled('from')
             ? Carbon::parse($request->from)->startOfDay()
@@ -4800,15 +4483,129 @@ class AdminController extends Controller
             ? Carbon::parse($request->to)->endOfDay()
             : now()->endOfDay();
 
+
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT USER
+    |--------------------------------------------------------------------------
+    */
+
         $isClientUser = $this->isClient();
 
+
         if ($isClientUser) {
+
+            // Client panel
             $clientId = $this->clientId();
         } else {
+
+            // Admin / Super Admin
             $clientId = $request->filled('client_id')
                 ? (int) $request->client_id
                 : null;
         }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | STAFF FILTER
+    |--------------------------------------------------------------------------
+    */
+
+        $staffIds = $request->input('staff_ids', []);
+
+        if (!is_array($staffIds)) {
+            $staffIds = [$staffIds];
+        }
+
+        $staffIds = collect($staffIds)
+            ->filter(function ($id) {
+                return is_numeric($id);
+            })
+            ->map(function ($id) {
+                return (int) $id;
+            })
+            ->unique()
+            ->values()
+            ->toArray();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT ALLOWED STAFF
+    |--------------------------------------------------------------------------
+    |
+    | Client panel mein sirf us client ke assigned staff allow honge.
+    |
+    */
+
+        $allowedStaffIds = [];
+
+        if ($isClientUser) {
+
+            $allowedStaffIds = CallingOrder::query()
+                ->where('client_id', $clientId)
+                ->whereNotNull('assigned_to')
+                ->pluck('assigned_to')
+                ->map(function ($id) {
+                    return (int) $id;
+                })
+                ->unique()
+                ->values()
+                ->toArray();
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | SECURITY
+        |--------------------------------------------------------------------------
+        | Client manually kisi doosre client ka staff ID URL mein bheje
+        | to woh staff filter nahi ho sakta.
+        */
+
+            if (!empty($staffIds)) {
+
+                $staffIds = array_values(
+                    array_intersect(
+                        $staffIds,
+                        $allowedStaffIds
+                    )
+                );
+            }
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | EFFECTIVE STAFF FILTER
+    |--------------------------------------------------------------------------
+    |
+    | Admin:
+    |   selected staff => selected staff
+    |   no selection    => all staff
+    |
+    | Client:
+    |   selected staff => selected allowed staff
+    |   no selection    => all client staff
+    |
+    */
+
+        if ($isClientUser) {
+
+            $effectiveStaffIds = !empty($staffIds)
+                ? $staffIds
+                : $allowedStaffIds;
+        } else {
+
+            $effectiveStaffIds = $staffIds;
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT LIST
+    |--------------------------------------------------------------------------
+    */
 
         if ($isClientUser) {
 
@@ -4825,17 +4622,32 @@ class AdminController extends Controller
             )->get();
         }
 
+
+        /*
+    |--------------------------------------------------------------------------
+    | BASE CALLING ORDER QUERY
+    |--------------------------------------------------------------------------
+    */
+
         $baseQuery = function () use (
             $clientId,
+            $effectiveStaffIds,
             $from,
             $to
         ) {
 
             return CallingOrder::query()
 
+                /*
+            |--------------------------------------------------------------------------
+            | CLIENT
+            |--------------------------------------------------------------------------
+            */
+
                 ->when(
-                    $clientId,
+                    $clientId !== null,
                     function ($q) use ($clientId) {
+
                         $q->where(
                             'client_id',
                             $clientId
@@ -4843,21 +4655,122 @@ class AdminController extends Controller
                     }
                 )
 
+
+                /*
+            |--------------------------------------------------------------------------
+            | STAFF
+            |--------------------------------------------------------------------------
+            */
+
+                ->when(
+                    !empty($effectiveStaffIds),
+                    function ($q) use ($effectiveStaffIds) {
+
+                        $q->whereIn(
+                            'assigned_to',
+                            $effectiveStaffIds
+                        );
+                    }
+                )
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | DATE
+            |--------------------------------------------------------------------------
+            */
+
                 ->whereBetween(
                     'updated_at',
                     [$from, $to]
                 );
         };
 
-        $staffs = CallingUser::orderBy(
-            'name'
-        )->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | STAFF LIST
+    |--------------------------------------------------------------------------
+    */
+
+        if ($isClientUser) {
+
+            // Client panel
+            // Sirf client ke assigned active staff
+
+            $allStaff = CallingUser::query()
+                ->where('status', 1)
+                ->whereIn(
+                    'id',
+                    $allowedStaffIds
+                )
+                ->orderBy('name')
+                ->get();
+        } else {
+
+            // Admin / Super Admin
+            // All active staff
+
+            $allStaff = CallingUser::query()
+                ->where('status', 1)
+                ->orderBy('name')
+                ->get();
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | STAFF REPORT LIST
+    |--------------------------------------------------------------------------
+    */
+
+        $staffs = CallingUser::query()
+            ->where('status', 1)
+
+            ->when(
+                !empty($effectiveStaffIds),
+                function ($q) use ($effectiveStaffIds) {
+
+                    $q->whereIn(
+                        'id',
+                        $effectiveStaffIds
+                    );
+                }
+            )
+
+            ->when(
+                $isClientUser,
+                function ($q) use ($allowedStaffIds) {
+
+                    $q->whereIn(
+                        'id',
+                        $allowedStaffIds
+                    );
+                }
+            )
+
+            ->orderBy('name')
+            ->get();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | STAFF STATISTICS
+    |--------------------------------------------------------------------------
+    */
 
         $staffStats = CallingOrder::query()
 
+            /*
+        |--------------------------------------------------------------------------
+        | CLIENT
+        |--------------------------------------------------------------------------
+        */
+
             ->when(
-                $clientId,
+                $clientId !== null,
                 function ($q) use ($clientId) {
+
                     $q->where(
                         'client_id',
                         $clientId
@@ -4865,10 +4778,42 @@ class AdminController extends Controller
                 }
             )
 
+
+            /*
+        |--------------------------------------------------------------------------
+        | STAFF
+        |--------------------------------------------------------------------------
+        */
+
+            ->when(
+                !empty($effectiveStaffIds),
+                function ($q) use ($effectiveStaffIds) {
+
+                    $q->whereIn(
+                        'assigned_to',
+                        $effectiveStaffIds
+                    );
+                }
+            )
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | DATE
+        |--------------------------------------------------------------------------
+        */
+
             ->whereBetween(
                 'updated_at',
                 [$from, $to]
             )
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | SELECT
+        |--------------------------------------------------------------------------
+        */
 
             ->select(
                 'assigned_to',
@@ -4876,6 +4821,12 @@ class AdminController extends Controller
                 DB::raw("
                 COUNT(*) AS total_orders
             "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | WEB VERIFIED
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
                 SUM(
@@ -4888,6 +4839,12 @@ class AdminController extends Controller
                 ) AS web_verified_orders
             "),
 
+                /*
+            |--------------------------------------------------------------------------
+            | WHATSAPP VERIFIED
+            |--------------------------------------------------------------------------
+            */
+
                 DB::raw("
                 SUM(
                     CASE
@@ -4898,6 +4855,12 @@ class AdminController extends Controller
                     END
                 ) AS whatsapp_verified_orders
             "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | RTO VERIFIED
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
                 SUM(
@@ -4910,6 +4873,12 @@ class AdminController extends Controller
                 ) AS rto_verified_orders
             "),
 
+                /*
+            |--------------------------------------------------------------------------
+            | DELIVERED REORDER
+            |--------------------------------------------------------------------------
+            */
+
                 DB::raw("
                 SUM(
                     CASE
@@ -4920,90 +4889,140 @@ class AdminController extends Controller
                     END
                 ) AS delivered_reorder_orders
             "),
-                DB::raw("
-    SUM(
-        CASE
-            WHEN order_source = 'shopify_abandoned_checkout'
-            THEN 1
-            ELSE 0
-        END
-    ) AS abandoned_orders
-"),
+
+                /*
+            |--------------------------------------------------------------------------
+            | ABANDONED TOTAL
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
-    SUM(
-        CASE
-            WHEN status = 'verified'
-            AND order_source = 'shopify_abandoned_checkout'
-            THEN 1
-            ELSE 0
-        END
-    ) AS abandoned_verified
-"),
+                SUM(
+                    CASE
+                        WHEN order_source = 'shopify_abandoned_checkout'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS abandoned_orders
+            "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | ABANDONED VERIFIED
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
-    SUM(
-        CASE
-            WHEN status = 'pending'
-            AND order_source = 'shopify_abandoned_checkout'
-            THEN 1
-            ELSE 0
-        END
-    ) AS abandoned_pending
-"),
+                SUM(
+                    CASE
+                        WHEN status = 'verified'
+                        AND order_source = 'shopify_abandoned_checkout'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS abandoned_verified
+            "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | ABANDONED PENDING
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
-    SUM(
-        CASE
-            WHEN status = 'cancel'
-            AND order_source = 'shopify_abandoned_checkout'
-            THEN 1
-            ELSE 0
-        END
-    ) AS abandoned_cancel
-"),
+                SUM(
+                    CASE
+                        WHEN status = 'pending'
+                        AND order_source = 'shopify_abandoned_checkout'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS abandoned_pending
+            "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | ABANDONED CANCEL
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
-    SUM(
-        CASE
-            WHEN status = 'not_reachable'
-            AND order_source = 'shopify_abandoned_checkout'
-            THEN 1
-            ELSE 0
-        END
-    ) AS abandoned_not_reachable
-"),
+                SUM(
+                    CASE
+                        WHEN status = 'cancel'
+                        AND order_source = 'shopify_abandoned_checkout'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS abandoned_cancel
+            "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | ABANDONED NOT REACHABLE
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
-    SUM(
-        CASE
-            WHEN status = 'same_order'
-            AND order_source = 'shopify_abandoned_checkout'
-            THEN 1
-            ELSE 0
-        END
-    ) AS abandoned_same_order
-"),
+                SUM(
+                    CASE
+                        WHEN status = 'not_reachable'
+                        AND order_source = 'shopify_abandoned_checkout'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS abandoned_not_reachable
+            "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | ABANDONED SAME ORDER
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
-    SUM(
-        CASE
-            WHEN order_source = 'shopify_abandoned_checkout'
-            AND (
-                status NOT IN (
-                    'pending',
-                    'verified',
-                    'cancel',
-                    'not_reachable',
-                    'same_order'
-                )
-                OR status IS NULL
-            )
-            THEN 1
-            ELSE 0
-        END
-    ) AS abandoned_other
-"),
+                SUM(
+                    CASE
+                        WHEN status = 'same_order'
+                        AND order_source = 'shopify_abandoned_checkout'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS abandoned_same_order
+            "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | ABANDONED OTHER
+            |--------------------------------------------------------------------------
+            */
+
+                DB::raw("
+                SUM(
+                    CASE
+                        WHEN order_source = 'shopify_abandoned_checkout'
+                        AND (
+                            status NOT IN (
+                                'pending',
+                                'verified',
+                                'cancel',
+                                'not_reachable',
+                                'same_order'
+                            )
+                            OR status IS NULL
+                        )
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS abandoned_other
+            "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | PENDING
+            |--------------------------------------------------------------------------
+            */
+
                 DB::raw("
                 SUM(
                     CASE
@@ -5013,6 +5032,12 @@ class AdminController extends Controller
                     END
                 ) AS pending_orders
             "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | NOT REACHABLE
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
                 SUM(
@@ -5024,6 +5049,12 @@ class AdminController extends Controller
                 ) AS not_reachable_orders
             "),
 
+                /*
+            |--------------------------------------------------------------------------
+            | CANCEL
+            |--------------------------------------------------------------------------
+            */
+
                 DB::raw("
                 SUM(
                     CASE
@@ -5034,6 +5065,12 @@ class AdminController extends Controller
                 ) AS cancel_orders
             "),
 
+                /*
+            |--------------------------------------------------------------------------
+            | SAME ORDER
+            |--------------------------------------------------------------------------
+            */
+
                 DB::raw("
                 SUM(
                     CASE
@@ -5043,6 +5080,12 @@ class AdminController extends Controller
                     END
                 ) AS same_order
             "),
+
+                /*
+            |--------------------------------------------------------------------------
+            | OTHER
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
                 SUM(
@@ -5061,6 +5104,11 @@ class AdminController extends Controller
                 ) AS other
             "),
 
+                /*
+            |--------------------------------------------------------------------------
+            | RTO PENDING
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
                 SUM(
@@ -5073,6 +5121,11 @@ class AdminController extends Controller
                 ) AS rto_orders
             "),
 
+                /*
+            |--------------------------------------------------------------------------
+            | RTO VERIFIED
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
                 SUM(
@@ -5085,6 +5138,11 @@ class AdminController extends Controller
                 ) AS rto_verified
             "),
 
+                /*
+            |--------------------------------------------------------------------------
+            | DELIVERED REORDER TOTAL
+            |--------------------------------------------------------------------------
+            */
 
                 DB::raw("
                 SUM(
@@ -5094,28 +5152,42 @@ class AdminController extends Controller
                         ELSE 0
                     END
                 ) AS delivered_reorder_total
-
             ")
             )
 
-            ->groupBy(
-                'assigned_to'
-            )
+            ->groupBy('assigned_to')
 
             ->get()
 
-            ->keyBy(
-                'assigned_to'
-            );
+            ->keyBy('assigned_to');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | WHATSAPP DATA
+    |--------------------------------------------------------------------------
+    */
 
         $waData = Conversation::query()
 
             ->when(
-                $clientId,
+                $clientId !== null,
                 function ($q) use ($clientId) {
+
                     $q->where(
                         'client_id',
                         $clientId
+                    );
+                }
+            )
+
+            ->when(
+                !empty($effectiveStaffIds),
+                function ($q) use ($effectiveStaffIds) {
+
+                    $q->whereIn(
+                        'assigned_to',
+                        $effectiveStaffIds
                     );
                 }
             )
@@ -5153,15 +5225,18 @@ class AdminController extends Controller
             ")
             )
 
-            ->groupBy(
-                'assigned_to'
-            )
+            ->groupBy('assigned_to')
 
             ->get()
 
-            ->keyBy(
-                'assigned_to'
-            );
+            ->keyBy('assigned_to');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ATTACH STAFF STATS
+    |--------------------------------------------------------------------------
+    */
 
         foreach ($staffs as $staff) {
 
@@ -5173,6 +5248,7 @@ class AdminController extends Controller
                 $staff->id
             );
 
+
             $staff->total_orders =
                 (int) ($stats->total_orders ?? 0);
 
@@ -5181,6 +5257,7 @@ class AdminController extends Controller
 
             $staff->whatsapp_verified_orders =
                 (int) ($stats->whatsapp_verified_orders ?? 0);
+
             $staff->abandoned_orders =
                 (int) ($stats->abandoned_orders ?? 0);
 
@@ -5201,6 +5278,7 @@ class AdminController extends Controller
 
             $staff->abandoned_other =
                 (int) ($stats->abandoned_other ?? 0);
+
             $staff->rto_verified_orders =
                 (int) ($stats->rto_verified_orders ?? 0);
 
@@ -5231,6 +5309,13 @@ class AdminController extends Controller
             $staff->delivered_reorder_total =
                 (int) ($stats->delivered_reorder_total ?? 0);
 
+
+            /*
+        |--------------------------------------------------------------------------
+        | WHATSAPP
+        |--------------------------------------------------------------------------
+        */
+
             $staff->wa_total =
                 (int) ($wa->wa_total ?? 0);
 
@@ -5240,21 +5325,38 @@ class AdminController extends Controller
             $staff->wa_pending =
                 (int) ($wa->wa_pending ?? 0);
 
+
             $staff->delivered_reorder =
                 $staff->delivered_reorder_orders;
         }
 
 
-        $clientData = CallingOrder::with(
-            'client'
-        )
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT WISE DATA
+    |--------------------------------------------------------------------------
+    */
+
+        $clientData = CallingOrder::with('client')
 
             ->when(
-                $clientId,
+                $clientId !== null,
                 function ($q) use ($clientId) {
+
                     $q->where(
                         'client_id',
                         $clientId
+                    );
+                }
+            )
+
+            ->when(
+                !empty($effectiveStaffIds),
+                function ($q) use ($effectiveStaffIds) {
+
+                    $q->whereIn(
+                        'assigned_to',
+                        $effectiveStaffIds
                     );
                 }
             )
@@ -5278,6 +5380,12 @@ class AdminController extends Controller
             ->get();
 
 
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT WISE ARRAY
+    |--------------------------------------------------------------------------
+    */
+
         $clientWise = [];
 
 
@@ -5295,16 +5403,24 @@ class AdminController extends Controller
         }
 
 
-        $totalWeb =
-            $baseQuery()
-            ->whereNull(
-                'order_source'
-            )
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL WEB
+    |--------------------------------------------------------------------------
+    */
+
+        $totalWeb = $baseQuery()
+            ->whereNull('order_source')
             ->count();
 
 
-        $totalWhatsapp =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL WHATSAPP
+    |--------------------------------------------------------------------------
+    */
+
+        $totalWhatsapp = $baseQuery()
             ->where(
                 'order_source',
                 'whatsapp'
@@ -5312,8 +5428,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $totalRtoAll =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL RTO ALL
+    |--------------------------------------------------------------------------
+    */
+
+        $totalRtoAll = $baseQuery()
             ->where(
                 'order_source',
                 'RTO'
@@ -5321,16 +5442,27 @@ class AdminController extends Controller
             ->count();
 
 
-        $totalDeliveredReorder =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL DELIVERED REORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $totalDeliveredReorder = $baseQuery()
             ->where(
                 'order_source',
                 'deliveredreorder'
             )
             ->count();
 
-        $totalPending =
-            $baseQuery()
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL PENDING
+    |--------------------------------------------------------------------------
+    */
+
+        $totalPending = $baseQuery()
             ->where(
                 'status',
                 'pending'
@@ -5338,46 +5470,64 @@ class AdminController extends Controller
             ->count();
 
 
-        $pendingWeb =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | PENDING WEB
+    |--------------------------------------------------------------------------
+    */
+
+        $pendingWeb = $baseQuery()
             ->where(
                 'status',
                 'pending'
             )
-            ->whereNull(
-                'order_source'
-            )
+            ->whereNull('order_source')
             ->count();
 
 
-        $pendingWhatsapp =
-            $baseQuery()
-            ->where(
-                'status',
-                'pending'
-            )
-            ->where(
-                'order_source',
-                'whatsapp'
-            )
-            ->count();
+        /*
+    |--------------------------------------------------------------------------
+    | PENDING WHATSAPP
+    |--------------------------------------------------------------------------
+    */
 
-
-        $pendingRto =
-            $baseQuery()
+        $pendingWhatsapp = $baseQuery()
             ->where(
                 'status',
                 'pending'
             )
             ->where(
                 'order_source',
+                'whatsapp'
+            )
+            ->count();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | PENDING RTO
+    |--------------------------------------------------------------------------
+    */
+
+        $pendingRto = $baseQuery()
+            ->where(
+                'status',
+                'pending'
+            )
+            ->where(
+                'order_source',
                 'RTO'
             )
             ->count();
 
 
-        $pendingDeliveredReorder =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | PENDING DELIVERED REORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $pendingDeliveredReorder = $baseQuery()
             ->where(
                 'status',
                 'pending'
@@ -5388,8 +5538,14 @@ class AdminController extends Controller
             )
             ->count();
 
-        $totalVerified =
-            $baseQuery()
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL VERIFIED
+    |--------------------------------------------------------------------------
+    */
+
+        $totalVerified = $baseQuery()
             ->where(
                 'status',
                 'verified'
@@ -5397,20 +5553,28 @@ class AdminController extends Controller
             ->count();
 
 
-        $verifiedWeb =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | VERIFIED WEB
+    |--------------------------------------------------------------------------
+    */
+
+        $verifiedWeb = $baseQuery()
             ->where(
                 'status',
                 'verified'
             )
-            ->whereNull(
-                'order_source'
-            )
+            ->whereNull('order_source')
             ->count();
 
 
-        $verifiedWhatsapp =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | VERIFIED WHATSAPP
+    |--------------------------------------------------------------------------
+    */
+
+        $verifiedWhatsapp = $baseQuery()
             ->where(
                 'status',
                 'verified'
@@ -5422,8 +5586,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $verifiedRto =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | VERIFIED RTO
+    |--------------------------------------------------------------------------
+    */
+
+        $verifiedRto = $baseQuery()
             ->where(
                 'status',
                 'verified'
@@ -5435,8 +5604,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $verifiedDeliveredReorder =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | VERIFIED DELIVERED REORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $verifiedDeliveredReorder = $baseQuery()
             ->where(
                 'status',
                 'verified'
@@ -5448,8 +5622,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $totalCancel =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL CANCEL
+    |--------------------------------------------------------------------------
+    */
+
+        $totalCancel = $baseQuery()
             ->where(
                 'status',
                 'cancel'
@@ -5457,20 +5636,28 @@ class AdminController extends Controller
             ->count();
 
 
-        $cancelWeb =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | CANCEL WEB
+    |--------------------------------------------------------------------------
+    */
+
+        $cancelWeb = $baseQuery()
             ->where(
                 'status',
                 'cancel'
             )
-            ->whereNull(
-                'order_source'
-            )
+            ->whereNull('order_source')
             ->count();
 
 
-        $cancelWhatsapp =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | CANCEL WHATSAPP
+    |--------------------------------------------------------------------------
+    */
+
+        $cancelWhatsapp = $baseQuery()
             ->where(
                 'status',
                 'cancel'
@@ -5482,8 +5669,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $cancelRto =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | CANCEL RTO
+    |--------------------------------------------------------------------------
+    */
+
+        $cancelRto = $baseQuery()
             ->where(
                 'status',
                 'cancel'
@@ -5495,8 +5687,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $cancelDeliveredReorder =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | CANCEL DELIVERED REORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $cancelDeliveredReorder = $baseQuery()
             ->where(
                 'status',
                 'cancel'
@@ -5508,8 +5705,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $totalNotReachable =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL NOT REACHABLE
+    |--------------------------------------------------------------------------
+    */
+
+        $totalNotReachable = $baseQuery()
             ->where(
                 'status',
                 'not_reachable'
@@ -5517,20 +5719,28 @@ class AdminController extends Controller
             ->count();
 
 
-        $notReachableWeb =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | NOT REACHABLE WEB
+    |--------------------------------------------------------------------------
+    */
+
+        $notReachableWeb = $baseQuery()
             ->where(
                 'status',
                 'not_reachable'
             )
-            ->whereNull(
-                'order_source'
-            )
+            ->whereNull('order_source')
             ->count();
 
 
-        $notReachableWhatsapp =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | NOT REACHABLE WHATSAPP
+    |--------------------------------------------------------------------------
+    */
+
+        $notReachableWhatsapp = $baseQuery()
             ->where(
                 'status',
                 'not_reachable'
@@ -5542,8 +5752,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $notReachableRto =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | NOT REACHABLE RTO
+    |--------------------------------------------------------------------------
+    */
+
+        $notReachableRto = $baseQuery()
             ->where(
                 'status',
                 'not_reachable'
@@ -5555,8 +5770,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $notReachableDeliveredReorder =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | NOT REACHABLE DELIVERED REORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $notReachableDeliveredReorder = $baseQuery()
             ->where(
                 'status',
                 'not_reachable'
@@ -5567,8 +5787,14 @@ class AdminController extends Controller
             )
             ->count();
 
-        $totalSameOrder =
-            $baseQuery()
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL SAME ORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $totalSameOrder = $baseQuery()
             ->where(
                 'status',
                 'same_order'
@@ -5576,20 +5802,28 @@ class AdminController extends Controller
             ->count();
 
 
-        $sameOrderWeb =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | SAME ORDER WEB
+    |--------------------------------------------------------------------------
+    */
+
+        $sameOrderWeb = $baseQuery()
             ->where(
                 'status',
                 'same_order'
             )
-            ->whereNull(
-                'order_source'
-            )
+            ->whereNull('order_source')
             ->count();
 
 
-        $sameOrderWhatsapp =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | SAME ORDER WHATSAPP
+    |--------------------------------------------------------------------------
+    */
+
+        $sameOrderWhatsapp = $baseQuery()
             ->where(
                 'status',
                 'same_order'
@@ -5601,8 +5835,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $sameOrderRto =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | SAME ORDER RTO
+    |--------------------------------------------------------------------------
+    */
+
+        $sameOrderRto = $baseQuery()
             ->where(
                 'status',
                 'same_order'
@@ -5614,8 +5853,13 @@ class AdminController extends Controller
             ->count();
 
 
-        $sameOrderDeliveredReorder =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | SAME ORDER DELIVERED REORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $sameOrderDeliveredReorder = $baseQuery()
             ->where(
                 'status',
                 'same_order'
@@ -5625,6 +5869,13 @@ class AdminController extends Controller
                 'deliveredreorder'
             )
             ->count();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | KNOWN STATUSES
+    |--------------------------------------------------------------------------
+    */
 
         $knownStatuses = [
             'pending',
@@ -5635,41 +5886,50 @@ class AdminController extends Controller
         ];
 
 
-        $totalOther =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL OTHER
+    |--------------------------------------------------------------------------
+    */
+
+        $totalOther = $baseQuery()
             ->where(function ($q) use ($knownStatuses) {
 
                 $q->whereNotIn(
                     'status',
                     $knownStatuses
                 )
-                    ->orWhereNull(
-                        'status'
-                    );
+                    ->orWhereNull('status');
             })
             ->count();
 
 
-        $otherWeb =
-            $baseQuery()
-            ->whereNull(
-                'order_source'
-            )
+        /*
+    |--------------------------------------------------------------------------
+    | OTHER WEB
+    |--------------------------------------------------------------------------
+    */
+
+        $otherWeb = $baseQuery()
+            ->whereNull('order_source')
             ->where(function ($q) use ($knownStatuses) {
 
                 $q->whereNotIn(
                     'status',
                     $knownStatuses
                 )
-                    ->orWhereNull(
-                        'status'
-                    );
+                    ->orWhereNull('status');
             })
             ->count();
 
 
-        $otherWhatsapp =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | OTHER WHATSAPP
+    |--------------------------------------------------------------------------
+    */
+
+        $otherWhatsapp = $baseQuery()
             ->where(
                 'order_source',
                 'whatsapp'
@@ -5680,15 +5940,18 @@ class AdminController extends Controller
                     'status',
                     $knownStatuses
                 )
-                    ->orWhereNull(
-                        'status'
-                    );
+                    ->orWhereNull('status');
             })
             ->count();
 
 
-        $otherRto =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | OTHER RTO
+    |--------------------------------------------------------------------------
+    */
+
+        $otherRto = $baseQuery()
             ->where(
                 'order_source',
                 'RTO'
@@ -5699,15 +5962,18 @@ class AdminController extends Controller
                     'status',
                     $knownStatuses
                 )
-                    ->orWhereNull(
-                        'status'
-                    );
+                    ->orWhereNull('status');
             })
             ->count();
 
 
-        $otherDeliveredReorder =
-            $baseQuery()
+        /*
+    |--------------------------------------------------------------------------
+    | OTHER DELIVERED REORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $otherDeliveredReorder = $baseQuery()
             ->where(
                 'order_source',
                 'deliveredreorder'
@@ -5718,16 +5984,18 @@ class AdminController extends Controller
                     'status',
                     $knownStatuses
                 )
-                    ->orWhereNull(
-                        'status'
-                    );
+                    ->orWhereNull('status');
             })
             ->count();
 
 
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL RTO PENDING
+    |--------------------------------------------------------------------------
+    */
 
-        $totalRto =
-            $baseQuery()
+        $totalRto = $baseQuery()
             ->where(
                 'order_source',
                 'RTO'
@@ -5737,57 +6005,129 @@ class AdminController extends Controller
                 'pending'
             )
             ->count();
-        $totalOrders =
-            $baseQuery()->count();
-        $totalAbandoned =
-            $baseQuery()
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTAL ORDERS
+    |--------------------------------------------------------------------------
+    */
+
+        $totalOrders = $baseQuery()
+            ->count();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ABANDONED TOTAL
+    |--------------------------------------------------------------------------
+    */
+
+        $totalAbandoned = $baseQuery()
             ->where(
                 'order_source',
                 'shopify_abandoned_checkout'
             )
             ->count();
-        $pendingAbandoned =
-            $baseQuery()
-            ->where('status', 'pending')
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ABANDONED PENDING
+    |--------------------------------------------------------------------------
+    */
+
+        $pendingAbandoned = $baseQuery()
+            ->where(
+                'status',
+                'pending'
+            )
             ->where(
                 'order_source',
                 'shopify_abandoned_checkout'
             )
             ->count();
-        $verifiedAbandoned =
-            $baseQuery()
-            ->where('status', 'verified')
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ABANDONED VERIFIED
+    |--------------------------------------------------------------------------
+    */
+
+        $verifiedAbandoned = $baseQuery()
+            ->where(
+                'status',
+                'verified'
+            )
             ->where(
                 'order_source',
                 'shopify_abandoned_checkout'
             )
             ->count();
-        $cancelAbandoned =
-            $baseQuery()
-            ->where('status', 'cancel')
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ABANDONED CANCEL
+    |--------------------------------------------------------------------------
+    */
+
+        $cancelAbandoned = $baseQuery()
+            ->where(
+                'status',
+                'cancel'
+            )
             ->where(
                 'order_source',
                 'shopify_abandoned_checkout'
             )
             ->count();
-        $notReachableAbandoned =
-            $baseQuery()
-            ->where('status', 'not_reachable')
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ABANDONED NOT REACHABLE
+    |--------------------------------------------------------------------------
+    */
+
+        $notReachableAbandoned = $baseQuery()
+            ->where(
+                'status',
+                'not_reachable'
+            )
             ->where(
                 'order_source',
                 'shopify_abandoned_checkout'
             )
             ->count();
-        $sameOrderAbandoned =
-            $baseQuery()
-            ->where('status', 'same_order')
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ABANDONED SAME ORDER
+    |--------------------------------------------------------------------------
+    */
+
+        $sameOrderAbandoned = $baseQuery()
+            ->where(
+                'status',
+                'same_order'
+            )
             ->where(
                 'order_source',
                 'shopify_abandoned_checkout'
             )
             ->count();
-        $otherAbandoned =
-            $baseQuery()
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ABANDONED OTHER
+    |--------------------------------------------------------------------------
+    */
+
+        $otherAbandoned = $baseQuery()
             ->where(
                 'order_source',
                 'shopify_abandoned_checkout'
@@ -5802,8 +6142,14 @@ class AdminController extends Controller
             })
             ->count();
 
-        $totalRtoVerified =
-            $baseQuery()
+
+        /*
+    |--------------------------------------------------------------------------
+    | RTO VERIFIED
+    |--------------------------------------------------------------------------
+    */
+
+        $totalRtoVerified = $baseQuery()
             ->where(
                 'order_source',
                 'RTO'
@@ -5814,60 +6160,74 @@ class AdminController extends Controller
             )
             ->count();
 
-        $totalWA =
-            Conversation::query()
 
-            ->when(
-                $clientId,
-                function ($q) use ($clientId) {
-                    $q->where(
-                        'client_id',
-                        $clientId
-                    );
-                }
-            )
+        /*
+    |--------------------------------------------------------------------------
+    | WHATSAPP TOTAL
+    |--------------------------------------------------------------------------
+    */
 
-            ->whereBetween(
-                'created_at',
-                [$from, $to]
-            )
+        $waBaseQuery = function () use (
+            $clientId,
+            $effectiveStaffIds,
+            $from,
+            $to
+        ) {
 
+            return Conversation::query()
+
+                ->when(
+                    $clientId !== null,
+                    function ($q) use ($clientId) {
+
+                        $q->where(
+                            'client_id',
+                            $clientId
+                        );
+                    }
+                )
+
+                ->when(
+                    !empty($effectiveStaffIds),
+                    function ($q) use ($effectiveStaffIds) {
+
+                        $q->whereIn(
+                            'assigned_to',
+                            $effectiveStaffIds
+                        );
+                    }
+                )
+
+                ->whereBetween(
+                    'created_at',
+                    [$from, $to]
+                );
+        };
+
+
+        $totalWA = $waBaseQuery()
             ->count();
 
 
-        $verifiedWA =
-            Conversation::query()
+        /*
+    |--------------------------------------------------------------------------
+    | WHATSAPP VERIFIED
+    |--------------------------------------------------------------------------
+    */
 
-            ->when(
-                $clientId,
-                function ($q) use ($clientId) {
-                    $q->where(
-                        'client_id',
-                        $clientId
-                    );
-                }
-            )
-
+        $verifiedWA = $waBaseQuery()
             ->where(
                 'status',
                 'verified'
             )
-
-            ->whereBetween(
-                'created_at',
-                [$from, $to]
-            )
-
             ->count();
 
 
-        $allStaff = $isClientUser
-            ? collect()
-            : CallingUser::where(
-                'status',
-                1
-            )->get();
-
+        /*
+    |--------------------------------------------------------------------------
+    | RETURN VIEW
+    |--------------------------------------------------------------------------
+    */
 
         return view(
             'performance',
@@ -5879,8 +6239,9 @@ class AdminController extends Controller
                 'to',
 
                 'clients',
-
                 'clientId',
+
+                'staffIds',
 
                 'isClientUser',
 
@@ -5888,6 +6249,11 @@ class AdminController extends Controller
 
                 'allStaff',
 
+                /*
+            |--------------------------------------------------------------------------
+            | TOTALS
+            |--------------------------------------------------------------------------
+            */
 
                 'totalOrders',
 
@@ -5902,13 +6268,7 @@ class AdminController extends Controller
                 'totalPending',
 
                 'pendingWeb',
-                'totalAbandoned',
-                'pendingAbandoned',
-                'verifiedAbandoned',
-                'cancelAbandoned',
-                'notReachableAbandoned',
-                'sameOrderAbandoned',
-                'otherAbandoned',
+
                 'pendingWhatsapp',
 
                 'pendingRto',
@@ -5955,7 +6315,6 @@ class AdminController extends Controller
 
                 'sameOrderDeliveredReorder',
 
-
                 'totalOther',
 
                 'otherWeb',
@@ -5969,6 +6328,32 @@ class AdminController extends Controller
                 'totalRto',
 
                 'totalRtoVerified',
+
+                /*
+            |--------------------------------------------------------------------------
+            | ABANDONED
+            |--------------------------------------------------------------------------
+            */
+
+                'totalAbandoned',
+
+                'pendingAbandoned',
+
+                'verifiedAbandoned',
+
+                'cancelAbandoned',
+
+                'notReachableAbandoned',
+
+                'sameOrderAbandoned',
+
+                'otherAbandoned',
+
+                /*
+            |--------------------------------------------------------------------------
+            | WHATSAPP
+            |--------------------------------------------------------------------------
+            */
 
                 'totalWA',
 

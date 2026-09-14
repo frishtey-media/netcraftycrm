@@ -732,7 +732,14 @@
         <div class="menu-section">
             Orders
         </div>
+        <a href="{{ route('calling.prepaidorders') }}"
+            class="menu-link {{ request()->routeIs('calling.prepaidorders') ? 'active' : '' }}">
 
+            <i class="bi bi-arrow-return-left"></i>
+
+            <span>Prepaid Orders</span>
+
+        </a>
         <a href="{{ route('calling.weborders') }}"
             class="menu-link {{ request()->routeIs('calling.weborders') ? 'active' : '' }}">
 

@@ -1,6 +1,365 @@
 @extends('layouts.admin')
 
 @section('content')
+    <style>
+        /* =========================================
+                                               PERFORMANCE FILTER
+                                            ========================================= */
+
+        .performance-filter {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #ffffff;
+        }
+
+        .performance-filter .card-body {
+            background: #fff;
+            border-radius: 14px;
+        }
+
+
+        /* LABEL */
+
+        .filter-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 7px;
+        }
+
+
+        /* INPUT + SELECT */
+
+        .filter-control {
+            height: 48px;
+            border-radius: 9px;
+            border: 1px solid #d9dee7;
+            font-size: 14px;
+            color: #374151;
+            box-shadow: none !important;
+        }
+
+        .filter-control:focus {
+            border-color: #3b82f6;
+        }
+
+
+        /* STAFF MULTI SELECT */
+
+        .staff-multi-select {
+            width: 100%;
+            min-height: 130px;
+            height: 130px;
+
+            border-radius: 9px;
+            border: 1px solid #d9dee7;
+
+            padding: 6px;
+
+            font-size: 14px;
+
+            background: #fff;
+
+            box-shadow: none !important;
+        }
+
+
+        /* STAFF OPTIONS */
+
+        .staff-multi-select option {
+            padding: 8px 10px;
+            border-radius: 6px;
+            margin-bottom: 2px;
+        }
+
+
+        /* HELP TEXT */
+
+        .staff-help {
+            margin-top: 6px;
+
+            font-size: 11px;
+
+            color: #8a94a6;
+        }
+
+        .staff-help i {
+            margin-right: 3px;
+        }
+
+
+        /* BUTTON AREA */
+
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+
+        /* BUTTON */
+
+        .filter-btn {
+            height: 48px;
+
+            border-radius: 9px;
+
+            font-size: 14px;
+            font-weight: 500;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 0 16px;
+
+            white-space: nowrap;
+        }
+
+
+        /* HOVER */
+
+        .filter-btn {
+            transition: all .2s ease;
+        }
+
+        .filter-btn:hover {
+            transform: translateY(-1px);
+        }
+
+
+        /* DESKTOP */
+
+        @media (min-width: 1200px) {
+
+            .filter-actions {
+                justify-content: flex-end;
+            }
+
+            .filter-btn {
+                flex: 1;
+            }
+
+        }
+
+
+        /* TABLET */
+
+        @media (max-width: 1199px) {
+
+            .filter-actions {
+                width: 100%;
+            }
+
+            .filter-btn {
+                flex: 1;
+            }
+
+        }
+
+
+        /* MOBILE */
+
+        @media (max-width: 576px) {
+
+            .performance-filter .card-body {
+                padding: 15px !important;
+            }
+
+            .filter-control {
+                height: 46px;
+            }
+
+            .staff-multi-select {
+                height: 140px;
+            }
+
+            .filter-actions {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .filter-actions .filter-btn:last-child {
+                grid-column: 1 / -1;
+            }
+
+        }
+
+
+        .staff-dropdown {
+            position: relative;
+            width: 100%;
+        }
+
+        .staff-dropdown-btn {
+            width: 100%;
+            height: 48px;
+
+            background: #fff;
+            border: 1px solid #d9dee7;
+            border-radius: 9px;
+
+            padding: 0 14px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            font-size: 14px;
+            color: #374151;
+
+            cursor: pointer;
+        }
+
+        .staff-dropdown-btn:hover {
+            border-color: #3b82f6;
+        }
+
+        .staff-dropdown-btn i {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+
+        /* DROPDOWN */
+
+        .staff-dropdown-menu {
+            display: none;
+
+            position: absolute;
+
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+
+            background: #fff;
+
+            border: 1px solid #e1e5eb;
+            border-radius: 10px;
+
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .12);
+
+            z-index: 9999;
+
+            overflow: hidden;
+        }
+
+        .staff-dropdown.open .staff-dropdown-menu {
+            display: block;
+        }
+
+
+        /* SEARCH */
+
+        .staff-search {
+            padding: 10px;
+
+            border-bottom: 1px solid #eee;
+
+            position: relative;
+        }
+
+        .staff-search i {
+            position: absolute;
+
+            left: 20px;
+            top: 20px;
+
+            color: #9ca3af;
+        }
+
+        .staff-search input {
+            width: 100%;
+
+            height: 38px;
+
+            border: 1px solid #ddd;
+            border-radius: 7px;
+
+            padding: 0 10px 0 34px;
+
+            outline: none;
+
+            font-size: 13px;
+        }
+
+        .staff-search input:focus {
+            border-color: #3b82f6;
+        }
+
+
+        /* STAFF LIST */
+
+        .staff-list {
+            max-height: 230px;
+            overflow-y: auto;
+
+            padding: 6px;
+        }
+
+
+        /* OPTION */
+
+        .staff-option {
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            padding: 9px 10px;
+
+            border-radius: 7px;
+
+            cursor: pointer;
+
+            font-size: 14px;
+
+            margin: 1px 0;
+        }
+
+        .staff-option:hover {
+            background: #f3f6fa;
+        }
+
+        .staff-option input {
+            width: 16px;
+            height: 16px;
+
+            cursor: pointer;
+        }
+
+
+        .staff-option:has(input:checked) {
+            background: #eef5ff;
+            color: #1769e0;
+            font-weight: 500;
+        }
+
+        .staff-dropdown-footer {
+            border-top: 1px solid #eee;
+
+            padding: 8px 10px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: space-between;
+
+            background: #fafafa;
+
+            font-size: 12px;
+
+            color: #6b7280;
+        }
+
+        .staff-dropdown-footer button {
+            padding: 0;
+            text-decoration: none;
+        }
+    </style>
     <div class="container-fluid">
 
         <!-- HEADER -->
@@ -19,53 +378,53 @@
         </div>
 
         <!-- FILTER -->
-        <div class="card shadow-sm mb-4">
+        {{-- FILTER --}}
+        <div class="card shadow-sm mb-4 performance-filter">
 
-            <div class="card-body">
+            <div class="card-body p-4">
 
                 <form method="GET" action="{{ url()->current() }}" class="row g-3 align-items-end">
 
-                    {{-- FROM DATE --}}
-                    <div class="col-md-2 col-6">
+                    {{-- FROM --}}
+                    <div class="col-xl-2 col-lg-3 col-md-3 col-6">
 
-                        <label class="form-label">
+                        <label class="filter-label">
                             From
                         </label>
 
                         <input type="date" name="from" value="{{ \Carbon\Carbon::parse($from)->format('Y-m-d') }}"
-                            class="form-control">
+                            class="form-control filter-control">
 
                     </div>
 
 
-                    {{-- TO DATE --}}
-                    <div class="col-md-2 col-6">
+                    {{-- TO --}}
+                    <div class="col-xl-2 col-lg-3 col-md-3 col-6">
 
-                        <label class="form-label">
+                        <label class="filter-label">
                             To
                         </label>
 
                         <input type="date" name="to" value="{{ \Carbon\Carbon::parse($to)->format('Y-m-d') }}"
-                            class="form-control">
+                            class="form-control filter-control">
 
                     </div>
 
 
                     {{-- CLIENT --}}
-                    <div class="col-md-2 col-12">
+                    <div class="col-xl-2 col-lg-3 col-md-3 col-12">
 
-                        <label class="form-label">
+                        <label class="filter-label">
                             Client
                         </label>
 
-                        <select name="client_id" class="form-select" {{ $isClientUser ? 'disabled' : '' }}>
+                        <select name="client_id" class="form-select filter-control" {{ $isClientUser ? 'disabled' : '' }}>
 
                             @if (!$isClientUser)
                                 <option value="">
                                     All Clients
                                 </option>
                             @endif
-
 
                             @foreach ($clients as $client)
                                 <option value="{{ $client->id }}"
@@ -85,49 +444,115 @@
                     </div>
 
 
-                    {{-- APPLY --}}
-                    <div class="col-md-2 col-6">
+                    {{-- STAFF --}}
+                    {{-- STAFF --}}
+                    <div class="col-xl-3 col-lg-3 col-md-4 col-12">
 
-                        <button type="submit" class="btn btn-primary w-100">
-                            Apply
-                        </button>
+                        <label class="filter-label">
+                            Staff <span class="text-danger">*</span>
+                        </label>
 
-                    </div>
+                        <div class="staff-dropdown" id="staffDropdown">
 
+                            {{-- BUTTON --}}
+                            <button type="button" class="staff-dropdown-btn" id="staffDropdownBtn">
 
-                    {{-- RESET --}}
-                    <div class="col-md-2 col-6">
+                                <span id="staffSelectedText">
+                                    👥 Select Staff
+                                </span>
 
-                        <a href="{{ url()->current() }}" class="btn btn-secondary w-100">
-                            Reset
-                        </a>
-
-                    </div>
-                    <div class="col-md-2 col-6">
-                        <a href="{{ route('admin.day-wise-staff-performance') }}">
-                            <button type="button" class="btn btn-success">
-
-                                <i class="fas fa-file-excel"></i>
-                                Compare Staff Report
+                                <i class="fas fa-chevron-down"></i>
 
                             </button>
-                        </a>
 
+
+                            {{-- MENU --}}
+                            <div class="staff-dropdown-menu">
+
+                                {{-- SEARCH --}}
+                                <div class="staff-search">
+
+                                    <i class="fas fa-search"></i>
+
+                                    <input type="text" id="staffSearch" placeholder="Search staff..." autocomplete="off">
+
+                                </div>
+
+
+                                {{-- STAFF --}}
+                                <div class="staff-list">
+
+                                    @foreach ($allStaff as $staff)
+                                        <label class="staff-option">
+
+                                            <input type="checkbox" name="staff_ids[]" value="{{ $staff->id }}"
+                                                class="staff-checkbox-filter"
+                                                {{ in_array((int) $staff->id, array_map('intval', $staffIds ?? [])) ? 'checked' : '' }}>
+
+                                            <span>
+                                                {{ $staff->name }}
+                                            </span>
+
+                                        </label>
+                                    @endforeach
+
+                                </div>
+
+
+                                {{-- FOOTER --}}
+                                <div class="staff-dropdown-footer">
+
+                                    <span id="staffCount">
+                                        0 staff selected
+                                    </span>
+
+                                    <button type="button" id="clearStaff" class="btn btn-sm btn-link">
+                                        Clear
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
 
                     </div>
-                    <!-- <div class="col-md-2 col-6">
 
-                                                    <button type="button" class="btn btn-success" id="exportSelected">
+                    {{-- ACTION BUTTONS --}}
+                    <div class="col-xl-3 col-lg-12 col-md-12 col-12">
 
-                                                        <i class="fas fa-file-excel"></i>
-                                                        Export Verify Selected
+                        <div class="filter-actions">
 
-                                                    </button>
+                            {{-- APPLY --}}
+                            <button type="submit" class="btn btn-primary filter-btn">
+
+                                <i class="fas fa-filter me-1"></i>
+                                Apply
+
+                            </button>
 
 
+                            {{-- RESET --}}
+                            <a href="{{ url()->current() }}" class="btn btn-secondary filter-btn">
 
-                                                </div>-->
+                                <i class="fas fa-undo me-1"></i>
+                                Reset
 
+                            </a>
+
+
+                            {{-- COMPARE --}}
+                            <a href="{{ route('admin.day-wise-staff-performance', request()->query()) }}"
+                                class="btn btn-success filter-btn">
+
+                                <i class="fas fa-chart-bar me-1"></i>
+                                Compare
+
+                            </a>
+
+                        </div>
+
+                    </div>
 
                 </form>
 
@@ -311,18 +736,18 @@
 
             </div>
             <!--  <div class="col-md-2 col-6 mb-2">
-                                                                                                                                                                                                                                                <div class="card bg-dark text-white p-3">
-                                                                                                                                                                                                                                                    <h6>WA Leads</h6>
-                                                                                                                                                                                                                                                    <h3>{{ $totalWA }}</h3>
-                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                <div class="card bg-dark text-white p-3">
+                                                                                                                                                                                                                                                                                                                    <h6>WA Leads</h6>
+                                                                                                                                                                                                                                                                                                                    <h3>{{ $totalWA }}</h3>
+                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                            </div>
 
-                                                                                                                                                                                                                                            <div class="col-md-2 col-6 mb-2">
-                                                                                                                                                                                                                                                <div class="card bg-info text-white p-3">
-                                                                                                                                                                                                                                                    <h6>WA Verified</h6>
-                                                                                                                                                                                                                                                    <h3>{{ $verifiedWA }}</h3>
-                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                            </div>-->
+                                                                                                                                                                                                                                                                                                            <div class="col-md-2 col-6 mb-2">
+                                                                                                                                                                                                                                                                                                                <div class="card bg-info text-white p-3">
+                                                                                                                                                                                                                                                                                                                    <h6>WA Verified</h6>
+                                                                                                                                                                                                                                                                                                                    <h3>{{ $verifiedWA }}</h3>
+                                                                                                                                                                                                                                                                                                                </div>
+                                                                                                                                                                                                                                                                                                            </div>-->
 
         </div>
 
@@ -359,9 +784,9 @@
                             <th>Same Order</th>
                             <th>Other</th>
                             <!--  <th>WA Total</th>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <th>WA Verified</th>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           <th>WA Pending</th>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           <th>Combined %</th>-->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <th>WA Verified</th>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           <th>WA Pending</th>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           <th>Combined %</th>-->
                             <th>Order %</th>
                         </tr>
                     </thead>
@@ -476,21 +901,21 @@
                                 </span>
                             </td>
                             <!-- <td>
-                                                                                                                                                                                                                                                            <span class="badge bg-danger">
-                                                                                                                                                                                                                                                                {{ $staff->rto_orders }}
-                                                                                                                                                                                                                                                            </span>
-                                                                                                                                                                                                                                                        </td>-->
+                                                                                                                                                                                                                                                                                                                            <span class="badge bg-danger">
+                                                                                                                                                                                                                                                                                                                                {{ $staff->rto_orders }}
+                                                                                                                                                                                                                                                                                                                            </span>
+                                                                                                                                                                                                                                                                                                                        </td>-->
                             <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->cancel }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->same_order }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->other }}</span></td>
                             <!--<td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><strong>{{ $combinedRate }}%</strong></td>-->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><strong>{{ $combinedRate }}%</strong></td>-->
 
                             <td><small>{{ $success }}%</small></td>
 
@@ -542,6 +967,121 @@
             </div>
         @endif
         <script>
+            $(document).ready(function() {
+
+                const dropdown = $('#staffDropdown');
+                const button = $('#staffDropdownBtn');
+
+                const selectedText = $('#staffSelectedText');
+                const countText = $('#staffCount');
+
+
+                // OPEN DROPDOWN
+                button.on('click', function(e) {
+
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    dropdown.toggleClass('open');
+
+                });
+
+
+                // DON'T CLOSE INSIDE
+                $('.staff-dropdown-menu').on('click', function(e) {
+
+                    e.stopPropagation();
+
+                });
+
+
+                // CLOSE OUTSIDE
+                $(document).on('click', function() {
+
+                    dropdown.removeClass('open');
+
+                });
+
+
+                // STAFF CHANGE
+                $(document).on(
+                    'change',
+                    '.staff-checkbox-filter',
+                    function() {
+
+                        updateStaffText();
+
+                    }
+                );
+
+
+                // UPDATE SELECTED COUNT
+                function updateStaffText() {
+
+                    let selected = $('.staff-checkbox-filter:checked');
+
+                    let count = selected.length;
+
+                    if (count === 0) {
+
+                        selectedText.html('👥 Select Staff');
+
+                        countText.text('0 staff selected');
+
+                    } else {
+
+                        selectedText.html(
+                            '👥 ' + count + ' Staff Selected'
+                        );
+
+                        countText.text(
+                            count + ' staff selected'
+                        );
+
+                    }
+
+                }
+
+
+                // SEARCH
+                $('#staffSearch').on('keyup', function() {
+
+                    let search = $(this).val().toLowerCase();
+
+                    $('.staff-option').each(function() {
+
+                        let name = $(this)
+                            .find('span')
+                            .text()
+                            .toLowerCase();
+
+                        $(this).toggle(
+                            name.includes(search)
+                        );
+
+                    });
+
+                });
+
+
+                // CLEAR
+                $('#clearStaff').on('click', function(e) {
+
+                    e.preventDefault();
+
+                    $('.staff-checkbox-filter')
+                        .prop('checked', false);
+
+                    updateStaffText();
+
+                });
+
+
+                // INITIAL LOAD
+                updateStaffText();
+
+            });
+
             function openShiftModal(staffId) {
                 document.getElementById('from_staff').value = staffId;
 

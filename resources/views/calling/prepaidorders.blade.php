@@ -1,6 +1,6 @@
 @extends('layouts.calling')
 
-@section('title', 'Web Orders')
+@section('title', 'Prepaid Orders')
 
 @section('content')
     <style>
@@ -75,12 +75,12 @@
     <div class="table-responsive d-none d-md-block">
         <div class="client-scroll mb-3">
 
-            <a href="{{ route('calling.weborders') }}" class="client-chip {{ request('client_id') ? '' : 'active' }}">
+            <a href="{{ route('calling.prepaidorders') }}" class="client-chip {{ request('client_id') ? '' : 'active' }}">
                 All
             </a>
 
             @foreach ($clients as $row)
-                <a href="{{ route('calling.weborders', ['client_id' => $row->client_id]) }}"
+                <a href="{{ route('calling.prepaidorders', ['client_id' => $row->client_id]) }}"
                     class="client-chip {{ request('client_id') == $row->client_id ? 'active' : '' }}">
 
                     {{ $row->client->client_name ?? 'Client' }}
@@ -174,12 +174,12 @@
     <div class="d-block d-md-none">
         <div class="client-scroll mb-3">
 
-            <a href="{{ route('calling.weborders') }}" class="client-chip {{ request('client_id') ? '' : 'active' }}">
+            <a href="{{ route('calling.prepaidorders') }}" class="client-chip {{ request('client_id') ? '' : 'active' }}">
                 All
             </a>
 
             @foreach ($clients as $row)
-                <a href="{{ route('calling.weborders', ['client_id' => $row->client_id]) }}"
+                <a href="{{ route('calling.prepaidorders', ['client_id' => $row->client_id]) }}"
                     class="client-chip {{ request('client_id') == $row->client_id ? 'active' : '' }}">
 
                     {{ $row->client->client_name ?? 'Client' }}

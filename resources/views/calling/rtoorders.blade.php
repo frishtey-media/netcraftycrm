@@ -1,6 +1,6 @@
 @extends('layouts.calling')
 
-@section('title', 'Orders')
+@section('title', 'RTO Orders')
 
 @section('content')
     <style>
@@ -174,12 +174,12 @@
     <div class="d-block d-md-none">
         <div class="client-scroll mb-3">
 
-            <a href="{{ route('calling.orders') }}" class="client-chip {{ request('client_id') ? '' : 'active' }}">
+            <a href="{{ route('calling.rtoorders') }}" class="client-chip {{ request('client_id') ? '' : 'active' }}">
                 All
             </a>
 
             @foreach ($clients as $row)
-                <a href="{{ route('calling.orders', ['client_id' => $row->client_id]) }}"
+                <a href="{{ route('calling.rtoorders', ['client_id' => $row->client_id]) }}"
                     class="client-chip {{ request('client_id') == $row->client_id ? 'active' : '' }}">
 
                     {{ $row->client->client_name ?? 'Client' }}

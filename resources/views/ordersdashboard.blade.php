@@ -386,6 +386,7 @@
             </div>
         </div>
     </div>
+
     <div class="modal fade" id="assignModal2" tabindex="-1">
 
         <div class="modal-dialog">
@@ -478,10 +479,10 @@
     </div>
     <script>
         /*
-                    |--------------------------------------------------------------------------
-                    | Open Selloship Assignment Modal
-                    |--------------------------------------------------------------------------
-                    */
+                                                                                                            |--------------------------------------------------------------------------
+                                                                                                            | Open Selloship Assignment Modal
+                                                                                                            |--------------------------------------------------------------------------
+                                                                                                            */
 
         function openSelloshipAssignModal(clientId, count) {
 

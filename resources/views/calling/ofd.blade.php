@@ -144,6 +144,7 @@
 
                 <tr>
                     <th>#</th>
+                    <th>Barcode</th>
                     <th>Customer</th>
                     <th>Product</th>
                     <th>Phone</th>
@@ -151,6 +152,7 @@
                     <th>Order Date</th>
                     <th>Delivery Remarks</th>
                     <th>Status</th>
+                    <th>Call Status</th>
                     <th>Call</th>
                 </tr>
 
@@ -168,8 +170,14 @@
                             </span>
                         </td>
 
+                        <td>
+                            <span class="order-barcode">
+                                {{ $order->barcode }}
+                            </span>
+                        </td>
 
                         {{-- CUSTOMER --}}
+
                         <td>
 
                             <div class="customer-name">
@@ -244,14 +252,31 @@
 
                         </td>
 
+                        <td>
+                            @if ($order->called_at)
+                                <span class="badge bg-success">
+                                    ✓ Called
+                                </span>
 
+                                <br>
+
+                                <small class="text-muted">
+                                    {{ \Carbon\Carbon::parse($order->called_at)->format('d-m-Y h:i A') }}
+                                </small>
+                            @else
+                                <span class="badge bg-secondary">
+                                    Not Called
+                                </span>
+                            @endif
+                        </td>
                         {{-- CALL --}}
                         <td>
 
-                            <a href="tel:{{ $order->customer_phone }}" class="btn btn-success btn-sm call-btn">
+                            <a href="tel:{{ $order->customer_phone }}" class="btn btn-success btn-sm call-btn track-call"
+                                data-callingorder-id="{{ $order->id }}" data-order-id="{{ $order->order_id }}"
+                                data-phone="{{ $order->customer_phone }}">
 
                                 📞 Call Customer
-
                             </a>
 
                         </td>
@@ -298,6 +323,7 @@
     {{-- MOBILE --}}
     {{-- ================================================= --}}
 
+
     <div class="d-block d-md-none">
 
         @forelse($orders as $order)
@@ -329,17 +355,33 @@
                     </div>
 
 
+                    {{-- BARCODE --}}
+                    @if (!empty($order->barcode))
+                        <div class="label">
+                            Barcode
+                        </div>
+
+                        <div class="value mb-2">
+                            {{ $order->barcode }}
+                        </div>
+                    @endif
+
+
                     {{-- PRODUCT --}}
                     <div class="label">
                         Product
                     </div>
 
                     <div class="value mb-2">
+
                         {{ $order->product_name }}
 
                         @if (!empty($order->quantity))
-                            (Qty: {{ $order->quantity }})
+                            <span class="text-muted">
+                                (Qty: {{ $order->quantity }})
+                            </span>
                         @endif
+
                     </div>
 
 
@@ -350,9 +392,9 @@
 
                     <div class="value mb-2">
 
-                        <a href="tel:{{ $order->customer_phone }}" class="phone">
+                        <a href="" class="phone">
 
-                            {{ $order->customer_phone }}
+                            📞 {{ $order->customer_phone }}
 
                         </a>
 
@@ -371,12 +413,24 @@
                     @endif
 
 
+                    {{-- AMOUNT --}}
+                    @if (!empty($order->amount))
+                        <div class="label">
+                            Amount
+                        </div>
+
+                        <div class="value mb-2">
+                            ₹{{ number_format($order->amount, 2) }}
+                        </div>
+                    @endif
+
+
                     {{-- ADDRESS --}}
                     <div class="label">
                         Address
                     </div>
 
-                    <div class="value">
+                    <div class="value mb-2">
 
                         {{ $order->shipping_address }},
                         {{ $order->city }},
@@ -392,22 +446,94 @@
                         Order Date
                     </div>
 
-                    <div class="value">
+                    <div class="value mb-2">
                         {{ $order->order_date }}
                     </div>
+
+
+                    {{-- DELIVERY REMARK --}}
                     <div class="label">
                         Delivery Remarks
                     </div>
-                    <div class="value">
-                        {{ $order->delivery_remark }}
+
+                    <div class="value mb-2">
+                        {{ $order->delivery_remark ?: '—' }}
                     </div>
 
+
+                    {{-- ===================================== --}}
+                    {{-- CALL STATUS --}}
+                    {{-- ===================================== --}}
+
+                    <div class="mt-3 p-2 rounded" style="background:#f8f9fa; border:1px solid #eee;">
+
+                        <div class="d-flex justify-content-between align-items-center">
+
+                            {{-- STATUS --}}
+                            <div>
+
+                                <div class="label mt-0">
+                                    Call Status
+                                </div>
+
+                                @if ($order->called_at)
+                                    <span class="badge bg-success">
+                                        ✓ Called
+                                    </span>
+                                @else
+                                    <span class="badge bg-secondary">
+                                        Not Called
+                                    </span>
+                                @endif
+
+                            </div>
+
+
+                            {{-- LAST CALL --}}
+                            @if ($order->called_at)
+                                <div class="text-end">
+
+                                    <div class="label mt-0">
+                                        Last Call
+                                    </div>
+
+                                    <small class="text-muted">
+
+                                        {{ \Carbon\Carbon::parse($order->called_at)->format('d-m-Y') }}
+
+                                        <br>
+
+                                        <strong>
+                                            {{ \Carbon\Carbon::parse($order->called_at)->format('h:i A') }}
+                                        </strong>
+
+                                    </small>
+
+                                </div>
+                            @endif
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- ===================================== --}}
                     {{-- CALL BUTTON --}}
+                    {{-- ===================================== --}}
+
                     <div class="mt-3">
 
-                        <a href="tel:{{ $order->customer_phone }}" class="btn btn-success w-100">
+                        <a href="tel:{{ $order->customer_phone }}"
+                            class="btn w-100 track-call
+                       {{ $order->called_at ? 'btn-secondary' : 'btn-success' }}"
+                            data-callingorder-id="{{ $order->id }}" data-order-id="{{ $order->order_id }}"
+                            data-phone="{{ $order->customer_phone }}">
 
-                            📞 Call Customer
+                            @if ($order->called_at)
+                                ✓ Called — Call Again
+                            @else
+                                📞 Call Customer
+                            @endif
 
                         </a>
 
@@ -446,6 +572,50 @@
 
 @push('scripts')
     <script>
+        $(document).on('click', '.track-call', function(e) {
+
+            let button = $(this);
+
+            let callingOrderId = button.data('callingorder-id');
+            let orderId = button.data('order-id');
+            let phone = button.data('phone');
+
+            // Open phone dialer
+            window.location.href = 'tel:' + phone;
+
+            // Track call
+            $.ajax({
+                url: "{{ route('calling.trackCall') }}",
+                type: "POST",
+
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    callingorder_id: callingOrderId,
+                    order_id: orderId,
+                    customer_phone: phone,
+                    call_status: 'called'
+                },
+
+                success: function(response) {
+
+                    if (response.success) {
+
+                        button.removeClass('btn-success')
+                            .addClass('btn-secondary');
+
+                        button.html('✓ Called');
+
+                        // Optional
+                        console.log('Call tracked:', response.called_at);
+                    }
+                },
+
+                error: function(xhr) {
+                    console.log(xhr.responseText);
+                }
+            });
+
+        });
         $(document).ready(function() {
 
             let table = $('#ordersTable');

@@ -390,7 +390,34 @@ class CallingUserAuthController extends Controller
         ));
     }
 
+    public function trackCall(Request $request)
+    {
+        $request->validate([
+            'callingorder_id' => 'required|integer',
+            'order_id'        => 'required',
+            'customer_phone'  => 'nullable|string',
+            'call_status'     => 'nullable|in:called,not_answered,busy,wrong_number',
+        ]);
 
+        $userId = Auth::guard('calling_user')->id();
+
+        DB::table('calling_logs')->insert([
+            'callingorder_id' => $request->callingorder_id,
+            'order_id'        => $request->order_id,
+            'staff_id'        => $userId,
+            'customer_phone'  => $request->customer_phone,
+            'call_status'     => $request->call_status ?? 'called',
+            'called_at'       => now(),
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Call tracked successfully.',
+            'called_at' => now()->format('d-m-Y h:i A')
+        ]);
+    }
     public function rtoorders(Request $request)
     {
         $userId = Auth::guard('calling_user')->id();
@@ -467,6 +494,56 @@ class CallingUserAuthController extends Controller
 
 
         return view('calling.weborders', [
+            'orders' => $orders,
+            'clients' => $clients,
+            'statusLabel' => 'Web Pending Orders',
+            'statusClass' => 'warning',
+            'statusCount' => $orders->count()
+        ]);
+    }
+
+    public function prepaidorders(Request $request)
+    {
+        $userId = Auth::guard('calling_user')->id();
+
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
+            ->where('assigned_to', $userId)
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', '');
+            })
+            ->where('status', 'pending')
+            ->where('payment_mode', 'paid')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get();
+
+
+        // Only Pending orders where order_source is NULL or empty
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where(function ($q) {
+                $q->whereNull('order_source')
+                    ->orWhere('order_source', '');
+            })
+            ->where('payment_mode', 'paid')
+            ->where('status', 'pending');
+
+
+
+        // Client filter
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+
+
+        // Latest orders first
+        $orders = $query->latest()->get();
+
+
+        return view('calling.prepaidorders', [
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'Web Pending Orders',
@@ -629,10 +706,25 @@ class CallingUserAuthController extends Controller
         $query = DB::table('callingorder as co')
             ->join('orders as o', 'o.order_id', '=', 'co.order_id')
 
-            // CURRENT LOGGED-IN STAFF
+            // Latest call for this staff + order
+            ->leftJoin(DB::raw('
+            (
+                SELECT cl1.*
+                FROM calling_logs cl1
+                INNER JOIN (
+                    SELECT order_id, staff_id, MAX(id) as max_id
+                    FROM calling_logs
+                    GROUP BY order_id, staff_id
+                ) cl2
+                ON cl1.id = cl2.max_id
+            ) as cl
+        '), function ($join) {
+                $join->on('cl.order_id', '=', 'co.order_id')
+                    ->on('cl.staff_id', '=', 'co.assigned_to');
+            })
+
             ->where('co.assigned_to', $userId)
 
-            // DELIVERY STATUS
             ->where('o.delivery_status', $deliveryStatus)
 
             ->select(
@@ -645,26 +737,24 @@ class CallingUserAuthController extends Controller
                 'o.customer_phone',
                 'o.shipping_address',
                 'o.city',
+                'o.barcode',
                 'o.state',
                 'o.pincode',
                 'o.delivery_remark',
-                // IMPORTANT:
-                // orders table column is `product`
                 'o.product as product_name',
-
                 'o.quantity',
                 'o.amount',
                 'o.payment_mode',
-
-                // IMPORTANT:
-                // orders table column is `date`
                 'o.date as order_date',
+                'o.delivery_status',
 
-                'o.delivery_status'
+                // CALL TRACKING
+                'cl.id as call_log_id',
+                'cl.call_status',
+                'cl.called_at'
             )
 
             ->orderByDesc('o.date');
-
 
         // CLIENT FILTER
         if ($request->filled('client_id')) {

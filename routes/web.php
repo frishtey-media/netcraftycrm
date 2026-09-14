@@ -499,7 +499,8 @@ Route::middleware('calling_user')->group(function () {
 
     Route::get('/calling/orders/ofd', [CallingUserAuthController::class, 'ofd'])
         ->name('calling.ofd');
-
+    Route::post('/calling/track-call', [CallingUserAuthController::class, 'trackCall'])
+        ->name('calling.trackCall');
     Route::get('/calling/orders/onhold', [CallingUserAuthController::class, 'onhold'])
         ->name('calling.onhold');
 
@@ -513,6 +514,9 @@ Route::middleware('calling_user')->group(function () {
 
     Route::get('/calling/weborders', [CallingUserAuthController::class, 'weborders'])
         ->name('calling.weborders');
+    Route::get('/calling/prepaidorders', [CallingUserAuthController::class, 'prepaidorders'])
+        ->name('calling.prepaidorders');
+
 
     Route::get('/calling/WhatsApp', [CallingUserAuthController::class, 'WhatsApp'])
         ->name('calling.WhatsApp');
