@@ -1273,13 +1273,13 @@
                 Download Invoice PDF
 
             </button>
+            @if (auth()->user()->role == 'super_admin')
+                <button class="btn btn-success" id="downloadLabel">
 
-            <!--   <button class="btn btn-success" id="downloadLabel">
+                    Re-Download Label PDF
 
-                                        Re-Download Label PDF
-
-                                    </button>-->
-
+                </button>
+            @endif
             <button class="btn btn-primary" id="downloadExcel">
 
                 Download Post Office Excel

@@ -25,6 +25,7 @@ use App\Models\RtoReport;
 use App\Models\OrderAssignmentScheduler;
 use App\Imports\SelloshipImport;
 
+
 class AdminController extends Controller
 {
 
@@ -2981,44 +2982,437 @@ class AdminController extends Controller
             $fileName
         );
     }
+
+    private function generateOrderId($staffId)
+    {
+        $staff = CallingUser::findOrFail($staffId);
+
+        $name = trim($staff->name);
+
+        if ($name === '') {
+            throw new \Exception('Staff name is empty.');
+        }
+
+        $staffCode =
+            mb_substr($name, 0, 1) .
+            mb_substr($name, -1, 1);
+
+        $date = now()->format('d-m-y');
+
+        $prefix = $staffCode . '-' . $date . '-';
+
+        // Saare today's IDs nikalo
+        $existingOrders = CallingOrder::where(
+            'order_id',
+            'like',
+            $prefix . '%'
+        )->pluck('order_id');
+
+        $maxNumber = 0;
+
+        foreach ($existingOrders as $orderId) {
+
+            $number = (int) substr(
+                $orderId,
+                strrpos($orderId, '-') + 1
+            );
+
+            if ($number > $maxNumber) {
+                $maxNumber = $number;
+            }
+        }
+
+        $nextNumber = $maxNumber + 1;
+
+        // Final duplicate safety
+        do {
+            $newOrderId = $prefix . $nextNumber;
+            $nextNumber++;
+        } while (
+            CallingOrder::where('order_id', $newOrderId)->exists()
+        );
+
+        return $newOrderId;
+    }
+
     public function shiftOrders(Request $request)
     {
-        // Client Block
+        if ($this->isClient()) {
+            abort(403, 'Unauthorized Access');
+        }
+
+
+        $request->validate([
+
+            'from_staff'       => 'required',
+
+            'to_staff'         => 'required|different:from_staff',
+
+            'filter_from'      => 'required|date',
+
+            'filter_to'        => 'required|date',
+
+            'order_source'     => 'required',
+
+            'shift_type'       => 'required|in:same,fresh',
+
+            'remark'           => 'required|string',
+
+        ]);
+
+
+        if ($request->shift_type === 'fresh') {
+
+            $request->validate([
+                'new_order_source' => 'required',
+            ]);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | DATE RANGE
+    |--------------------------------------------------------------------------
+    */
+
+        $from =
+            Carbon::parse(
+                $request->filter_from
+            )->startOfDay();
+
+
+        $to =
+            Carbon::parse(
+                $request->filter_to
+            )->endOfDay();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | PENDING ORDERS
+    |--------------------------------------------------------------------------
+    */
+
+        $query = CallingOrder::where(
+            'assigned_to',
+            $request->from_staff
+        )
+            ->where(
+                'status',
+                'pending'
+            )
+            ->whereBetween(
+                'created_at',
+                [$from, $to]
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | SOURCE FILTER
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->order_source !== 'all') {
+
+            if (
+                $request->order_source === '__NULL__'
+            ) {
+
+                // Web
+                $query->whereNull(
+                    'order_source'
+                );
+            } else {
+
+                $query->where(
+                    'order_source',
+                    $request->order_source
+                );
+            }
+        }
+
+
+        $orders =
+            $query->orderBy('id')->get();
+
+
+        if ($orders->isEmpty()) {
+
+            return back()->with(
+                'error',
+                'Selected date/source ke koi pending orders nahi mile.'
+            );
+        }
+
+
+        DB::beginTransaction();
+
+
+        try {
+
+            $shiftedCount = 0;
+
+
+            foreach ($orders as $order) {
+
+                /*
+            |--------------------------------------------------------------------------
+            | OLD DATA
+            |--------------------------------------------------------------------------
+            */
+
+                $oldStaff =
+                    $order->assigned_to;
+
+
+                $oldOrderId =
+                    $order->order_id;
+
+
+                $oldOrderSource =
+                    $order->order_source;
+
+
+                $oldCreatedAt =
+                    $order->created_at;
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | DEFAULT NEW DATA
+            |--------------------------------------------------------------------------
+            */
+
+                $newOrderId =
+                    $oldOrderId;
+
+
+                $newOrderSource =
+                    $oldOrderSource;
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | CHANGE STAFF
+            |--------------------------------------------------------------------------
+            */
+
+                $order->assigned_to =
+                    $request->to_staff;
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | FRESH LEAD
+            |--------------------------------------------------------------------------
+            */
+
+                if (
+                    $request->shift_type === 'fresh'
+                ) {
+
+                    /*
+                | Target staff ke naam + TODAY
+                */
+
+                    $newOrderId =
+                        $this->generateOrderId(
+                            $request->to_staff
+                        );
+
+
+                    $order->order_id =
+                        $newOrderId;
+
+
+                    /*
+                | NEW SOURCE
+                */
+
+                    if (
+                        $request->new_order_source
+                        === '__NULL__'
+                    ) {
+
+                        $order->order_source =
+                            null;
+
+                        $newOrderSource =
+                            'Web';
+                    } else {
+
+                        $order->order_source =
+                            $request->new_order_source;
+
+                        $newOrderSource =
+                            $request->new_order_source;
+                    }
+
+
+                    /*
+                | Today's date
+                */
+
+                    $order->created_at =
+                        now();
+                }
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | SAVE
+            |--------------------------------------------------------------------------
+            */
+
+                $order->save();
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | LOG
+            |--------------------------------------------------------------------------
+            */
+
+                DB::table(
+                    'order_shift_logs'
+                )->insert([
+
+                    'order_id' =>
+                    $order->id,
+
+                    'from_staff' =>
+                    $oldStaff,
+
+                    'to_staff' =>
+                    $request->to_staff,
+
+                    'old_order_id' =>
+                    $oldOrderId,
+
+                    'new_order_id' =>
+                    $newOrderId,
+
+                    'old_order_source' =>
+                    $oldOrderSource,
+
+                    'new_order_source' =>
+                    $newOrderSource,
+
+                    'shift_type' =>
+                    $request->shift_type,
+
+                    'old_created_at' =>
+                    $oldCreatedAt,
+
+                    'remark' =>
+                    $request->remark,
+
+                    'created_at' =>
+                    now(),
+
+                    'updated_at' =>
+                    now(),
+
+                ]);
+
+
+                $shiftedCount++;
+            }
+
+
+            DB::commit();
+
+
+            return back()->with(
+                'success',
+                $shiftedCount .
+                    ' orders shifted successfully.'
+            );
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            Log::error('ORDER SHIFT FAILED', [
+                'from_staff'       => $request->from_staff,
+                'to_staff'         => $request->to_staff,
+                'filter_from'      => $request->filter_from,
+                'filter_to'        => $request->filter_to,
+                'order_source'     => $request->order_source,
+                'shift_type'       => $request->shift_type,
+                'new_order_source' => $request->new_order_source,
+                'remark'           => $request->remark,
+                'error'            => $e->getMessage(),
+                'file'             => $e->getFile(),
+                'line'             => $e->getLine(),
+                'user_id'          => auth()->id(),
+                'created_at'       => now(),
+            ]);
+
+            return back()->with(
+                'error',
+                'Order shift failed: ' . $e->getMessage()
+            );
+        }
+    }
+    public function shiftOrderSources(Request $request, $staffId)
+    {
         if ($this->isClient()) {
             abort(403, 'Unauthorized Access');
         }
 
         $request->validate([
-            'from_staff' => 'required',
-            'to_staff'   => 'required',
-            'remark'     => 'required'
+            'from' => 'required|date',
+            'to'   => 'required|date',
         ]);
 
-        $orders = CallingOrder::where(
-            'assigned_to',
-            $request->from_staff
-        )
+        $from = \Carbon\Carbon::parse($request->from)->startOfDay();
+        $to   = \Carbon\Carbon::parse($request->to)->endOfDay();
+
+        $baseQuery = CallingOrder::where('assigned_to', $staffId)
             ->where('status', 'pending')
-            ->get();
+            ->whereBetween('created_at', [$from, $to]);
 
-        foreach ($orders as $order) {
+        $allCount = (clone $baseQuery)->count();
 
-            $order->assigned_to = $request->to_staff;
-            $order->save();
+        $sourceList = [
+            'whatsapp' => 'WhatsApp',
+            'deliveredreorder' => 'Delivered Re-Order',
+            'shopify_abandoned_checkout' => 'Abandoned Checkout',
+            'RTO' => 'RTO',
+        ];
 
-            DB::table('order_shift_logs')->insert([
-                'order_id'   => $order->id,
-                'from_staff' => $request->from_staff,
-                'to_staff'   => $request->to_staff,
-                'remark'     => $request->remark,
-                'created_at' => now()
-            ]);
+        $sources = [];
+
+        foreach ($sourceList as $dbValue => $displayName) {
+
+            $count = (clone $baseQuery)
+                ->where('order_source', $dbValue)
+                ->count();
+
+            $sources[] = [
+                'order_source' => $dbValue,
+                'name' => $displayName,
+                'total' => $count,
+            ];
         }
 
-        return back()->with(
-            'success',
-            'Orders shifted successfully'
-        );
+        // NULL = Web
+        $webCount = (clone $baseQuery)
+            ->whereNull('order_source')
+            ->count();
+
+        $sources[] = [
+            'order_source' => '__NULL__',
+            'name' => 'Web',
+            'total' => $webCount,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'all' => $allCount,
+            'sources' => $sources,
+        ]);
     }
 
     public function clientsorders()

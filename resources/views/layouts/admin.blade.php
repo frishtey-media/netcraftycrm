@@ -216,7 +216,9 @@
                     <a href="{{ route('performance.dashboard') }}">
                         <i class="bi bi-graph-up"></i>Staff Leads Performance
                     </a>
-
+                    <a href="{{ route('delivered.index') }}">
+                        <i class="bi bi-truck"></i>Delivery Reports
+                    </a>
                     @if (auth()->user()->role == 'super_admin')
                         <a href="{{ route('staff.performance.report') }}">
                             <i class="bi bi-truck"></i>Overall Final Reports
@@ -224,18 +226,14 @@
                         <a href="{{ route('delivered.index') }}">
                             <i class="bi bi-truck"></i>Staff Combine Reports
                         </a>
-                        <a href="{{ route('delivered.index') }}">
-                            <i class="bi bi-truck"></i>Delivery Reports
-                        </a>
+
                         <a href="/payments">
                             <i class="bi bi-receipt"></i>Payment Reports
                         </a>
 
-                        <a href="{{ route('performance.dashboard') }}">
-                            <i class="bi bi-graph-up"></i>Customer Repeat Delivery Report
-                        </a>
+
                         <a href="{{ route('reports.repeat.rto') }}">
-                            <i class="bi bi-graph-up"></i>Customer Repeat RTO Report
+                            <i class="bi bi-graph-up"></i>Customer Repeat Delivery Report
                         </a>
                         <a href="https://crm.netcrafty.com/inventory/login">
                             <i class="bi bi-graph-up"></i>Inventory Login

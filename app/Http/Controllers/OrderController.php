@@ -240,22 +240,28 @@ class OrderController extends Controller
 
     public function deliverindex(Request $request)
     {
-        $query = Order::query()
+        $isSuperAdmin = auth()->user()->role === 'super_admin';
+        $isClient     = $this->isClient();
 
+        /*
+    |--------------------------------------------------------------------------
+    | Main Orders Query
+    |--------------------------------------------------------------------------
+    */
+
+        $query = Order::query()
             ->leftJoin(
                 'clients',
                 'clients.id',
                 '=',
                 'orders.client_id'
             )
-
             ->leftJoin(
                 'callingorder',
                 'callingorder.order_id',
                 '=',
                 'orders.order_id'
             )
-
             ->where(
                 'orders.delivery_status',
                 'Delivered'
@@ -263,12 +269,13 @@ class OrderController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Client
+    | CLIENT ACCESS
     |--------------------------------------------------------------------------
     */
 
-        if ($this->isClient()) {
+        if ($isClient) {
 
+            // Client ko sirf apna data
             $query->where(
                 'orders.client_id',
                 $this->clientId()
@@ -280,8 +287,10 @@ class OrderController extends Controller
             )->get();
         } else {
 
+            // Super Admin / other admin
             $clients = Client::orderBy('client_name')->get();
 
+            // Client filter
             if ($request->filled('client_id')) {
 
                 $query->where(
@@ -293,7 +302,29 @@ class OrderController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Delivery Date
+    | Staff Filter
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('staff_id')) {
+
+            if ($request->staff_id === 'other') {
+
+                $query->whereNull(
+                    'callingorder.assigned_to'
+                );
+            } else {
+
+                $query->where(
+                    'callingorder.assigned_to',
+                    $request->staff_id
+                );
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Date Filter
     |--------------------------------------------------------------------------
     */
 
@@ -329,6 +360,11 @@ class OrderController extends Controller
             );
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | Payment Mode
+    |--------------------------------------------------------------------------
+    */
 
         if ($request->filled('payment_mode')) {
 
@@ -337,6 +373,7 @@ class OrderController extends Controller
                 $request->payment_mode
             );
         }
+
         /*
     |--------------------------------------------------------------------------
     | Order Source
@@ -345,12 +382,12 @@ class OrderController extends Controller
 
         if ($request->filled('order_source')) {
 
-            if ($request->order_source == 'web') {
+            if ($request->order_source === 'web') {
 
                 $query->whereNull(
                     'callingorder.order_source'
                 );
-            } else {
+            } elseif ($request->order_source === 'whatsapp') {
 
                 $query->where(
                     'callingorder.order_source',
@@ -376,19 +413,16 @@ class OrderController extends Controller
                     'like',
                     "%{$search}%"
                 )
-
                     ->orWhere(
                         'orders.barcode',
                         'like',
                         "%{$search}%"
                     )
-
                     ->orWhere(
                         'orders.customer_name',
                         'like',
                         "%{$search}%"
                     )
-
                     ->orWhere(
                         'orders.customer_phone',
                         'like',
@@ -396,6 +430,89 @@ class OrderController extends Controller
                     );
             });
         }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Dashboard Counts
+    |--------------------------------------------------------------------------
+    */
+
+        $totalOrders = (clone $query)->count();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Amount - ONLY SUPER ADMIN
+    |--------------------------------------------------------------------------
+    */
+
+        $totalAmount = 0;
+
+        if ($isSuperAdmin) {
+
+            $totalAmount = (clone $query)->sum(
+                'orders.amount'
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Products
+    |--------------------------------------------------------------------------
+    */
+
+        $productsQuery = Order::query()
+            ->where(
+                'orders.delivery_status',
+                'Delivered'
+            );
+
+        if ($isClient) {
+
+            $productsQuery->where(
+                'orders.client_id',
+                $this->clientId()
+            );
+        } elseif ($request->filled('client_id')) {
+
+            $productsQuery->where(
+                'orders.client_id',
+                $request->client_id
+            );
+        }
+
+        $products = $productsQuery
+            ->select('product')
+            ->distinct()
+            ->orderBy('product')
+            ->pluck('product');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Staff List
+    |--------------------------------------------------------------------------
+    */
+
+        if ($isClient) {
+
+            $staffIds = DB::table('callingorder')
+                ->where('client_id', $this->clientId())
+                ->whereNotNull('assigned_to')
+                ->distinct()
+                ->pluck('assigned_to');
+
+            $staffs = CallingUser::whereIn('id', $staffIds)
+                ->orderBy('name')
+                ->get();
+        } else {
+
+            $staffs = CallingUser::orderBy('name')->get();
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Staff Wise Summary
+    |--------------------------------------------------------------------------
+    */
 
         $staffSummary = DB::table('orders')
 
@@ -425,17 +542,50 @@ class OrderController extends Controller
                 'Delivered'
             )
 
-            // Client
-            ->when($request->filled('client_id'), function ($q) use ($request) {
-                $q->where('orders.client_id', $request->client_id);
+            /*
+        |--------------------------------------------------------------------------
+        | Client Restriction
+        |--------------------------------------------------------------------------
+        */
+
+            ->when($isClient, function ($q) {
+
+                $q->where(
+                    'orders.client_id',
+                    $this->clientId()
+                );
             })
 
-            // Staff
+            /*
+        |--------------------------------------------------------------------------
+        | Super Admin Client Filter
+        |--------------------------------------------------------------------------
+        */
+
+            ->when(
+                !$isClient && $request->filled('client_id'),
+                function ($q) use ($request) {
+
+                    $q->where(
+                        'orders.client_id',
+                        $request->client_id
+                    );
+                }
+            )
+
+            /*
+        |--------------------------------------------------------------------------
+        | Staff Filter
+        |--------------------------------------------------------------------------
+        */
+
             ->when($request->filled('staff_id'), function ($q) use ($request) {
 
-                if ($request->staff_id == 'other') {
+                if ($request->staff_id === 'other') {
 
-                    $q->whereNull('callingorder.assigned_to');
+                    $q->whereNull(
+                        'callingorder.assigned_to'
+                    );
                 } else {
 
                     $q->where(
@@ -445,7 +595,12 @@ class OrderController extends Controller
                 }
             })
 
-            // Delivery Date
+            /*
+        |--------------------------------------------------------------------------
+        | Delivery Date
+        |--------------------------------------------------------------------------
+        */
+
             ->when($request->filled('from'), function ($q) use ($request) {
 
                 $q->whereDate(
@@ -463,6 +618,27 @@ class OrderController extends Controller
                     $request->to
                 );
             })
+
+            /*
+        |--------------------------------------------------------------------------
+        | Product
+        |--------------------------------------------------------------------------
+        */
+
+            ->when($request->filled('product'), function ($q) use ($request) {
+
+                $q->where(
+                    'orders.product',
+                    $request->product
+                );
+            })
+
+            /*
+        |--------------------------------------------------------------------------
+        | Payment Mode
+        |--------------------------------------------------------------------------
+        */
+
             ->when($request->filled('payment_mode'), function ($q) use ($request) {
 
                 $q->where(
@@ -470,27 +646,84 @@ class OrderController extends Controller
                     $request->payment_mode
                 );
             })
+
+            /*
+        |--------------------------------------------------------------------------
+        | Order Source
+        |--------------------------------------------------------------------------
+        */
+
+            ->when($request->filled('order_source'), function ($q) use ($request) {
+
+                if ($request->order_source === 'web') {
+
+                    $q->whereNull(
+                        'callingorder.order_source'
+                    );
+                } elseif ($request->order_source === 'whatsapp') {
+
+                    $q->where(
+                        'callingorder.order_source',
+                        'whatsapp'
+                    );
+                }
+            })
+
+            /*
+        |--------------------------------------------------------------------------
+        | Summary Select
+        |--------------------------------------------------------------------------
+        */
+
             ->selectRaw("
-    callingorder.assigned_to as staff_id,
+            callingorder.assigned_to as staff_id,
 
-    COALESCE(calling_users.name,'Other') as staff_name,
+            COALESCE(
+                calling_users.name,
+                'Other'
+            ) as staff_name,
 
-    COALESCE(clients.client_name,'No Client') as client_name,
+            COALESCE(
+                clients.client_name,
+                'No Client'
+            ) as client_name,
 
-    COUNT(DISTINCT orders.id) as total_delivered,
+            COUNT(DISTINCT orders.id) as total_delivered,
 
-    COUNT(DISTINCT CASE
-        WHEN callingorder.order_source IS NULL
-        THEN orders.id
-    END) as web_delivered,
+            COUNT(
+                DISTINCT CASE
+                    WHEN callingorder.order_source IS NULL
+                    THEN orders.id
+                END
+            ) as web_delivered,
 
-    COUNT(DISTINCT CASE
-        WHEN callingorder.order_source='whatsapp'
-        THEN orders.id
-    END) as whatsapp_delivered,
+            COUNT(
+                DISTINCT CASE
+                    WHEN callingorder.order_source = 'whatsapp'
+                    THEN orders.id
+                END
+            ) as whatsapp_delivered
+        ");
 
-    SUM(orders.amount) as total_amount
-")
+        /*
+    |--------------------------------------------------------------------------
+    | Amount Only For Super Admin
+    |--------------------------------------------------------------------------
+    */
+
+        if ($isSuperAdmin) {
+
+            $staffSummary->selectRaw(
+                'SUM(orders.amount) as total_amount'
+            );
+        } else {
+
+            $staffSummary->selectRaw(
+                '0 as total_amount'
+            );
+        }
+
+        $staffSummary = $staffSummary
 
             ->groupBy(
                 'callingorder.assigned_to',
@@ -501,25 +734,39 @@ class OrderController extends Controller
             ->orderByDesc('total_delivered')
 
             ->get();
+
         /*
     |--------------------------------------------------------------------------
-    | Dashboard
+    | Grand Totals
     |--------------------------------------------------------------------------
     */
 
-        $totalOrders = (clone $query)->count();
-
-        $totalAmount = (clone $query)->sum(
-            'orders.amount'
+        $grandDelivered = $staffSummary->sum(
+            'total_delivered'
         );
 
-        $products = Order::select('product')
+        $grandWeb = $staffSummary->sum(
+            'web_delivered'
+        );
 
-            ->distinct()
+        $grandWhatsapp = $staffSummary->sum(
+            'whatsapp_delivered'
+        );
 
-            ->orderBy('product')
+        $grandAmount = 0;
 
-            ->pluck('product');
+        if ($isSuperAdmin) {
+
+            $grandAmount = $staffSummary->sum(
+                'total_amount'
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Orders Detail
+    |--------------------------------------------------------------------------
+    */
 
         $orders = (clone $query)
 
@@ -531,32 +778,26 @@ class OrderController extends Controller
             )
 
             ->select(
-
                 'orders.*',
-
                 'clients.client_name',
-
                 'callingorder.order_source',
-
                 'calling_users.name as staff_name'
-
             )
 
-            ->latest('orders.delivery_date')
+            ->latest(
+                'orders.delivery_date'
+            )
 
             ->paginate(
                 $request->records ?? 100
             );
 
+        /*
+    |--------------------------------------------------------------------------
+    | View
+    |--------------------------------------------------------------------------
+    */
 
-        $grandDelivered = $staffSummary->sum('total_delivered');
-
-        $grandWeb = $staffSummary->sum('web_delivered');
-
-        $grandWhatsapp = $staffSummary->sum('whatsapp_delivered');
-
-        $grandAmount = $staffSummary->sum('total_amount');
-        $staffs = CallingUser::orderBy('name')->get();
         return view(
             'reports.delivered',
             compact(

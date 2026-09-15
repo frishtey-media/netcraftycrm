@@ -294,10 +294,6 @@ Route::middleware(['auth'])->group(function () {
         [OrderController::class, 'manualDelivery']
     )->name('orders.manual.delivery');
 
-
-
-
-
     Route::get('/rto-export', [RTOController::class, 'export'])->name('rto.export');
     Route::get('/record/create', [RecordController::class, 'create'])->name('record.create');
     Route::post('/record/store', [RecordController::class, 'store'])->name('record.store');
@@ -446,8 +442,18 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/staff-verified-export', [AdminController::class, 'staffVerifiedExport'])
         ->name('admin.staff.verified.export');
-    Route::post('/shift-orders', [AdminController::class, 'shiftOrders'])
-        ->name('shift.orders');
+
+
+    Route::get(
+        '/shift-order-sources/{staff}',
+        [AdminController::class, 'shiftOrderSources']
+    )->name('shift.order.sources');
+
+
+    Route::post(
+        '/shift-orders',
+        [AdminController::class, 'shiftOrders']
+    )->name('shift.orders');
 
 
     Route::get('/test-order', function () {

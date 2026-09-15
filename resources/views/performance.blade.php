@@ -3,8 +3,8 @@
 @section('content')
     <style>
         /* =========================================
-                                               PERFORMANCE FILTER
-                                            ========================================= */
+                                                                                                                                   PERFORMANCE FILTER
+                                                                                                                                ========================================= */
 
         .performance-filter {
             border: 1px solid #e5e7eb;
@@ -736,18 +736,18 @@
 
             </div>
             <!--  <div class="col-md-2 col-6 mb-2">
-                                                                                                                                                                                                                                                                                                                <div class="card bg-dark text-white p-3">
-                                                                                                                                                                                                                                                                                                                    <h6>WA Leads</h6>
-                                                                                                                                                                                                                                                                                                                    <h3>{{ $totalWA }}</h3>
-                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                            </div>
+                                                                                                                                                                                                                                                                                                                                                                                                    <div class="card bg-dark text-white p-3">
+                                                                                                                                                                                                                                                                                                                                                                                                        <h6>WA Leads</h6>
+                                                                                                                                                                                                                                                                                                                                                                                                        <h3>{{ $totalWA }}</h3>
+                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                </div>
 
-                                                                                                                                                                                                                                                                                                            <div class="col-md-2 col-6 mb-2">
-                                                                                                                                                                                                                                                                                                                <div class="card bg-info text-white p-3">
-                                                                                                                                                                                                                                                                                                                    <h6>WA Verified</h6>
-                                                                                                                                                                                                                                                                                                                    <h3>{{ $verifiedWA }}</h3>
-                                                                                                                                                                                                                                                                                                                </div>
-                                                                                                                                                                                                                                                                                                            </div>-->
+                                                                                                                                                                                                                                                                                                                                                                                                <div class="col-md-2 col-6 mb-2">
+                                                                                                                                                                                                                                                                                                                                                                                                    <div class="card bg-info text-white p-3">
+                                                                                                                                                                                                                                                                                                                                                                                                        <h6>WA Verified</h6>
+                                                                                                                                                                                                                                                                                                                                                                                                        <h3>{{ $verifiedWA }}</h3>
+                                                                                                                                                                                                                                                                                                                                                                                                    </div>
+                                                                                                                                                                                                                                                                                                                                                                                                </div>-->
 
         </div>
 
@@ -784,9 +784,9 @@
                             <th>Same Order</th>
                             <th>Other</th>
                             <!--  <th>WA Total</th>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <th>WA Verified</th>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           <th>WA Pending</th>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           <th>Combined %</th>-->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <th>WA Verified</th>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               <th>WA Pending</th>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               <th>Combined %</th>-->
                             <th>Order %</th>
                         </tr>
                     </thead>
@@ -901,21 +901,21 @@
                                 </span>
                             </td>
                             <!-- <td>
-                                                                                                                                                                                                                                                                                                                            <span class="badge bg-danger">
-                                                                                                                                                                                                                                                                                                                                {{ $staff->rto_orders }}
-                                                                                                                                                                                                                                                                                                                            </span>
-                                                                                                                                                                                                                                                                                                                        </td>-->
+                                                                                                                                                                                                                                                                                                                                                                                                                <span class="badge bg-danger">
+                                                                                                                                                                                                                                                                                                                                                                                                                    {{ $staff->rto_orders }}
+                                                                                                                                                                                                                                                                                                                                                                                                                </span>
+                                                                                                                                                                                                                                                                                                                                                                                                            </td>-->
                             <td><span class="badge bg-danger">{{ $staff->not_reachable_orders }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->cancel }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->same_order }}</span></td>
                             <td><span class="badge bg-danger">{{ $staff->other }}</span></td>
                             <!--<td><span class="badge bg-dark">{{ $staff->wa_total ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><span class="badge bg-success">{{ $staff->wa_verified ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <td><span class="badge bg-warning text-dark">{{ $staff->wa_pending ?? 0 }}</span></td>
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td><strong>{{ $combinedRate }}%</strong></td>-->
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            <td><strong>{{ $combinedRate }}%</strong></td>-->
 
                             <td><small>{{ $success }}%</small></td>
 
@@ -928,45 +928,540 @@
             </div>
         </div>
         @if (auth()->user()->role == 'super_admin')
-            <div class="modal fade" id="shiftModal">
+            <div class="modal fade" id="shiftModal" tabindex="-1" aria-hidden="true">
+
                 <div class="modal-dialog">
+
                     <div class="modal-content p-3">
 
-                        <h5>Shift Pending Orders</h5>
+                        <h4 class="mb-4">
+                            Shift Pending Orders
+                        </h4>
 
                         <form method="POST" action="{{ route('shift.orders') }}">
+
                             @csrf
 
+                            {{-- FROM STAFF --}}
                             <input type="hidden" name="from_staff" id="from_staff">
 
-                            {{-- NEW STAFF --}}
-                            <div class="mb-2">
-                                <label>Select Staff</label>
-                                <select name="to_staff" class="form-control" required>
-                                    <option value="">Select Staff</option>
+                            {{-- CURRENT FILTER FROM --}}
+                            <input type="hidden" name="filter_from" id="filter_from"
+                                value="{{ \Carbon\Carbon::parse($from)->format('Y-m-d') }}">
+
+                            {{-- CURRENT FILTER TO --}}
+                            <input type="hidden" name="filter_to" id="filter_to"
+                                value="{{ \Carbon\Carbon::parse($to)->format('Y-m-d') }}">
+
+
+                            {{-- SHIFT TO STAFF --}}
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Shift To Staff
+                                </label>
+
+                                <select name="to_staff" id="to_staff" class="form-control" required>
+
+                                    <option value="">
+                                        Select Staff
+                                    </option>
+
                                     @foreach ($allStaff as $s)
-                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
+                                        <option value="{{ $s->id }}">
+                                            {{ $s->name }}
+                                        </option>
                                     @endforeach
+
                                 </select>
+
                             </div>
+
+
+                            {{-- FROM ORDER SOURCE --}}
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    From Order Source
+                                </label>
+
+                                <select name="order_source" id="order_source" class="form-control" required>
+
+                                    <option value="">
+                                        Select Staff First
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            {{-- SHIFT TYPE --}}
+                            <div class="mb-3">
+
+                                <label class="form-label d-block">
+                                    Shift Type
+                                </label>
+
+
+                                {{-- AS IT IS --}}
+                                <div class="form-check mb-3">
+
+                                    <input class="form-check-input" type="radio" name="shift_type" value="same"
+                                        id="shift_same" checked>
+
+                                    <label class="form-check-label" for="shift_same">
+
+                                        <strong>
+                                            As It Is
+                                        </strong>
+
+                                        <small class="text-muted d-block">
+                                            Keep original date, source & order ID
+                                        </small>
+
+                                    </label>
+
+                                </div>
+
+
+                                {{-- AS FRESH LEAD --}}
+                                <div class="form-check">
+
+                                    <input class="form-check-input" type="radio" name="shift_type" value="fresh"
+                                        id="shift_fresh">
+
+                                    <label class="form-check-label" for="shift_fresh">
+
+                                        <strong>
+                                            As Fresh Lead
+                                        </strong>
+
+                                        <small class="text-muted d-block">
+                                            Show as today's fresh lead
+                                        </small>
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+
+                            {{-- NEW ORDER SOURCE --}}
+                            <div id="fresh_source_box" class="mb-3" style="display:none;">
+
+                                <label class="form-label">
+                                    New Order Source
+                                </label>
+
+                                <select name="new_order_source" id="new_order_source" class="form-control">
+
+                                    <option value="">
+                                        Select New Source
+                                    </option>
+
+                                    <option value="whatsapp">
+                                        WhatsApp
+                                    </option>
+
+                                    <option value="__NULL__">
+                                        Web
+                                    </option>
+
+                                    <option value="shopify_abandoned_checkout">
+                                        Abandoned Checkout
+                                    </option>
+
+                                    <option value="RTO">
+                                        RTO
+                                    </option>
+
+                                    <option value="deliveredreorder">
+                                        Delivered Re-Order
+                                    </option>
+
+                                </select>
+
+                            </div>
+
 
                             {{-- REMARK --}}
-                            <div class="mb-2">
-                                <label>Remark</label>
-                                <textarea name="remark" class="form-control" required></textarea>
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Remark
+                                </label>
+
+                                <textarea name="remark" class="form-control" rows="3" required placeholder="Enter reason for shifting..."></textarea>
+
                             </div>
 
-                            <button class="btn btn-primary w-100 mt-2">
+
+                            {{-- SUBMIT --}}
+                            <button type="submit" class="btn btn-primary w-100" id="shiftSubmitBtn">
+
                                 Shift Orders
+
                             </button>
 
                         </form>
 
                     </div>
+
                 </div>
+
             </div>
         @endif
         <script>
+            function openShiftModal(staffId) {
+                console.log('==============================');
+                console.log('SHIFT MODAL OPEN');
+                console.log('Staff ID:', staffId);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | GET CURRENT FILTER DATE
+                |--------------------------------------------------------------------------
+                */
+
+                let filterFrom =
+                    $('#filter_from').val();
+
+                let filterTo =
+                    $('#filter_to').val();
+
+
+                console.log('Filter From:', filterFrom);
+                console.log('Filter To:', filterTo);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | FROM STAFF
+                |--------------------------------------------------------------------------
+                */
+
+                $('#from_staff').val(staffId);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | RESET SOURCE
+                |--------------------------------------------------------------------------
+                */
+
+                $('#order_source').html(
+                    '<option value="">Loading...</option>'
+                );
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | RESET SHIFT TYPE
+                |--------------------------------------------------------------------------
+                */
+
+                $('#shift_same')
+                    .prop('checked', true);
+
+                $('#shift_fresh')
+                    .prop('checked', false);
+
+
+                $('#fresh_source_box')
+                    .hide();
+
+
+                $('#new_order_source')
+                    .prop('required', false)
+                    .val('');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | RESET REMARK
+                |--------------------------------------------------------------------------
+                */
+
+                $('textarea[name="remark"]').val('');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | BUTTON
+                |--------------------------------------------------------------------------
+                */
+
+                $('#shiftSubmitBtn')
+                    .text('Loading...');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | OPEN MODAL
+                |--------------------------------------------------------------------------
+                */
+
+                $('#shiftModal').modal('show');
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | AJAX
+                |--------------------------------------------------------------------------
+                */
+
+                $.ajax({
+
+                    url: "{{ route('shift.order.sources', ['staff' => '__STAFF__']) }}"
+                        .replace('__STAFF__', staffId),
+
+                    type: 'GET',
+
+                    data: {
+
+                        from: filterFrom,
+
+                        to: filterTo
+
+                    },
+
+                    dataType: 'json',
+
+
+                    success: function(response) {
+                        console.log(
+                            'SHIFT SOURCE RESPONSE:',
+                            response
+                        );
+
+
+                        if (
+                            !response.success
+                        ) {
+
+                            $('#order_source').html(
+                                '<option value="">No sources found</option>'
+                            );
+
+                            $('#shiftSubmitBtn')
+                                .text('Shift Orders');
+
+                            return;
+                        }
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | CLEAR
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $('#order_source').empty();
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | ALL SOURCES
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $('#order_source').append(
+
+                            $('<option>', {
+
+                                value: 'all',
+
+                                text: 'All Sources (' +
+                                    response.all +
+                                    ')'
+
+                            })
+
+                        );
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | SOURCE OPTIONS
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $.each(
+                            response.sources,
+                            function(index, item) {
+
+                                $('#order_source').append(
+
+                                    $('<option>', {
+
+                                        value: item.order_source,
+
+                                        text: item.name +
+                                            ' (' +
+                                            item.total +
+                                            ')'
+
+                                    })
+
+                                );
+
+                            }
+                        );
+
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | DEFAULT ALL
+                        |--------------------------------------------------------------------------
+                        */
+
+                        $('#order_source')
+                            .val('all');
+
+
+                        updateShiftButton();
+
+                    },
+
+
+                    error: function(xhr) {
+                        console.error(
+                            'SHIFT SOURCE AJAX ERROR'
+                        );
+
+                        console.error(
+                            'HTTP STATUS:',
+                            xhr.status
+                        );
+
+                        console.error(
+                            'RESPONSE:',
+                            xhr.responseText
+                        );
+
+
+                        $('#order_source').html(
+
+                            '<option value="">' +
+                            'Unable to load sources' +
+                            '</option>'
+
+                        );
+
+
+                        $('#shiftSubmitBtn')
+                            .text('Shift Orders');
+                    }
+
+                });
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | FRESH LEAD SHOW/HIDE
+            |--------------------------------------------------------------------------
+            */
+
+
+            $(document).on(
+                'change',
+                'input[name="shift_type"]',
+                function() {
+
+                    if (
+                        $(this).val() === 'fresh'
+                    ) {
+
+                        $('#fresh_source_box')
+                            .slideDown();
+
+                        $('#new_order_source')
+                            .prop('required', true);
+
+                    } else {
+
+                        $('#fresh_source_box')
+                            .slideUp();
+
+                        $('#new_order_source')
+                            .prop('required', false)
+                            .val('');
+
+                    }
+
+                    updateShiftButton();
+
+                }
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | SOURCE CHANGE
+            |--------------------------------------------------------------------------
+            */
+
+            $(document).on(
+                'change',
+                '#order_source',
+                function() {
+                    updateShiftButton();
+                }
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | NEW SOURCE CHANGE
+            |--------------------------------------------------------------------------
+            */
+
+            $(document).on(
+                'change',
+                '#new_order_source',
+                function() {
+                    updateShiftButton();
+                }
+            );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | BUTTON COUNT
+            |--------------------------------------------------------------------------
+            */
+
+            function updateShiftButton() {
+                let selectedText =
+                    $('#order_source option:selected')
+                    .text();
+
+
+                let match =
+                    selectedText.match(/\((\d+)\)/);
+
+
+                if (match) {
+
+                    $('#shiftSubmitBtn').text(
+                        'Shift ' +
+                        match[1] +
+                        ' Orders'
+                    );
+
+                } else {
+
+                    $('#shiftSubmitBtn').text(
+                        'Shift Orders'
+                    );
+                }
+            }
+
             $(document).ready(function() {
 
                 const dropdown = $('#staffDropdown');
@@ -1081,13 +1576,6 @@
                 updateStaffText();
 
             });
-
-            function openShiftModal(staffId) {
-                document.getElementById('from_staff').value = staffId;
-
-                let modal = new bootstrap.Modal(document.getElementById('shiftModal'));
-                modal.show();
-            }
         </script>
         <script>
             $('#checkAll').on('change', function() {

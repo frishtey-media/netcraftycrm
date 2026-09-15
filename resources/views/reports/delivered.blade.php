@@ -221,13 +221,13 @@
                     <div class="card-body">
 
                         <h5>Total Delivered Amount</h5>
+                        @if (auth()->user()->role == 'super_admin')
+                            <h2 class="text-primary">
 
-                        <h2 class="text-primary">
+                                ₹{{ number_format($totalAmount, 2) }}
 
-                            ₹{{ number_format($totalAmount, 2) }}
-
-                        </h2>
-
+                            </h2>
+                        @endif
                     </div>
 
                 </div>
@@ -292,15 +292,19 @@
 
                                 <td>{{ $row->whatsapp_delivered }}</td>
 
-                                <td><a
-                                        href="{{ route('reports.staff.delivery.detail', [
-                                            'staff_id' => $row->staff_id ?? 'other',
-                                            'client_id' => request('client_id'),
-                                            'from' => request('from'),
-                                            'to' => request('to'),
-                                        ]) }}">
-                                        ₹{{ number_format($row->total_amount, 2) }}
-                                    </a></td>
+                                <td>
+                                    @if (auth()->user()->role == 'super_admin')
+                                        <a
+                                            href="{{ route('reports.staff.delivery.detail', [
+                                                'staff_id' => $row->staff_id ?? 'other',
+                                                'client_id' => request('client_id'),
+                                                'from' => request('from'),
+                                                'to' => request('to'),
+                                            ]) }}">
+                                            ₹{{ number_format($row->total_amount, 2) }}
+                                        </a>
+                                    @endif
+                                </td>
 
                             </tr>
 
@@ -335,7 +339,11 @@
 
                             <th>{{ $grandWhatsapp }}</th>
 
-                            <th>₹{{ number_format($grandAmount, 2) }}</th>
+                            <th>
+                                @if (auth()->user()->role == 'super_admin')
+                                    ₹{{ number_format($grandAmount, 2) }}
+                                @endif
+                            </th>
 
                         </tr>
 
