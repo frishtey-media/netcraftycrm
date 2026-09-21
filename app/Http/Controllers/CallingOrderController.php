@@ -664,6 +664,7 @@ class CallingOrderController extends Controller
             'order_id' => $orderId
         ]);
     }
+
     public function store(Request $request)
     {
         $staff = Auth::guard('calling_user')->user();
@@ -672,36 +673,24 @@ class CallingOrderController extends Controller
             abort(403);
         }
 
+        // Basic validation
         $request->validate([
-
-            'created_at' =>
-            'required|date',
-
-            'client_id' =>
-            'required|exists:clients,id',
-
-            'customer_phone' =>
-            'required',
-
-            'status' =>
-            'required|in:verified,pending,not_reachable,same_order,cancel,Other',
-
+            'created_at' => 'required|date',
+            'client_id' => 'required|exists:clients,id',
+            'customer_phone' => 'required',
+            'status' => 'required|in:verified,pending,not_reachable,same_order,cancel,Other',
         ]);
 
-
+        // Verified order validation
         if ($request->status === 'verified') {
 
             $request->validate([
-
                 'customer_name' => [
                     'required',
                     'string',
                     'max:255',
                     'regex:/^[A-Za-z0-9\s.,\/\-()]+$/'
                 ],
-
-
-
 
                 'product_name' => [
                     'required',
@@ -763,80 +752,168 @@ class CallingOrderController extends Controller
                     'max:1000',
                     'regex:/^[A-Za-z0-9\s.,\/\-#()]+$/',
                 ],
-
             ], [
 
-                'customer_name.required' => 'Customer name is required.',
-                'customer_name.regex' => 'Customer name must be entered in English only.',
+                'customer_name.required' =>
+                'Customer name is required.',
 
+                'customer_name.regex' =>
+                'Customer name must be entered in English only.',
 
+                'product_name.required' =>
+                'Please select a product.',
 
+                'quantity.required' =>
+                'Quantity is required.',
 
-                'product_name.required' => 'Please select a product.',
+                'quantity.min' =>
+                'Quantity must be at least 1.',
 
-                'quantity.required' => 'Quantity is required.',
-                'quantity.min' => 'Quantity must be at least 1.',
+                'weight.required' =>
+                'Weight is required.',
 
-                'weight.required' => 'Weight is required.',
-                'weight.gt' => 'Weight must be greater than 0.',
+                'weight.gt' =>
+                'Weight must be greater than 0.',
 
-                'age.required' => 'Age is required.',
-                'age.max' => 'Please enter a valid age.',
+                'age.required' =>
+                'Age is required.',
 
-                'amount.required' => 'Amount is required.',
-                'amount.gt' => 'Amount must be greater than 0.',
+                'age.max' =>
+                'Please enter a valid age.',
 
-                'payment_mode.required' => 'Please select payment mode.',
+                'amount.required' =>
+                'Amount is required.',
 
-                'pincode.required' => 'Pincode is required.',
-                'pincode.regex' => 'Pincode must contain exactly 6 digits.',
+                'amount.gt' =>
+                'Amount must be greater than 0.',
 
-                'city.required' => 'City is required.',
-                'city.regex' => 'City must be entered in English only.',
+                'payment_mode.required' =>
+                'Please select payment mode.',
 
-                'state.required' => 'State is required.',
-                'state.regex' => 'State must be entered in English only.',
+                'pincode.required' =>
+                'Pincode is required.',
 
-                'address.required' => 'Shipping address is required.',
-                'address.regex' => 'Shipping address must be entered in English only.',
+                'pincode.regex' =>
+                'Pincode must contain exactly 6 digits.',
 
+                'city.required' =>
+                'City is required.',
+
+                'city.regex' =>
+                'City must be entered in English only.',
+
+                'state.required' =>
+                'State is required.',
+
+                'state.regex' =>
+                'State must be entered in English only.',
+
+                'address.required' =>
+                'Shipping address is required.',
+
+                'address.regex' =>
+                'Shipping address must be entered in English only.',
             ]);
         } else {
 
+            // Non-verified order validation
             $request->validate([
-
-                'remarks' =>
-                'required|string|max:1000',
-
+                'remarks' => 'required|string|max:1000',
             ]);
         }
 
-        $selectedDate =
-            Carbon::parse(
-                $request->created_at
-            );
 
-        $orderId =
-            $this->generateOrderId(
-                $staff,
-                $selectedDate
-            );
+        // Selected date
+        $selectedDate = Carbon::parse($request->created_at);
 
-        $phone =
-            $this->normalizePhone(
-                $request->customer_phone
-            );
+
+        // Normalize phone number
+        $phone = $this->normalizePhone($request->customer_phone);
+
+
+        // Check valid phone
+        if (empty($phone)) {
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->withErrors([
+                    'customer_phone' =>
+                    'Please enter a valid customer phone number.'
+                ]);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | DUPLICATE VERIFIED ORDER CHECK
+    |--------------------------------------------------------------------------
+    |
+    | Same client
+    | Same date
+    | Same customer number
+    | Existing status = verified
+    |
+    | Only new VERIFIED order is blocked.
+    |--------------------------------------------------------------------------
+    */
 
         if ($request->status === 'verified') {
 
-            $quantity =
-                (int) $request->quantity;
+            $duplicateNumber = CallingOrder::where(
+                'client_id',
+                $request->client_id
+            )
+                ->whereDate(
+                    'order_date',
+                    $selectedDate->format('Y-m-d')
+                )
+                ->where(
+                    'customer_phone',
+                    $phone
+                )
+                ->where(
+                    'status',
+                    'verified'
+                )
+                ->exists();
 
-            $weight =
-                (float) ($request->weight ?? 0);
 
-            $totalWeight =
-                $quantity * $weight;
+            if ($duplicateNumber) {
+
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->withErrors([
+                        'customer_phone' =>
+                        'This customer number is already verified for this client on ' .
+                            $selectedDate->format('d-m-Y') .
+                            '. Same customer/order cannot be verified again.'
+                    ]);
+            }
+        }
+
+
+        // Generate order ID
+        $orderId = $this->generateOrderId(
+            $staff,
+            $selectedDate
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | VERIFIED ORDER
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->status === 'verified') {
+
+            $quantity = (int) $request->quantity;
+
+            $weight = (float) $request->weight;
+
+            $totalWeight = $quantity * $weight;
 
 
             CallingOrder::create([
@@ -915,6 +992,12 @@ class CallingOrderController extends Controller
             ]);
         } else {
 
+            /*
+        |--------------------------------------------------------------------------
+        | NON VERIFIED ORDER
+        |--------------------------------------------------------------------------
+        */
+
             CallingOrder::create([
 
                 'client_id' =>
@@ -950,6 +1033,12 @@ class CallingOrderController extends Controller
         }
 
 
+        /*
+    |--------------------------------------------------------------------------
+    | SUCCESS
+    |--------------------------------------------------------------------------
+    */
+
         return redirect()
             ->back()
             ->with(
@@ -957,7 +1046,6 @@ class CallingOrderController extends Controller
                 'Lead saved successfully. Order ID: ' . $orderId
             );
     }
-
     public function whatsappOrders(Request $request)
     {
         $staff = $this->callingStaff();

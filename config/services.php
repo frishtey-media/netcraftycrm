@@ -13,6 +13,11 @@ return [
     | a conventional file to locate the various service credentials.
     |
     */
+    'bytespeed' => [
+        'webhook_url' => env('BYTESPEED_WEBHOOK_URL'),
+        'secret' => env('BYTESPEED_WEBHOOK_SECRET'),
+    ],
+
     'delhivery' => [
         'base_url' => env('DELHIVERY_BASE_URL'),
         'api_token' => env('DELHIVERY_API_TOKEN'),

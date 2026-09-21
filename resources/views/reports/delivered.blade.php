@@ -262,13 +262,11 @@
                             <th>Client</th>
 
                             <th>Staff</th>
-
                             <th>Total Delivered</th>
-
                             <th>Web Delivered</th>
-
                             <th>WhatsApp Delivered</th>
-
+                            <th>RTO Calling Delivered</th>
+                            <th>Reorder Calling Delivered</th>
                             <th>Total Amount</th>
 
                         </tr>
@@ -287,10 +285,10 @@
                                 <td>{{ $row->staff_name }}</td>
 
                                 <td>{{ $row->total_delivered }}</td>
-
                                 <td>{{ $row->web_delivered }}</td>
-
                                 <td>{{ $row->whatsapp_delivered }}</td>
+                                <td>{{ $row->rto_calling_delivered }}</td>
+                                <td>{{ $row->reorder_calling_delivered }}</td>
 
                                 <td>
                                     @if (auth()->user()->role == 'super_admin')
@@ -334,10 +332,10 @@
                             </th>
 
                             <th>{{ $grandDelivered }}</th>
-
                             <th>{{ $grandWeb }}</th>
-
                             <th>{{ $grandWhatsapp }}</th>
+                            <th>{{ $grandRtoCalling }}</th>
+                            <th>{{ $grandReorderCalling }}</th>
 
                             <th>
                                 @if (auth()->user()->role == 'super_admin')

@@ -8,7 +8,7 @@
             min-width: 0;
             padding: 10px;
             background: #f4f6f8;
-            overflow-x: hidden;
+            overflow: visible;
         }
 
         .staff-report *,
@@ -23,8 +23,8 @@
         }
 
         /* =========================================================
-                                                                                                                                                                                                                               BOOTSTRAP ROW FIX
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           BOOTSTRAP ROW FIX
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .staff-report .row {
             --bs-gutter-x: 10px;
@@ -46,8 +46,8 @@
         }
 
         /* =========================================================
-                                                                                                                                                                                                                               PAGE TITLE
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           PAGE TITLE
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-title {
             font-size: 20px;
@@ -58,8 +58,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               FILTER
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           FILTER
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-filter {
             background: #fff;
@@ -70,7 +70,7 @@
         }
 
         .report-filter label {
-            display: block;
+
             margin-bottom: 3px;
 
             font-size: 11px;
@@ -125,8 +125,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               SECTION TITLE
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           SECTION TITLE
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-section-title {
             margin: 8px 0 5px;
@@ -141,8 +141,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               STAT CARD
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           STAT CARD
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-stat {
             width: 100%;
@@ -207,8 +207,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               COLORS
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           COLORS
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .stat-blue {
             background: #0d6efd;
@@ -247,8 +247,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               PROGRESS SECTION
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           PROGRESS SECTION
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-panel {
             width: 100%;
@@ -289,8 +289,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               PROGRESS BAR
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           PROGRESS BAR
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-progress {
             width: 100%;
@@ -313,8 +313,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               SMALL METRIC BOX
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           SMALL METRIC BOX
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-metric {
             width: 100%;
@@ -422,8 +422,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               TABLE CONTAINER
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           TABLE CONTAINER
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-table-card {
             width: 100%;
@@ -443,8 +443,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               TABLE HEADER
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           TABLE HEADER
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-table-header {
             height: 35px;
@@ -463,8 +463,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               TABLE SCROLL
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           TABLE SCROLL
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .report-table-scroll {
             width: 100%;
@@ -498,8 +498,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               STAFF RANKING TABLE
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           STAFF RANKING TABLE
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .staff-ranking-table {
             width: max-content;
@@ -547,8 +547,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               ORDER DETAIL TABLE
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           ORDER DETAIL TABLE
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .order-detail-table {
             width: max-content;
@@ -594,8 +594,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               TABLE PROGRESS
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           TABLE PROGRESS
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .table-progress {
             width: 65px;
@@ -618,8 +618,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               BADGES
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           BADGES
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .staff-report .badge {
             font-size: 9px;
@@ -633,8 +633,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               MOBILE / TABLET
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           MOBILE / TABLET
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         @media (max-width: 1199px) {
 
@@ -719,8 +719,8 @@
 
 
         /* =========================================================
-                                                                                                                                                                                                                               PAGE LEVEL OVERFLOW PROTECTION
-                                                                                                                                                                                                                            ========================================================= */
+                                                                                                                                                                                                                                                                                                                                           PAGE LEVEL OVERFLOW PROTECTION
+                                                                                                                                                                                                                                                                                                                                        ========================================================= */
 
         .staff-report,
         .staff-report>*,
@@ -730,6 +730,289 @@
         .staff-report .report-table-card {
             min-width: 0 !important;
             max-width: 100% !important;
+        }
+
+
+
+        .staff-dropdown {
+            position: relative;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .staff-dropdown-btn {
+            width: 100%;
+            height: 40px;
+            padding: 0 20px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            background: #fff;
+            border: 1px solid #d5dbe1;
+
+
+            font-weight: 500;
+
+            cursor: pointer;
+            outline: none;
+
+            transition: border-color .2s ease, box-shadow .2s ease;
+        }
+
+        .staff-dropdown-btn:hover,
+        .staff-dropdown.open .staff-dropdown-btn {
+            border-color: #9aa8ba;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, .06);
+        }
+
+        .staff-dropdown-btn i {
+            color: #687385;
+            font-size: 13px;
+            transition: transform .2s ease;
+        }
+
+        .staff-dropdown.open .staff-dropdown-btn i {
+            transform: rotate(180deg);
+        }
+
+
+        /* ==========================================
+                                                               DROPDOWN MENU
+                                                            ========================================== */
+
+        .staff-dropdown-menu {
+            display: none;
+
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+
+            width: 100%;
+            min-width: 0;
+            max-width: 420px;
+
+            background: #fff;
+
+            border: 1px solid #dfe4ea;
+            border-radius: 14px;
+
+            box-shadow: 0 12px 30px rgba(0, 0, 0, .14);
+
+            z-index: 999999;
+
+            overflow: hidden;
+        }
+
+        .staff-dropdown.open .staff-dropdown-menu {
+            display: block;
+        }
+
+
+        /* ==========================================
+                                                               SEARCH
+                                                            ========================================== */
+
+        .staff-search {
+            position: relative;
+            padding: 14px;
+            background: #fff;
+
+            border-bottom: 1px solid #edf0f3;
+        }
+
+        .staff-search i {
+            position: absolute;
+
+            left: 28px;
+            top: 50%;
+
+            transform: translateY(-50%);
+
+            color: #8b95a5;
+            font-size: 13px;
+            pointer-events: none;
+        }
+
+        .staff-search input {
+            width: 100%;
+            height: 35px;
+
+            padding: 0 14px 0 13px;
+
+            border: 1px solid #d9dfe7;
+            border-radius: 9px;
+
+            background: #fff;
+
+            color: #27364a;
+            font-size: 14px;
+
+            outline: none;
+        }
+
+        .staff-search input:focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, .08);
+        }
+
+
+        /* ==========================================
+                                                               STAFF LIST
+                                                            ========================================== */
+
+        .staff-list {
+            width: 100%;
+            max-height: 280px;
+
+            overflow-y: auto;
+            overflow-x: hidden;
+
+            padding: 5px 0;
+        }
+
+        .staff-option {
+            width: 100%;
+
+            display: flex;
+            align-items: center;
+
+            gap: 12px;
+
+            padding: 12px 16px;
+            margin: 0;
+
+            background: #fff;
+
+            color: #27364a;
+            font-size: 14px;
+            font-weight: 500;
+
+            cursor: pointer;
+
+            transition: background-color .15s ease;
+        }
+
+        .staff-option:hover {
+            background: #f7f8fa;
+        }
+
+        .staff-option input[type="checkbox"] {
+            width: 19px;
+            height: 19px;
+
+            margin: 0;
+            padding: 0;
+
+            flex: 0 0 19px;
+
+            cursor: pointer;
+
+            accent-color: #6d28d9;
+        }
+
+        .staff-option span {
+            flex: 1;
+            min-width: 0;
+
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+
+        /* ==========================================
+                                                               FOOTER
+                                                            ========================================== */
+
+        .staff-dropdown-footer {
+            min-height: 52px;
+
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+
+            padding: 0 16px;
+
+            background: #fff;
+
+            border-top: 1px solid #edf0f3;
+
+            color: #7b8494;
+            font-size: 13px;
+        }
+
+        .staff-dropdown-footer button {
+            padding: 0;
+
+            border: 0;
+            background: transparent;
+
+            color: #2563eb;
+            font-size: 13px;
+
+            cursor: pointer;
+        }
+
+        .staff-dropdown-footer button:hover {
+            text-decoration: underline;
+        }
+
+
+        /* ==========================================
+                                                               SCROLLBAR
+                                                            ========================================== */
+
+        .staff-list::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .staff-list::-webkit-scrollbar-track {
+            background: #f8f9fa;
+        }
+
+        .staff-list::-webkit-scrollbar-thumb {
+            background: #cbd2da;
+            border-radius: 10px;
+        }
+
+
+        /* ==========================================
+                                                               NO STAFF
+                                                            ========================================== */
+
+        .staff-no-result {
+            padding: 25px 15px;
+
+            text-align: center;
+
+            color: #8b95a5;
+            font-size: 13px;
+        }
+
+
+        /* ==========================================
+                                                               MOBILE
+                                                            ========================================== */
+
+        @media (max-width: 767px) {
+
+            .staff-dropdown-btn {
+                height: 58px;
+                padding: 0 16px;
+                border-radius: 10px;
+                font-size: 15px;
+            }
+
+            .staff-dropdown-menu {
+                max-width: none;
+                width: 100%;
+            }
+
+            .staff-list {
+                max-height: 240px;
+            }
         }
     </style>
 
@@ -763,20 +1046,28 @@
 
                         <label>Client</label>
 
-                        <select name="client_id" class="form-select">
+                        <select name="client_id" class="form-select" {{ $isClient ?? false ? 'disabled' : '' }}>
 
-                            <option value="">
-                                All Clients
-                            </option>
+                            @if (!($isClient ?? false))
+                                <option value="">
+                                    All Clients
+                                </option>
+                            @endif
 
                             @foreach ($clients as $client)
                                 <option value="{{ $client->id }}"
-                                    {{ (string) request('client_id') === (string) $client->id ? 'selected' : '' }}>
+                                    {{ (string) request('client_id', auth()->user()->client_id) === (string) $client->id ? 'selected' : '' }}>
+
                                     {{ $client->client_name ?? ($client->name ?? 'Client #' . $client->id) }}
+
                                 </option>
                             @endforeach
 
                         </select>
+
+                        @if ($isClient ?? false)
+                            <input type="hidden" name="client_id" value="{{ auth()->user()->client_id }}">
+                        @endif
 
                     </div>
 
@@ -807,24 +1098,78 @@
 
                     {{-- STAFF --}}
 
-                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-12">
 
-                        <label>Staff</label>
+                        <label class="filter-label">
+                            Staff <span class="text-danger">*</span>
+                        </label>
 
-                        <select name="staff_id" class="form-select">
+                        <div class="staff-dropdown" id="staffDropdown">
 
-                            <option value="">
-                                All Staff
-                            </option>
+                            <button type="button" class="staff-dropdown-btn" id="staffDropdownBtn">
+                                <span id="staffSelectedText">
+                                    👥 Select Staff
+                                </span>
 
-                            @foreach ($staffs as $staff)
-                                <option value="{{ $staff->id }}"
-                                    {{ (string) request('staff_id') === (string) $staff->id ? 'selected' : '' }}>
-                                    {{ $staff->name }}
-                                </option>
-                            @endforeach
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
 
-                        </select>
+                            <div class="staff-dropdown-menu" id="staffDropdownMenu">
+
+                                <div class="staff-search">
+
+                                    <i class="fas fa-search"></i>
+
+                                    <input type="text" id="staffSearch" placeholder="Search staff..." autocomplete="off">
+
+                                </div>
+
+                                <div class="staff-list" id="staffList">
+
+                                    @php
+                                        $selectedStaffIds = array_map(
+                                            'intval',
+                                            (array) request()->input('staff_ids', []),
+                                        );
+                                    @endphp
+
+                                    @forelse ($allStaff as $staff)
+                                        <label class="staff-option">
+
+                                            <input type="checkbox" name="staff_ids[]" value="{{ $staff->id }}"
+                                                class="staff-checkbox-filter"
+                                                {{ in_array((int) $staff->id, $selectedStaffIds, true) ? 'checked' : '' }}>
+
+                                            <span>
+                                                {{ $staff->name }}
+                                            </span>
+
+                                        </label>
+
+                                    @empty
+
+                                        <div class="staff-no-result">
+                                            No staff found
+                                        </div>
+                                    @endforelse
+
+                                </div>
+
+                                <div class="staff-dropdown-footer">
+
+                                    <span id="staffCount">
+                                        0 staff selected
+                                    </span>
+
+                                    <button type="button" id="clearStaff" class="btn btn-sm btn-link">
+                                        Clear
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
 
                     </div>
 
@@ -1670,8 +2015,8 @@
                         </div>
 
                         <!-- <span class="badge bg-success">
-                                                                                            {{ $bestStaff['rating'] ?? 'Good' }}
-                                                                                        </span>-->
+                                                                                                                                                                                                        {{ $bestStaff['rating'] ?? 'Good' }}
+                                                                                                                                                                                                    </span>-->
 
                     </div>
 
@@ -1784,12 +2129,23 @@
 
                 <div class="row align-items-center">
 
-                    <div class="col-8">
-                        Staff Performance Ranking
+                    <div class="col-md-7 col-12">
+                        <strong>
+                            Staff Performance Ranking
+                        </strong>
                     </div>
 
-                    <div class="col-4 text-end">
-                        {{ count($staffReport ?? []) }} Staff
+                    <div class="col-md-5 col-12 text-md-end mt-2 mt-md-0">
+
+                        <span class="me-3">
+                            {{ count($staffReport ?? []) }} Staff
+                        </span>
+
+                        <button type="button" id="exportStaffRanking" class="btn btn-success btn-sm">
+                            <i class="fas fa-file-excel me-1"></i>
+                            Excel
+                        </button>
+
                     </div>
 
                 </div>
@@ -1801,7 +2157,7 @@
 
             <div class="report-table-scroll">
 
-                <table class="table table-bordered staff-ranking-table">
+                <table class="table table-bordered staff-ranking-table" id="staffRankingTable">
 
                     <thead>
 
@@ -2064,4 +2420,300 @@
         </div>
 
     </div>
+
+    <script>
+        // =====================================================
+        // STAFF PERFORMANCE RANKING - EXCEL EXPORT
+        // =====================================================
+
+        document.addEventListener('DOMContentLoaded', function() {
+
+            const exportBtn = document.getElementById('exportStaffRanking');
+            const table = document.getElementById('staffRankingTable');
+
+            if (!exportBtn || !table) {
+                return;
+            }
+
+            exportBtn.addEventListener('click', function() {
+
+                const clonedTable = table.cloneNode(true);
+
+                // Remove progress bars from copied table
+                clonedTable
+                    .querySelectorAll('.table-progress')
+                    .forEach(function(el) {
+                        el.remove();
+                    });
+
+                // Remove staff links but keep staff name
+                clonedTable
+                    .querySelectorAll('a')
+                    .forEach(function(link) {
+
+                        const text = document.createTextNode(
+                            link.textContent.trim()
+                        );
+
+                        link.replaceWith(text);
+                    });
+
+                // Remove buttons / unnecessary elements
+                clonedTable
+                    .querySelectorAll('button')
+                    .forEach(function(el) {
+                        el.remove();
+                    });
+
+                // Remove HTML badges but keep their text
+                clonedTable
+                    .querySelectorAll('.badge')
+                    .forEach(function(badge) {
+
+                        const text = document.createTextNode(
+                            badge.textContent.trim()
+                        );
+
+                        badge.replaceWith(text);
+                    });
+
+
+                // Create Excel HTML
+                const excelContent = `
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+
+                    table {
+                        border-collapse: collapse;
+                        width: 100%;
+                    }
+
+                    th {
+                        background: #eeeeee;
+                        font-weight: bold;
+                    }
+
+                    th, td {
+                        border: 1px solid #000;
+                        padding: 6px;
+                        text-align: center;
+                    }
+
+                </style>
+            </head>
+
+            <body>
+
+                <h3>Staff Performance Ranking</h3>
+
+                ${clonedTable.outerHTML}
+
+            </body>
+            </html>
+        `;
+
+
+                const blob = new Blob(
+                    ['\ufeff' + excelContent], {
+                        type: 'application/vnd.ms-excel'
+                    }
+                );
+
+
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement('a');
+
+                link.href = url;
+
+                // Date from / date to
+                const dateFrom =
+                    document.querySelector('[name="date_from"]')?.value || '';
+
+                const dateTo =
+                    document.querySelector('[name="date_to"]')?.value || '';
+
+                let fileName = 'Staff_Performance_Ranking';
+
+                if (dateFrom && dateTo) {
+                    fileName += `_${dateFrom}_to_${dateTo}`;
+                }
+
+                link.download = fileName + '.xls';
+
+                document.body.appendChild(link);
+
+                link.click();
+
+                document.body.removeChild(link);
+
+                URL.revokeObjectURL(url);
+
+            });
+
+        });
+
+
+        document.addEventListener('DOMContentLoaded', function() {
+
+            const dropdown = document.getElementById('staffDropdown');
+            const button = document.getElementById('staffDropdownBtn');
+            const search = document.getElementById('staffSearch');
+            const count = document.getElementById('staffCount');
+            const selectedText = document.getElementById('staffSelectedText');
+            const clearBtn = document.getElementById('clearStaff');
+
+            if (!dropdown || !button) {
+                return;
+            }
+
+
+            // Open / Close
+            button.addEventListener('click', function(e) {
+
+                e.stopPropagation();
+
+                dropdown.classList.toggle('open');
+
+            });
+
+
+            // Prevent menu click from closing
+            const menu = dropdown.querySelector('.staff-dropdown-menu');
+
+            if (menu) {
+                menu.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            }
+
+
+            // Close outside click
+            document.addEventListener('click', function() {
+                dropdown.classList.remove('open');
+            });
+
+
+            // Update selected staff
+            function updateStaffSelection() {
+
+                const checkboxes = document.querySelectorAll(
+                    '.staff-checkbox-filter'
+                );
+
+                const selected = [];
+
+                checkboxes.forEach(function(checkbox) {
+
+                    if (checkbox.checked) {
+
+                        const label = checkbox.closest('.staff-option');
+
+                        if (label) {
+
+                            const name = label
+                                .querySelector('span')
+                                ?.textContent
+                                .trim();
+
+                            if (name) {
+                                selected.push(name);
+                            }
+                        }
+                    }
+                });
+
+
+                // Count
+                count.textContent =
+                    selected.length +
+                    (selected.length === 1 ?
+                        ' staff selected' :
+                        ' staff selected');
+
+
+                // Button text
+                if (selected.length === 0) {
+
+                    selectedText.innerHTML = '👥 Select Staff';
+
+                } else if (selected.length <= 2) {
+
+                    selectedText.textContent =
+                        selected.join(', ');
+
+                } else {
+
+                    selectedText.textContent =
+                        selected.length + ' Staff Selected';
+                }
+            }
+
+
+            // Checkbox change
+            document
+                .querySelectorAll('.staff-checkbox-filter')
+                .forEach(function(checkbox) {
+
+                    checkbox.addEventListener(
+                        'change',
+                        updateStaffSelection
+                    );
+
+                });
+
+
+            // Clear
+            if (clearBtn) {
+
+                clearBtn.addEventListener('click', function() {
+
+                    document
+                        .querySelectorAll('.staff-checkbox-filter')
+                        .forEach(function(checkbox) {
+
+                            checkbox.checked = false;
+
+                        });
+
+                    updateStaffSelection();
+
+                });
+            }
+
+
+            // Search
+            if (search) {
+
+                search.addEventListener('input', function() {
+
+                    const keyword =
+                        this.value.toLowerCase().trim();
+
+                    document
+                        .querySelectorAll('.staff-option')
+                        .forEach(function(option) {
+
+                            const name =
+                                option.textContent
+                                .toLowerCase();
+
+                            option.style.display =
+                                name.includes(keyword) ?
+                                'flex' :
+                                'none';
+
+                        });
+
+                });
+            }
+
+
+            // Initial selected state
+            updateStaffSelection();
+
+        });
+    </script>
 @endsection

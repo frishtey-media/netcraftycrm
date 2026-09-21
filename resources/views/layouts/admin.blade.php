@@ -219,10 +219,10 @@
                     <a href="{{ route('delivered.index') }}">
                         <i class="bi bi-truck"></i>Delivery Reports
                     </a>
+                    <a href="{{ route('staff.performance.report') }}">
+                        <i class="bi bi-truck"></i>Overall Final Reports
+                    </a>
                     @if (auth()->user()->role == 'super_admin')
-                        <a href="{{ route('staff.performance.report') }}">
-                            <i class="bi bi-truck"></i>Overall Final Reports
-                        </a>
                         <a href="{{ route('delivered.index') }}">
                             <i class="bi bi-truck"></i>Staff Combine Reports
                         </a>
@@ -230,7 +230,6 @@
                         <a href="/payments">
                             <i class="bi bi-receipt"></i>Payment Reports
                         </a>
-
 
                         <a href="{{ route('reports.repeat.rto') }}">
                             <i class="bi bi-graph-up"></i>Customer Repeat Delivery Report

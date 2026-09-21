@@ -243,12 +243,6 @@ class OrderController extends Controller
         $isSuperAdmin = auth()->user()->role === 'super_admin';
         $isClient     = $this->isClient();
 
-        /*
-    |--------------------------------------------------------------------------
-    | Main Orders Query
-    |--------------------------------------------------------------------------
-    */
-
         $query = Order::query()
             ->leftJoin(
                 'clients',
@@ -267,15 +261,9 @@ class OrderController extends Controller
                 'Delivered'
             );
 
-        /*
-    |--------------------------------------------------------------------------
-    | CLIENT ACCESS
-    |--------------------------------------------------------------------------
-    */
-
         if ($isClient) {
 
-            // Client ko sirf apna data
+
             $query->where(
                 'orders.client_id',
                 $this->clientId()
@@ -287,10 +275,8 @@ class OrderController extends Controller
             )->get();
         } else {
 
-            // Super Admin / other admin
             $clients = Client::orderBy('client_name')->get();
 
-            // Client filter
             if ($request->filled('client_id')) {
 
                 $query->where(
@@ -299,12 +285,6 @@ class OrderController extends Controller
                 );
             }
         }
-
-        /*
-    |--------------------------------------------------------------------------
-    | Staff Filter
-    |--------------------------------------------------------------------------
-    */
 
         if ($request->filled('staff_id')) {
 
@@ -321,12 +301,6 @@ class OrderController extends Controller
                 );
             }
         }
-
-        /*
-    |--------------------------------------------------------------------------
-    | Date Filter
-    |--------------------------------------------------------------------------
-    */
 
         if ($request->filled('from')) {
 
@@ -346,12 +320,6 @@ class OrderController extends Controller
             );
         }
 
-        /*
-    |--------------------------------------------------------------------------
-    | Product
-    |--------------------------------------------------------------------------
-    */
-
         if ($request->filled('product')) {
 
             $query->where(
@@ -360,12 +328,6 @@ class OrderController extends Controller
             );
         }
 
-        /*
-    |--------------------------------------------------------------------------
-    | Payment Mode
-    |--------------------------------------------------------------------------
-    */
-
         if ($request->filled('payment_mode')) {
 
             $query->where(
@@ -373,12 +335,6 @@ class OrderController extends Controller
                 $request->payment_mode
             );
         }
-
-        /*
-    |--------------------------------------------------------------------------
-    | Order Source
-    |--------------------------------------------------------------------------
-    */
 
         if ($request->filled('order_source')) {
 
@@ -395,12 +351,6 @@ class OrderController extends Controller
                 );
             }
         }
-
-        /*
-    |--------------------------------------------------------------------------
-    | Search
-    |--------------------------------------------------------------------------
-    */
 
         if ($request->filled('search')) {
 
@@ -431,34 +381,21 @@ class OrderController extends Controller
             });
         }
 
-        /*
-    |--------------------------------------------------------------------------
-    | Dashboard Counts
-    |--------------------------------------------------------------------------
-    */
+        $totalOrders = (clone $query)
+            ->distinct('orders.id')
+            ->count('orders.id');
 
-        $totalOrders = (clone $query)->count();
-
-        /*
-    |--------------------------------------------------------------------------
-    | Amount - ONLY SUPER ADMIN
-    |--------------------------------------------------------------------------
-    */
 
         $totalAmount = 0;
 
         if ($isSuperAdmin) {
 
-            $totalAmount = (clone $query)->sum(
-                'orders.amount'
-            );
+            $totalAmount = (clone $query)
+                ->select('orders.id', 'orders.amount')
+                ->distinct()
+                ->get()
+                ->sum('amount');
         }
-
-        /*
-    |--------------------------------------------------------------------------
-    | Products
-    |--------------------------------------------------------------------------
-    */
 
         $productsQuery = Order::query()
             ->where(
@@ -486,12 +423,6 @@ class OrderController extends Controller
             ->orderBy('product')
             ->pluck('product');
 
-        /*
-    |--------------------------------------------------------------------------
-    | Staff List
-    |--------------------------------------------------------------------------
-    */
-
         if ($isClient) {
 
             $staffIds = DB::table('callingorder')
@@ -507,12 +438,6 @@ class OrderController extends Controller
 
             $staffs = CallingUser::orderBy('name')->get();
         }
-
-        /*
-    |--------------------------------------------------------------------------
-    | Staff Wise Summary
-    |--------------------------------------------------------------------------
-    */
 
         $staffSummary = DB::table('orders')
 
@@ -542,12 +467,6 @@ class OrderController extends Controller
                 'Delivered'
             )
 
-            /*
-        |--------------------------------------------------------------------------
-        | Client Restriction
-        |--------------------------------------------------------------------------
-        */
-
             ->when($isClient, function ($q) {
 
                 $q->where(
@@ -555,12 +474,6 @@ class OrderController extends Controller
                     $this->clientId()
                 );
             })
-
-            /*
-        |--------------------------------------------------------------------------
-        | Super Admin Client Filter
-        |--------------------------------------------------------------------------
-        */
 
             ->when(
                 !$isClient && $request->filled('client_id'),
@@ -572,12 +485,6 @@ class OrderController extends Controller
                     );
                 }
             )
-
-            /*
-        |--------------------------------------------------------------------------
-        | Staff Filter
-        |--------------------------------------------------------------------------
-        */
 
             ->when($request->filled('staff_id'), function ($q) use ($request) {
 
@@ -594,12 +501,6 @@ class OrderController extends Controller
                     );
                 }
             })
-
-            /*
-        |--------------------------------------------------------------------------
-        | Delivery Date
-        |--------------------------------------------------------------------------
-        */
 
             ->when($request->filled('from'), function ($q) use ($request) {
 
@@ -619,12 +520,6 @@ class OrderController extends Controller
                 );
             })
 
-            /*
-        |--------------------------------------------------------------------------
-        | Product
-        |--------------------------------------------------------------------------
-        */
-
             ->when($request->filled('product'), function ($q) use ($request) {
 
                 $q->where(
@@ -633,12 +528,6 @@ class OrderController extends Controller
                 );
             })
 
-            /*
-        |--------------------------------------------------------------------------
-        | Payment Mode
-        |--------------------------------------------------------------------------
-        */
-
             ->when($request->filled('payment_mode'), function ($q) use ($request) {
 
                 $q->where(
@@ -646,12 +535,6 @@ class OrderController extends Controller
                     $request->payment_mode
                 );
             })
-
-            /*
-        |--------------------------------------------------------------------------
-        | Order Source
-        |--------------------------------------------------------------------------
-        */
 
             ->when($request->filled('order_source'), function ($q) use ($request) {
 
@@ -669,47 +552,50 @@ class OrderController extends Controller
                 }
             })
 
-            /*
-        |--------------------------------------------------------------------------
-        | Summary Select
-        |--------------------------------------------------------------------------
-        */
-
             ->selectRaw("
-            callingorder.assigned_to as staff_id,
+    callingorder.assigned_to as staff_id,
 
-            COALESCE(
-                calling_users.name,
-                'Other'
-            ) as staff_name,
+    COALESCE(
+        calling_users.name,
+        'Other'
+    ) as staff_name,
 
-            COALESCE(
-                clients.client_name,
-                'No Client'
-            ) as client_name,
+    COALESCE(
+        clients.client_name,
+        'No Client'
+    ) as client_name,
 
-            COUNT(DISTINCT orders.id) as total_delivered,
+    COUNT(DISTINCT orders.id) as total_delivered,
 
-            COUNT(
-                DISTINCT CASE
-                    WHEN callingorder.order_source IS NULL
-                    THEN orders.id
-                END
-            ) as web_delivered,
+    COUNT(
+        DISTINCT CASE
+            WHEN callingorder.order_source IS NULL
+            THEN orders.id
+        END
+    ) as web_delivered,
 
-            COUNT(
-                DISTINCT CASE
-                    WHEN callingorder.order_source = 'whatsapp'
-                    THEN orders.id
-                END
-            ) as whatsapp_delivered
-        ");
+    COUNT(
+        DISTINCT CASE
+            WHEN callingorder.order_source = 'whatsapp'
+            THEN orders.id
+        END
+    ) as whatsapp_delivered,
 
-        /*
-    |--------------------------------------------------------------------------
-    | Amount Only For Super Admin
-    |--------------------------------------------------------------------------
-    */
+    COUNT(
+        DISTINCT CASE
+            WHEN callingorder.order_source = 'RTO'
+            THEN orders.id
+        END
+    ) as rto_calling_delivered,
+
+    COUNT(
+        DISTINCT CASE
+            WHEN callingorder.order_source = 'deliveredreorder'
+            THEN orders.id
+        END
+    ) as reorder_calling_delivered
+");
+
 
         if ($isSuperAdmin) {
 
@@ -735,23 +621,11 @@ class OrderController extends Controller
 
             ->get();
 
-        /*
-    |--------------------------------------------------------------------------
-    | Grand Totals
-    |--------------------------------------------------------------------------
-    */
-
-        $grandDelivered = $staffSummary->sum(
-            'total_delivered'
-        );
-
-        $grandWeb = $staffSummary->sum(
-            'web_delivered'
-        );
-
-        $grandWhatsapp = $staffSummary->sum(
-            'whatsapp_delivered'
-        );
+        $grandDelivered = $staffSummary->sum('total_delivered');
+        $grandWeb = $staffSummary->sum('web_delivered');
+        $grandWhatsapp = $staffSummary->sum('whatsapp_delivered');
+        $grandRtoCalling = $staffSummary->sum('rto_calling_delivered');
+        $grandReorderCalling = $staffSummary->sum('reorder_calling_delivered');
 
         $grandAmount = 0;
 
@@ -761,12 +635,6 @@ class OrderController extends Controller
                 'total_amount'
             );
         }
-
-        /*
-    |--------------------------------------------------------------------------
-    | Orders Detail
-    |--------------------------------------------------------------------------
-    */
 
         $orders = (clone $query)
 
@@ -792,12 +660,6 @@ class OrderController extends Controller
                 $request->records ?? 100
             );
 
-        /*
-    |--------------------------------------------------------------------------
-    | View
-    |--------------------------------------------------------------------------
-    */
-
         return view(
             'reports.delivered',
             compact(
@@ -807,7 +669,8 @@ class OrderController extends Controller
                 'staffs',
 
                 'staffSummary',
-
+                'grandRtoCalling',
+                'grandReorderCalling',
                 'grandDelivered',
                 'grandWeb',
                 'grandWhatsapp',

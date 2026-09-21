@@ -3479,32 +3479,14 @@ class AdminController extends Controller
                     $clientId
                 )
 
-                /*
-            |--------------------------------------------------------------------------
-            | Delivered only
-            |--------------------------------------------------------------------------
-            */
-
                 ->whereRaw(
                     'LOWER(TRIM(orders.delivery_status)) = ?',
                     ['delivered']
                 )
 
-                /*
-            |--------------------------------------------------------------------------
-            | Delivery date required
-            |--------------------------------------------------------------------------
-            */
-
                 ->whereNotNull(
                     'orders.delivery_date'
                 )
-
-                /*
-            |--------------------------------------------------------------------------
-            | 20 / 25 Days
-            |--------------------------------------------------------------------------
-            */
 
                 ->whereDate(
                     'orders.delivery_date',
@@ -3513,13 +3495,6 @@ class AdminController extends Controller
                         ->subDays($repeatDays)
                         ->toDateString()
                 )
-
-                /*
-            |--------------------------------------------------------------------------
-            | Already assigned delivered reorder customers
-            | should NOT appear again
-            |--------------------------------------------------------------------------
-            */
 
                 ->whereNotExists(function ($q) use ($orderPhone) {
 
@@ -3560,44 +3535,20 @@ class AdminController extends Controller
 
                         ->from('callingorder')
 
-                        /*
-                |--------------------------------------------------------------------------
-                | Same Client
-                |--------------------------------------------------------------------------
-                */
-
                         ->whereColumn(
                             'callingorder.client_id',
                             'orders.client_id'
                         )
-
-                        /*
-                |--------------------------------------------------------------------------
-                | Only Repeat Customer Assignment
-                |--------------------------------------------------------------------------
-                */
 
                         ->where(
                             'callingorder.order_source',
                             'deliveredreorder'
                         )
 
-                        /*
-                |--------------------------------------------------------------------------
-                | Same Customer Phone
-                |--------------------------------------------------------------------------
-                */
-
                         ->whereRaw(
                             "{$callingPhone} = {$orderPhone}"
                         );
                 })
-
-                /*
-            |--------------------------------------------------------------------------
-            | UNIQUE CUSTOMER COUNT
-            |--------------------------------------------------------------------------
-            */
 
                 ->selectRaw(
                     "COUNT(
@@ -3608,13 +3559,6 @@ class AdminController extends Controller
                 ->value('total');
         };
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | CLIENT LOGIN
-    |--------------------------------------------------------------------------
-    */
-
         if ($this->isClient()) {
 
             $clientId = $this->clientId();
@@ -3624,19 +3568,7 @@ class AdminController extends Controller
                 $clientId
             )
 
-                /*
-        |--------------------------------------------------------------------------
-        | COUNTS
-        |--------------------------------------------------------------------------
-        */
-
                 ->withCount([
-
-                    /*
-            |--------------------------------------------------------------------------
-            | Shopify Pending Orders
-            |--------------------------------------------------------------------------
-            */
 
                     'orders as total_orders' => function ($q) use ($from, $to) {
 
@@ -3648,12 +3580,6 @@ class AdminController extends Controller
                             );
                     },
 
-                    /*
-            |--------------------------------------------------------------------------
-            | Abandoned Orders
-            |--------------------------------------------------------------------------
-            */
-
                     'callingOrders as total_abandoned_orders' => function ($q) {
 
                         $q->whereNull('assigned_to')
@@ -3663,19 +3589,6 @@ class AdminController extends Controller
                                 'shopify_abandoned_checkout'
                             );
                     },
-
-                    /*
-            |--------------------------------------------------------------------------
-            | Selloship Records
-            |--------------------------------------------------------------------------
-            |
-            | Selloship orders are stored as:
-            |
-            | order_source = whatsapp
-            | remarks      = Selloship Import
-            |
-            |--------------------------------------------------------------------------
-            */
 
                     'callingOrders as selloship_records' => function ($q) {
 
@@ -3697,12 +3610,6 @@ class AdminController extends Controller
 
                 ->map(function ($client) use ($getRepeatPending) {
 
-                    /*
-            |--------------------------------------------------------------------------
-            | RTO Pending
-            |--------------------------------------------------------------------------
-            */
-
                     $rtoPending = DB::table('rto_reports')
 
                         ->join(
@@ -3723,13 +3630,6 @@ class AdminController extends Controller
                         )
 
                         ->count();
-
-
-                    /*
-            |--------------------------------------------------------------------------
-            | Repeat Customer Pending
-            |--------------------------------------------------------------------------
-            */
 
                     $repeatPending = $getRepeatPending(
                         $client->id
@@ -3761,13 +3661,6 @@ class AdminController extends Controller
                     ];
                 });
 
-
-            /*
-    |--------------------------------------------------------------------------
-    | WhatsApp Clients
-    |--------------------------------------------------------------------------
-    */
-
             $waClients = Conversation::select(
                 'client_id',
                 DB::raw('COUNT(*) as total')
@@ -3793,13 +3686,6 @@ class AdminController extends Controller
 
                 ->get();
 
-
-            /*
-    |--------------------------------------------------------------------------
-    | Client Dashboard
-    |--------------------------------------------------------------------------
-    */
-
             return view(
                 'ordersdashboard',
                 [
@@ -3822,21 +3708,7 @@ class AdminController extends Controller
             );
         }
 
-
-        /*
- |--------------------------------------------------------------------------
- | SUPER ADMIN
- |--------------------------------------------------------------------------
- */
-
         $query = Client::query();
-
-
-        /*
-|--------------------------------------------------------------------------
-| Specific Client Selected
-|--------------------------------------------------------------------------
-*/
 
         if ($client_id) {
 
@@ -3846,22 +3718,9 @@ class AdminController extends Controller
             );
         }
 
-
-        /*
-|--------------------------------------------------------------------------
-| Orders Data
-|--------------------------------------------------------------------------
-*/
-
         $ordersData = $query
 
             ->withCount([
-
-                /*
-        |--------------------------------------------------------------------------
-        | Shopify Pending Orders
-        |--------------------------------------------------------------------------
-        */
 
                 'orders as total_orders' => function ($q) use ($from, $to) {
 
@@ -3873,12 +3732,6 @@ class AdminController extends Controller
                         );
                 },
 
-                /*
-        |--------------------------------------------------------------------------
-        | Abandoned Orders
-        |--------------------------------------------------------------------------
-        */
-
                 'callingOrders as total_abandoned_orders' => function ($q) {
 
                     $q->whereNull('assigned_to')
@@ -3888,12 +3741,6 @@ class AdminController extends Controller
                             'shopify_abandoned_checkout'
                         );
                 },
-
-                /*
-        |--------------------------------------------------------------------------
-        | Selloship Records
-        |--------------------------------------------------------------------------
-        */
 
                 'callingOrders as selloship_records' => function ($q) {
 
@@ -3914,12 +3761,6 @@ class AdminController extends Controller
             ->get()
 
             ->map(function ($client) use ($getRepeatPending) {
-
-                /*
-        |--------------------------------------------------------------------------
-        | RTO Pending
-        |--------------------------------------------------------------------------
-        */
 
                 $rtoPending = DB::table('rto_reports')
 
@@ -3942,13 +3783,6 @@ class AdminController extends Controller
 
                     ->count();
 
-
-                /*
-        |--------------------------------------------------------------------------
-        | Repeat Customer Pending
-        |--------------------------------------------------------------------------
-        */
-
                 $repeatPending = $getRepeatPending(
                     $client->id
                 );
@@ -3968,12 +3802,6 @@ class AdminController extends Controller
                     'total_abandoned_orders' =>
                     (int) $client->total_abandoned_orders,
 
-                    /*
-            |--------------------------------------------------------------------------
-            | Selloship Count
-            |--------------------------------------------------------------------------
-            */
-
                     'selloship_records' =>
                     (int) $client->selloship_records,
 
@@ -3984,13 +3812,6 @@ class AdminController extends Controller
                     (int) $repeatPending,
                 ];
             });
-
-
-        /*
-|--------------------------------------------------------------------------
-| WhatsApp Clients
-|--------------------------------------------------------------------------
-*/
 
         $waClients = Conversation::select(
             'client_id',
@@ -4023,13 +3844,6 @@ class AdminController extends Controller
 
             ->get();
 
-
-        /*
-|--------------------------------------------------------------------------
-| Staff Conversation Summary
-|--------------------------------------------------------------------------
-*/
-
         $staff = Conversation::select(
             'assigned_to',
             DB::raw('COUNT(*) as total')
@@ -4049,8 +3863,6 @@ class AdminController extends Controller
             )
 
             ->get();
-
-
 
         return view(
             'ordersdashboard',

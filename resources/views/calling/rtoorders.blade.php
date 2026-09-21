@@ -89,6 +89,33 @@
             @endforeach
 
         </div>
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show">
+                <strong>Please check:</strong>
+
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
         <table id="ordersTable" class="table table-hover align-middle">
 
             <thead class="table-dark">
@@ -142,17 +169,36 @@
 
                         <td>
                             <!-- STATUS UPDATE -->
-                            <form method="POST" action="/calling/statusupdate/{{ $order->id }}">
+                            <form method="POST" action="{{ url('/calling/statusupdate/' . $order->id) }}">
                                 @csrf
+
                                 <div class="d-flex gap-1 mb-1">
+
                                     <select name="status" class="form-select form-select-sm">
-                                        <option value="verified">Confirm</option>
-                                        <option value="same_order">Same Order</option>
-                                        <option value="not_reachable">Not Reachable</option>
-                                        <option value="cancel">Cancel</option>
+
+                                        <option value="verified" {{ $order->status == 'verified' ? 'selected' : '' }}>
+                                            Confirm
+                                        </option>
+
+                                        <option value="same_order" {{ $order->status == 'same_order' ? 'selected' : '' }}>
+                                            Same Order
+                                        </option>
+
+                                        <option value="not_reachable"
+                                            {{ $order->status == 'not_reachable' ? 'selected' : '' }}>
+                                            Not Reachable
+                                        </option>
+
+                                        <option value="cancel" {{ $order->status == 'cancel' ? 'selected' : '' }}>
+                                            Cancel
+                                        </option>
 
                                     </select>
-                                    <button class="btn btn-success btn-sm">✔</button>
+
+                                    <button type="submit" class="btn btn-success btn-sm" title="Update Status">
+                                        ✔
+                                    </button>
+
                                 </div>
                             </form>
 
@@ -427,7 +473,13 @@
                                 inputmode="numeric" maxlength="6" placeholder="Enter 6 digit pincode" required>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Remarks <span class="text-danger">*</span>
+                            </label>
 
+                            <textarea name="remarks" class="form-control english-field" rows="4" placeholder="Enter Remarks" required>{{ $order->remarks }}</textarea>
+                        </div>
                         {{-- SHIPPING ADDRESS --}}
                         <div class="mb-3">
                             <label class="form-label fw-bold">

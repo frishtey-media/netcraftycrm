@@ -24,9 +24,7 @@ use Illuminate\Support\Facades\Log;
 class InventoryController extends Controller
 
 {
-    /**
-     * Check if logged-in user is a client.
-     */
+
     private function isClient()
     {
         return auth()->check()
@@ -1608,13 +1606,6 @@ class InventoryController extends Controller
                 ]
             );
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | ERROR
-        |--------------------------------------------------------------------------
-        */
-
             return redirect()
                 ->route('inventory.rto')
                 ->with(
@@ -2463,11 +2454,6 @@ class InventoryController extends Controller
     }
     public function generateLabels(Request $request)
     {
-        /*
-    |--------------------------------------------------------------------------
-    | STEP 1 - VALIDATION
-    |--------------------------------------------------------------------------
-    */
 
         $request->validate([
             'order_ids' => 'required|array|min:1',
@@ -2475,25 +2461,11 @@ class InventoryController extends Controller
             'sender_id' => 'required|exists:label_senders,id',
         ]);
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | VARIABLES
-    |--------------------------------------------------------------------------
-    */
-
         $errors = [];
 
         $processedOrders = 0;
         $stockDeducted = 0;
         $salesCreated = 0;
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | STEP 2 - UNIQUE ORDER IDS
-    |--------------------------------------------------------------------------
-    */
 
         $selectedIds = collect($request->order_ids)
             ->map(function ($id) {
@@ -2501,13 +2473,6 @@ class InventoryController extends Controller
             })
             ->unique()
             ->values();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | STEP 3 - GET SENDER
-    |--------------------------------------------------------------------------
-    */
 
         try {
 
@@ -2527,13 +2492,6 @@ class InventoryController extends Controller
                 ]]
             );
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | STEP 4 - SENDER SECURITY
-    |--------------------------------------------------------------------------
-    */
 
         if (
             $this->isClient()
@@ -2555,24 +2513,10 @@ class InventoryController extends Controller
             );
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | STEP 5 - GET ONLY PENDING ORDERS
-    |--------------------------------------------------------------------------
-    */
-
         $query = Order::whereIn(
             'id',
             $selectedIds->toArray()
         );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | CLIENT SECURITY
-    |--------------------------------------------------------------------------
-    */
 
         if ($this->isClient()) {
 
@@ -2582,13 +2526,6 @@ class InventoryController extends Controller
             );
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | ONLY PENDING ORDERS
-    |--------------------------------------------------------------------------
-    */
-
         $query->where(function ($q) {
 
             $q->whereNull('label_status')
@@ -2597,15 +2534,6 @@ class InventoryController extends Controller
                     'pending'
                 );
         });
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | IMPORTANT
-    |--------------------------------------------------------------------------
-    | $orders MUST BE CREATED BEFORE STEP 6
-    |--------------------------------------------------------------------------
-    */
 
         $orders = $query
             ->orderBy('id')

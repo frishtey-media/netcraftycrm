@@ -8,7 +8,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use App\Imports\PaymentImport;
 use App\Models\Client;
-
+use App\Models\Payment;
 use App\Exports\DeliveryReportExport;
 
 class DeliveryController extends Controller
@@ -279,17 +279,18 @@ class DeliveryController extends Controller
         $updated = 0;
         $notFound = 0;
         $skipped = 0;
+        $paymentMatched = 0;
 
         foreach ($rows[0] as $key => $row) {
 
-            // Skip Excel Header
+            // Skip header
             if ($key === 0) {
                 continue;
             }
 
             /*
         |--------------------------------------------------------------------------
-        | Excel Columns
+        | India Post Excel Columns
         |--------------------------------------------------------------------------
         |
         | 0 = Sr. No.
@@ -307,13 +308,11 @@ class DeliveryController extends Controller
             $status     = trim((string) ($row[6] ?? ''));
             $lastEvent  = trim((string) ($row[7] ?? ''));
 
-            // Skip if Article Number is empty
             if ($trackingNo === '') {
                 $skipped++;
                 continue;
             }
 
-            // Skip if Status is empty
             if ($status === '') {
                 $skipped++;
                 continue;
@@ -321,11 +320,26 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Find Order By Article Number / Barcode
+        | Normalize Article Number
         |--------------------------------------------------------------------------
         */
 
-            $order = Order::where('barcode', $trackingNo)->first();
+            $trackingNo = strtoupper(
+                preg_replace('/\s+/', '', $trackingNo)
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | Find Order
+        |--------------------------------------------------------------------------
+        */
+
+            $order = Order::whereRaw(
+                'TRIM(UPPER(barcode)) = ?',
+                [$trackingNo]
+            )
+                ->latest('id')
+                ->first();
 
             if (!$order) {
                 $notFound++;
@@ -334,8 +348,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | IMPORTANT:
-        | Save EXACT Excel Status
+        | Save Status
         |--------------------------------------------------------------------------
         */
 
@@ -343,7 +356,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Save Last Event / Remark
+        | Save Last Event
         |--------------------------------------------------------------------------
         */
 
@@ -353,15 +366,8 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Extract Date From Last Event
+        | Extract Event Date
         |--------------------------------------------------------------------------
-        |
-        | Example:
-        | Item Delivered (Addressee) at Kahniwan SO on 21/08/2026 16:27:59
-        |
-        | Extracts:
-        | 21/08/2026
-        |
         */
 
             $eventDate = null;
@@ -374,11 +380,13 @@ class DeliveryController extends Controller
                 )
             ) {
                 try {
+
                     $eventDate = Carbon::createFromFormat(
                         'd/m/Y',
                         $matches[1]
                     )->format('Y-m-d');
                 } catch (\Exception $e) {
+
                     $eventDate = null;
                 }
             }
@@ -400,12 +408,6 @@ class DeliveryController extends Controller
         |--------------------------------------------------------------------------
         | RTO Date
         |--------------------------------------------------------------------------
-        |
-        | Any status beginning with RTO:
-        |
-        | RTO-intrasit
-        | RTO Received
-        |
         */
 
             if (
@@ -419,20 +421,86 @@ class DeliveryController extends Controller
         |--------------------------------------------------------------------------
         | In Transit Date
         |--------------------------------------------------------------------------
-        |
-        | Only set first time if currently empty.
-        |
         */
 
             if (
                 stripos($status, 'intransit') !== false ||
                 stripos($status, 'in transit') !== false
             ) {
+
                 if (
                     $eventDate &&
                     empty($order->intransitdate)
                 ) {
                     $order->intransitdate = $eventDate;
+                }
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | DELIVERY PAYMENT RECONCILIATION
+        |--------------------------------------------------------------------------
+        |
+        | IMPORTANT:
+        |
+        | We don't simply mark every Delivered order as paid.
+        |
+        | First check Payment table using the same Article Number.
+        |
+        */
+
+            if (
+                strcasecmp($status, 'Delivered') === 0
+            ) {
+
+                $payment = Payment::whereRaw(
+                    'TRIM(UPPER(article_number)) = ?',
+                    [$trackingNo]
+                )
+                    ->latest('id')
+                    ->first();
+
+                /*
+            |--------------------------------------------------------------------------
+            | Payment Already Received
+            |--------------------------------------------------------------------------
+            */
+
+                if ($payment) {
+
+                    $order->recivedpaysts = 1;
+
+                    $order->receivedcodamt =
+                        $payment->cod_value ?? 0;
+
+                    if (!empty($payment->bill_date)) {
+
+                        $order->pay_bill_date =
+                            $payment->bill_date;
+                    }
+
+                    /*
+                | Payment record knows actual delivery date
+                */
+
+                    $payment->order_id = $order->id;
+
+                    if ($eventDate) {
+                        $payment->delivered_date = $eventDate;
+                    }
+
+                    $payment->save();
+
+                    $paymentMatched++;
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Payment Not Received Yet
+            |--------------------------------------------------------------------------
+            */ else {
+
+                    $order->recivedpaysts = 0;
                 }
             }
 
@@ -444,12 +512,53 @@ class DeliveryController extends Controller
 
             $order->save();
 
+            /*
+        |--------------------------------------------------------------------------
+        | ByteSpeed Status Mapping
+        |--------------------------------------------------------------------------
+        */
+
+            $statusLower = strtolower(
+                trim($status)
+            );
+
+            $byteSpeedStatus = match ($statusLower) {
+
+                'delivered'
+                => 'delivered',
+
+                'customer - intrasit'
+                => 'in_transit',
+
+                'out for delivery'
+                => 'out_for_delivery',
+
+                'on hold'
+                => 'on_hold',
+
+                default
+                => null,
+            };
+
+            if ($byteSpeedStatus) {
+
+                app(\App\Services\ByteSpeedService::class)
+                    ->pushStatus(
+                        $order,
+                        $byteSpeedStatus
+                    );
+            }
+
             $updated++;
         }
 
         return back()->with(
             'delivery_success',
-            "{$updated} records updated successfully. {$notFound} tracking numbers not found. {$skipped} rows skipped."
+
+            "{$updated} records updated successfully. "
+                . "{$paymentMatched} payment records matched. "
+                . "{$notFound} tracking numbers not found. "
+                . "{$skipped} rows skipped."
         );
     }
     public function paymentupload(Request $request)
@@ -458,11 +567,14 @@ class DeliveryController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv'
         ]);
 
-        Excel::import(new PaymentImport, $request->file('file'));
+        Excel::import(
+            new PaymentImport,
+            $request->file('file')
+        );
 
         return back()->with(
             'payment_success',
-            'Payment uploaded successfully.'
+            'Payment uploaded and delivery-payment matching completed successfully.'
         );
     }
 

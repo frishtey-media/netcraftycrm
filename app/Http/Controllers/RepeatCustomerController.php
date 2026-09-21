@@ -153,7 +153,7 @@ class RepeatCustomerController extends Controller
 
             )
 
-            ->havingRaw("COUNT(*) >= 2")
+            ->havingRaw("COUNT(*) >= 1")
 
             ->orderByDesc('total_orders')
 

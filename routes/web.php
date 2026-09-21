@@ -499,7 +499,6 @@ Route::middleware('calling_user')->group(function () {
         ->name('calling.dashboard');
 
 
-
     Route::get('/calling/orders', [CallingUserAuthController::class, 'orders'])
         ->name('calling.orders');
 
@@ -552,8 +551,6 @@ Route::middleware('calling_user')->group(function () {
 
     Route::get('/calling/cancel', [CallingUserAuthController::class, 'cancel'])
         ->name('calling.cancel');
-
-
 
     Route::get('/calling/not_reachable', [CallingUserAuthController::class, 'not_reachable'])
         ->name('calling.not_reachable');

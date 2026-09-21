@@ -29,11 +29,6 @@
         }
     </style>
 
-
-    {{-- ========================================================= --}}
-    {{-- SUCCESS / ERROR --}}
-    {{-- ========================================================= --}}
-
     @if (session('success'))
         <div class="alert alert-success alert-dismissible fade show">
 
@@ -53,7 +48,11 @@
 
         </div>
     @endif
-
+    @error('customer_phone')
+        <div class="text-danger mt-1">
+            {{ $message }}
+        </div>
+    @enderror
 
     @if ($errors->any())
 

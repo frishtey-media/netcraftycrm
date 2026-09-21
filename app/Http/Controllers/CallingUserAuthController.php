@@ -7,6 +7,7 @@ use App\Models\callingorder;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CallingUserAuthController extends Controller
 {
@@ -49,11 +50,6 @@ class CallingUserAuthController extends Controller
     {
         $userId = Auth::guard('calling_user')->id();
 
-        /*
-    |--------------------------------------------------------------------------
-    | DATE FILTER
-    |--------------------------------------------------------------------------
-    */
 
         $fromDate = $request->filled('from')
             ? $request->from
@@ -65,14 +61,6 @@ class CallingUserAuthController extends Controller
 
         $from = Carbon::parse($fromDate)->startOfDay();
         $to   = Carbon::parse($toDate)->endOfDay();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | BASE QUERY
-    | Same as Admin Report
-    |--------------------------------------------------------------------------
-    */
 
         $baseQuery = CallingOrder::query()
             ->where('assigned_to', $userId)
@@ -422,7 +410,7 @@ class CallingUserAuthController extends Controller
     {
         $userId = Auth::guard('calling_user')->id();
 
-        // Only RTO + Pending orders for client tabs/count
+
         $clients = CallingOrder::select(
             'client_id',
             DB::raw('COUNT(*) as total')
@@ -434,24 +422,27 @@ class CallingUserAuthController extends Controller
             ->with('client')
             ->get();
 
-        // Only RTO + Pending orders
+
         $query = CallingOrder::where('assigned_to', $userId)
             ->where('order_source', 'RTO')
             ->where('status', 'pending');
 
-        // Client filter
+
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
         }
 
-        $orders = $query->latest()->get();
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
         return view('calling.rtoorders', [
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'RTO Pending Orders',
             'statusClass' => 'warning',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
 
@@ -474,7 +465,7 @@ class CallingUserAuthController extends Controller
             ->get();
 
 
-        // Only Pending orders where order_source is NULL or empty
+
         $query = CallingOrder::where('assigned_to', $userId)
             ->where(function ($q) {
                 $q->whereNull('order_source')
@@ -483,14 +474,17 @@ class CallingUserAuthController extends Controller
             ->where('status', 'pending');
 
 
-        // Client filter
+
         if ($request->filled('client_id')) {
             $query->where('client_id', $request->client_id);
         }
 
 
-        // Latest orders first
-        $orders = $query->latest()->get();
+
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
 
         return view('calling.weborders', [
@@ -498,7 +492,7 @@ class CallingUserAuthController extends Controller
             'clients' => $clients,
             'statusLabel' => 'Web Pending Orders',
             'statusClass' => 'warning',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
 
@@ -522,7 +516,6 @@ class CallingUserAuthController extends Controller
             ->get();
 
 
-        // Only Pending orders where order_source is NULL or empty
         $query = CallingOrder::where('assigned_to', $userId)
             ->where(function ($q) {
                 $q->whereNull('order_source')
@@ -533,14 +526,17 @@ class CallingUserAuthController extends Controller
 
 
 
-        // Client filter
+
         if ($request->filled('client_id')) {
             $query->where('client_id', $request->client_id);
         }
 
 
-        // Latest orders first
-        $orders = $query->latest()->get();
+
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
 
         return view('calling.prepaidorders', [
@@ -548,7 +544,7 @@ class CallingUserAuthController extends Controller
             'clients' => $clients,
             'statusLabel' => 'Web Pending Orders',
             'statusClass' => 'warning',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
     public function WhatsApp(Request $request)
@@ -570,7 +566,6 @@ class CallingUserAuthController extends Controller
             ->get();
 
 
-        // Only Pending orders where order_source is NULL or empty
         $query = CallingOrder::where('assigned_to', $userId)
             ->where(function ($q) {
                 $q->whereNull('order_source')
@@ -579,22 +574,22 @@ class CallingUserAuthController extends Controller
             ->where('status', 'pending');
 
 
-        // Client filter
         if ($request->filled('client_id')) {
             $query->where('client_id', $request->client_id);
         }
 
 
-        // Latest orders first
-        $orders = $query->latest()->get();
-
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
         return view('calling.WhatsApp', [
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'Whatsapp Pending Orders',
             'statusClass' => 'warning',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
 
@@ -602,7 +597,7 @@ class CallingUserAuthController extends Controller
     {
         $userId = Auth::guard('calling_user')->id();
 
-        // Only RTO + Pending orders for client tabs/count
+
         $clients = CallingOrder::select(
             'client_id',
             DB::raw('COUNT(*) as total')
@@ -614,31 +609,34 @@ class CallingUserAuthController extends Controller
             ->with('client')
             ->get();
 
-        // Only RTO + Pending orders
+
         $query = CallingOrder::where('assigned_to', $userId)
             ->where('order_source', 'shopify_abandoned_checkout')
             ->where('status', 'pending');
 
-        // Client filter
+
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
         }
 
-        $orders = $query->latest()->get();
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
         return view('calling.abandoned', [
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'Abandoned Pending Orders',
             'statusClass' => 'warning',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
     public function deliverordersorders(Request $request)
     {
         $userId = Auth::guard('calling_user')->id();
 
-        // Only RTO + Pending orders for client tabs/count
+
         $clients = CallingOrder::select(
             'client_id',
             DB::raw('COUNT(*) as total')
@@ -650,24 +648,27 @@ class CallingUserAuthController extends Controller
             ->with('client')
             ->get();
 
-        // Only RTO + Pending orders
+
         $query = CallingOrder::where('assigned_to', $userId)
             ->where('order_source', 'deliveredreorder')
             ->where('status', 'pending');
 
-        // Client filter
+
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
         }
 
-        $orders = $query->latest()->get();
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
         return view('calling.deliverorders', [
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'Deliver Pending Orders',
             'statusClass' => 'warning',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
 
@@ -688,15 +689,17 @@ class CallingUserAuthController extends Controller
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
         }
-
-        $orders = $query->latest()->get();
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
         return view('calling.orders', [
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'Pending',
             'statusClass' => 'danger',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
     private function getStaffDeliveryOrders(Request $request, $deliveryStatus)
@@ -704,64 +707,86 @@ class CallingUserAuthController extends Controller
         $userId = Auth::guard('calling_user')->id();
 
         $query = DB::table('callingorder as co')
-            ->join('orders as o', 'o.order_id', '=', 'co.order_id')
 
-            // Latest call for this staff + order
-            ->leftJoin(DB::raw('
-            (
-                SELECT cl1.*
-                FROM calling_logs cl1
-                INNER JOIN (
-                    SELECT order_id, staff_id, MAX(id) as max_id
-                    FROM calling_logs
-                    GROUP BY order_id, staff_id
-                ) cl2
-                ON cl1.id = cl2.max_id
-            ) as cl
-        '), function ($join) {
-                $join->on('cl.order_id', '=', 'co.order_id')
-                    ->on('cl.staff_id', '=', 'co.assigned_to');
-            })
-
-            ->where('co.assigned_to', $userId)
-
-            ->where('o.delivery_status', $deliveryStatus)
-
-            ->select(
-                'co.id',
-                'co.order_id',
-                'co.client_id',
-                'co.assigned_to',
-
-                'o.customer_name',
-                'o.customer_phone',
-                'o.shipping_address',
-                'o.city',
-                'o.barcode',
-                'o.state',
-                'o.pincode',
-                'o.delivery_remark',
-                'o.product as product_name',
-                'o.quantity',
-                'o.amount',
-                'o.payment_mode',
-                'o.date as order_date',
-                'o.delivery_status',
-
-                // CALL TRACKING
-                'cl.id as call_log_id',
-                'cl.call_status',
-                'cl.called_at'
+            ->join(
+                'orders as o',
+                'o.order_id',
+                '=',
+                'co.order_id'
             )
 
-            ->orderByDesc('o.date');
+            ->leftJoin('calling_logs as cl', function ($join) {
 
-        // CLIENT FILTER
+                $join->on(
+                    'cl.order_id',
+                    '=',
+                    'co.order_id'
+                );
+
+                $join->on(
+                    'cl.staff_id',
+                    '=',
+                    'co.assigned_to'
+                );
+
+
+                $join->whereRaw('
+                cl.id = (
+                    SELECT MAX(cl2.id)
+                    FROM calling_logs AS cl2
+                    WHERE cl2.order_id = co.order_id
+                    AND cl2.staff_id = co.assigned_to
+                )
+            ');
+            })
+
+            ->where(
+                'co.assigned_to',
+                $userId
+            )
+
+            ->where(
+                'o.delivery_status',
+                $deliveryStatus
+            );
+
+
         if ($request->filled('client_id')) {
-            $query->where('co.client_id', $request->client_id);
+            $query->where(
+                'co.client_id',
+                $request->client_id
+            );
         }
 
-        return $query->get();
+        $query->select(
+            'co.id',
+            'co.order_id',
+            'co.client_id',
+            'co.assigned_to',
+            'o.customer_name',
+            'o.customer_phone',
+            'o.shipping_address',
+            'o.city',
+            'o.barcode',
+            'o.state',
+            'o.pincode',
+            'o.delivery_remark',
+            'o.product as product_name',
+            'o.quantity',
+            'o.amount',
+            'o.payment_mode',
+            'o.date as order_date',
+            'o.delivery_status',
+            'cl.id as call_log_id',
+            'cl.call_status',
+            'cl.called_at'
+        );
+
+        $query->orderByDesc('o.date');
+
+        return $query
+            ->paginate(50)
+            ->withQueryString();
     }
     private function getStaffDeliveryCounts()
     {
@@ -835,7 +860,7 @@ class CallingUserAuthController extends Controller
             ->where('status', 'verified');
 
 
-        // Client Filter
+
         if ($request->filled('client_id')) {
 
             $query->where(
@@ -847,7 +872,8 @@ class CallingUserAuthController extends Controller
 
         $orders = $query
             ->latest('created_at')
-            ->get();
+            ->paginate(50)
+            ->withQueryString();
 
 
         return view('calling.verified', [
@@ -860,7 +886,7 @@ class CallingUserAuthController extends Controller
 
             'statusClass' => 'success',
 
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
 
         ]);
     }
@@ -883,14 +909,17 @@ class CallingUserAuthController extends Controller
             $query->where('client_id', $request->client_id);
         }
 
-        $orders = $query->latest()->get();
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
         return view('calling.same_order', [
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'same_order',
             'statusClass' => 'success',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
 
@@ -912,21 +941,27 @@ class CallingUserAuthController extends Controller
             $query->where('client_id', $request->client_id);
         }
 
-        $orders = $query->latest()->get();
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
         return view('calling.cancel', [
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'cancel',
             'statusClass' => 'success',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
     public function notReachable(Request $request)
     {
         $userId = Auth::guard('calling_user')->id();
 
-        $clients = CallingOrder::select('client_id', DB::raw('COUNT(*) as total'))
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
             ->where('assigned_to', $userId)
             ->where('status', 'not_reachable')
             ->groupBy('client_id')
@@ -936,18 +971,22 @@ class CallingUserAuthController extends Controller
         $query = CallingOrder::where('assigned_to', $userId)
             ->where('status', 'not_reachable');
 
-        if ($request->client_id) {
+        if ($request->filled('client_id')) {
             $query->where('client_id', $request->client_id);
         }
 
-        $orders = $query->latest()->get();
+
+        $orders = $query
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
 
         return view('calling.not_reachable', [
             'orders' => $orders,
             'clients' => $clients,
             'statusLabel' => 'Not Reachable',
             'statusClass' => 'secondary',
-            'statusCount' => $orders->count()
+            'statusCount' => $orders->total()
         ]);
     }
     public function update(Request $request, $id)
@@ -1027,6 +1066,12 @@ class CallingUserAuthController extends Controller
                 'max:1000',
                 'regex:/^[A-Za-z0-9\s.,\/\-#()]+$/'
             ],
+            'remarks' => [
+                'required',
+                'string',
+                'max:1000',
+                'regex:/^[A-Za-z0-9\s.,\/\-#()]+$/'
+            ],
 
         ], [
 
@@ -1050,6 +1095,7 @@ class CallingUserAuthController extends Controller
 
             'shipping_address.regex' =>
             'Shipping address must be in English only.',
+
 
         ]);
 
@@ -1091,6 +1137,8 @@ class CallingUserAuthController extends Controller
 
             'shipping_address' =>
             $request->shipping_address,
+            'remarks' =>
+            $request->remarks,
 
             'status' =>
             $request->status ?? $order->status,
@@ -1168,22 +1216,151 @@ class CallingUserAuthController extends Controller
 
         ]);
 
-
         return back()->with(
             'success',
             'Order Updated Successfully'
         );
     }
+    private function normalizePhone($phone)
+    {
+        $phone = preg_replace('/[^0-9]/', '', (string) $phone);
+
+        if (strlen($phone) === 12 && substr($phone, 0, 2) === '91') {
+            $phone = substr($phone, 2);
+        }
+
+        if (strlen($phone) === 11 && substr($phone, 0, 1) === '0') {
+            $phone = substr($phone, 1);
+        }
+
+        return $phone;
+    }
     public function statusupdate(Request $request, $id)
     {
-        $order = CallingOrder::findOrFail($id);
+        try {
 
-        $order->update([
+            $order = CallingOrder::findOrFail($id);
 
-            'status'          => $request->status ?? $order->status, // fallback safe
-        ]);
+            $request->validate([
+                'status' => 'required|in:verified,same_order,not_reachable,cancel',
+            ]);
 
-        return back()->with('success', 'Order Updated');
+
+            /*
+        |--------------------------------------------------------------------------
+        | VERIFIED DUPLICATE CHECK
+        |--------------------------------------------------------------------------
+        | Only check TODAY's records
+        |--------------------------------------------------------------------------
+        */
+
+            if ($request->status === 'verified') {
+
+                $currentPhone = $this->normalizePhone(
+                    $order->customer_phone
+                );
+
+                // TODAY date
+                $today = Carbon::today()->format('Y-m-d');
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | GET TODAY'S VERIFIED ORDERS
+            |--------------------------------------------------------------------------
+            */
+
+                $verifiedOrders = CallingOrder::where(
+                    'client_id',
+                    $order->client_id
+                )
+                    ->whereDate(
+                        'order_date',
+                        $today
+                    )
+                    ->where(
+                        'status',
+                        'verified'
+                    )
+                    ->where(
+                        'id',
+                        '!=',
+                        $order->id
+                    )
+                    ->get([
+                        'id',
+                        'customer_phone',
+                        'order_id'
+                    ]);
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | COMPARE PHONE
+            |--------------------------------------------------------------------------
+            */
+
+                foreach ($verifiedOrders as $verifiedOrder) {
+
+                    $existingPhone = $this->normalizePhone(
+                        $verifiedOrder->customer_phone
+                    );
+
+                    if (
+                        !empty($currentPhone) &&
+                        $currentPhone === $existingPhone
+                    ) {
+
+                        return back()
+                            ->withInput()
+                            ->with(
+                                'error',
+                                'This customer number is already verified for this client today. Same customer/order cannot be verified again.'
+                            );
+                    }
+                }
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | UPDATE STATUS
+        |--------------------------------------------------------------------------
+        */
+
+            $order->update([
+                'status' => $request->status,
+                'updated_at' => now(),
+            ]);
+
+
+            return back()->with(
+                'success',
+                'Order status updated successfully.'
+            );
+        } catch (\Throwable $e) {
+
+            Log::error('Calling order status update failed', [
+
+                'order_id' => $id,
+
+                'status' => $request->status ?? null,
+
+                'error' => $e->getMessage(),
+
+                'file' => $e->getFile(),
+
+                'line' => $e->getLine(),
+            ]);
+
+
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Order update failed: ' . $e->getMessage()
+                );
+        }
     }
     public function logout()
     {

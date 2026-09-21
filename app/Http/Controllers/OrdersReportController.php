@@ -9,6 +9,16 @@ use Carbon\Carbon;
 
 class OrdersReportController extends Controller
 {
+
+    private function isClient()
+    {
+        return auth()->check() && auth()->user()->role === 'client';
+    }
+
+    private function clientId()
+    {
+        return auth()->user()->client_id;
+    }
     public function index(Request $request)
     {
 
@@ -20,14 +30,40 @@ class OrdersReportController extends Controller
             ?: now()->format('Y-m-d');
 
 
-        $clients = DB::table('clients')
-            ->select(
-                'id',
-                'client_name'
-            )
-            ->orderBy('client_name')
-            ->get();
+        $user = auth()->user();
 
+        if ($this->isClient()) {
+
+            // Client login: only own client
+            $clients = DB::table('clients')
+                ->select('id', 'client_name')
+                ->where('id', $this->clientId())
+                ->orderBy('client_name')
+                ->get();
+
+            // Client ke liye client_id automatically set
+            $clientId = $this->clientId();
+        } else {
+
+            // Super Admin / other admin: all clients
+            $clients = DB::table('clients')
+                ->select('id', 'client_name')
+                ->orderBy('client_name')
+                ->get();
+
+            $clientId = $request->input('client_id');
+        }
+        $staffIds = $request->input('staff_ids', []);
+
+        if (!is_array($staffIds)) {
+            $staffIds = [$staffIds];
+        }
+
+        $staffIds = array_values(
+            array_filter($staffIds, function ($id) {
+                return $id !== null && $id !== '';
+            })
+        );
 
         $staffQuery = DB::table('calling_users as cu')
             ->join(
@@ -43,23 +79,23 @@ class OrdersReportController extends Controller
             ->where('cu.status', 1)
             ->distinct();
 
-        if ($request->filled('client_id')) {
+        if ($this->isClient()) {
 
+            // Logged-in client ke staff only
+            $staffQuery->where(
+                'c.client_id',
+                $this->clientId()
+            );
+        } elseif ($request->filled('client_id')) {
+
+            // Super Admin selected client ke staff
             $staffQuery->where(
                 'c.client_id',
                 $request->client_id
             );
         }
 
-        $staffQuery->whereBetween(
-            'c.updated_at',
-            [
-                Carbon::parse($dateFrom)->startOfDay(),
-                Carbon::parse($dateTo)->endOfDay()
-            ]
-        );
-
-        $staffs = $staffQuery
+        $allStaff = $staffQuery
             ->orderBy('cu.name')
             ->get();
 
@@ -203,19 +239,27 @@ class OrdersReportController extends Controller
             ]
         );
 
-        if ($request->filled('client_id')) {
+        if ($this->isClient()) {
 
+            // Client can ONLY see own client's report
             $query->where(
                 'c.client_id',
-                $request->client_id
+                $this->clientId()
+            );
+        } elseif (!empty($clientId)) {
+
+            // Super Admin/Admin selected client
+            $query->where(
+                'c.client_id',
+                $clientId
             );
         }
 
-        if ($request->filled('staff_id')) {
+        if (!empty($staffIds)) {
 
-            $query->where(
+            $query->whereIn(
                 'c.assigned_to',
-                $request->staff_id
+                $staffIds
             );
         }
 
@@ -690,13 +734,13 @@ class OrdersReportController extends Controller
             compact(
 
                 'clients',
-                'staffs',
+
                 'sources',
                 'callStatuses',
                 'deliveryStatuses',
 
                 'rows',
-
+                'allStaff',
                 'overall',
                 'delivery',
                 'sourceStats',
@@ -1934,12 +1978,22 @@ class OrdersReportController extends Controller
             );
         }
 
+        $staffIds = $request->input('staff_ids', []);
 
-        if ($request->filled('staff_id')) {
+        if (!is_array($staffIds)) {
+            $staffIds = [$staffIds];
+        }
 
-            $query->where(
+        $staffIds = array_values(
+            array_filter($staffIds, function ($id) {
+                return $id !== null && $id !== '';
+            })
+        );
+
+        if (!empty($staffIds)) {
+            $query->whereIn(
                 'c.assigned_to',
-                $request->staff_id
+                $staffIds
             );
         }
 
