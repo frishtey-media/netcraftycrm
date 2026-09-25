@@ -426,7 +426,13 @@
                             <input type="text" name="pincode" value="{{ $order->pincode }}" class="form-control"
                                 inputmode="numeric" maxlength="6" placeholder="Enter 6 digit pincode" required>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">
+                                Remarks <span class="text-danger">*</span>
+                            </label>
 
+                            <textarea name="remarks" class="form-control english-field" rows="4" placeholder="Enter Remarks" required>{{ $order->remarks }}</textarea>
+                        </div>
 
                         {{-- SHIPPING ADDRESS --}}
                         <div class="mb-3">

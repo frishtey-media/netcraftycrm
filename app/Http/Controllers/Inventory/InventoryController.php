@@ -21,6 +21,7 @@ use App\Models\StockMovement;
 use App\Models\ClientProduct;
 use Illuminate\Support\Facades\Log;
 
+
 class InventoryController extends Controller
 
 {
@@ -3909,7 +3910,50 @@ class InventoryController extends Controller
                 'Y-m-d_H-i-s'
             ) .
             '.pdf';
+        /*
+|--------------------------------------------------------------------------
+| LABEL GENERATED SUCCESSFULLY
+|--------------------------------------------------------------------------
+| Client 5 = ByteSpeed
+| Client 2 = Ai Sency
+|--------------------------------------------------------------------------
+*/
 
+        try {
+
+            if ((int) $order->client_id === 5) {
+
+                app(\App\Services\ByteSpeedService::class)
+                    ->pushStatus($order, 'shipped');
+
+                Log::info('BYTE SPEED SHIPPED PUSHED', [
+                    'order_id' => $order->order_id,
+                    'client_id' => $order->client_id,
+                    'barcode' => $order->barcode,
+                    'status' => 'shipped',
+                ]);
+            } elseif ((int) $order->client_id === 2) {
+
+                app(\App\Services\AiSencyService::class)
+                    ->pushStatus($order, 'shipped');
+
+                Log::info('AI SENCY SHIPPED PUSHED', [
+                    'order_id' => $order->order_id,
+                    'client_id' => $order->client_id,
+                    'barcode' => $order->barcode,
+                    'status' => 'shipped',
+                ]);
+            }
+        } catch (\Throwable $e) {
+
+            Log::error('TRACKING MESSAGE PUSH FAILED', [
+                'order_id' => $order->order_id ?? null,
+                'client_id' => $order->client_id ?? null,
+                'barcode' => $order->barcode ?? null,
+                'status' => 'shipped',
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return response(
             $pdfContent,

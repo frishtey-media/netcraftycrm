@@ -10,6 +10,7 @@ use App\Imports\PaymentImport;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Exports\DeliveryReportExport;
+use Illuminate\Support\Facades\Log;
 
 class DeliveryController extends Controller
 {
@@ -273,7 +274,10 @@ class DeliveryController extends Controller
         $rows = Excel::toArray([], $request->file('file'));
 
         if (empty($rows) || empty($rows[0])) {
-            return back()->with('error', 'Excel file is empty or invalid.');
+            return back()->with(
+                'error',
+                'Excel file is empty or invalid.'
+            );
         }
 
         $updated = 0;
@@ -281,16 +285,25 @@ class DeliveryController extends Controller
         $skipped = 0;
         $paymentMatched = 0;
 
+        $byteSpeedSent = 0;
+        $aiSencySent = 0;
+        $integrationFailed = 0;
+
         foreach ($rows[0] as $key => $row) {
 
-            // Skip header
+            /*
+        |--------------------------------------------------------------------------
+        | SKIP HEADER
+        |--------------------------------------------------------------------------
+        */
+
             if ($key === 0) {
                 continue;
             }
 
             /*
         |--------------------------------------------------------------------------
-        | India Post Excel Columns
+        | INDIA POST EXCEL COLUMNS
         |--------------------------------------------------------------------------
         |
         | 0 = Sr. No.
@@ -302,11 +315,18 @@ class DeliveryController extends Controller
         | 6 = Status
         | 7 = Last Event
         |
+        |--------------------------------------------------------------------------
         */
 
             $trackingNo = trim((string) ($row[1] ?? ''));
             $status     = trim((string) ($row[6] ?? ''));
             $lastEvent  = trim((string) ($row[7] ?? ''));
+
+            /*
+        |--------------------------------------------------------------------------
+        | VALIDATION
+        |--------------------------------------------------------------------------
+        */
 
             if ($trackingNo === '') {
                 $skipped++;
@@ -320,7 +340,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Normalize Article Number
+        | NORMALIZE TRACKING NUMBER
         |--------------------------------------------------------------------------
         */
 
@@ -330,7 +350,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Find Order
+        | FIND ORDER BY BARCODE
         |--------------------------------------------------------------------------
         */
 
@@ -348,7 +368,17 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Save Status
+        | OLD STATUS
+        |--------------------------------------------------------------------------
+        */
+
+            $oldStatus = trim(
+                (string) $order->delivery_status
+            );
+
+            /*
+        |--------------------------------------------------------------------------
+        | UPDATE DELIVERY STATUS
         |--------------------------------------------------------------------------
         */
 
@@ -356,7 +386,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Save Last Event
+        | SAVE LAST EVENT
         |--------------------------------------------------------------------------
         */
 
@@ -366,7 +396,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Extract Event Date
+        | EXTRACT EVENT DATE
         |--------------------------------------------------------------------------
         */
 
@@ -393,7 +423,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Delivered Date
+        | DELIVERED DATE
         |--------------------------------------------------------------------------
         */
 
@@ -406,7 +436,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | RTO Date
+        | RTO DATE
         |--------------------------------------------------------------------------
         */
 
@@ -419,13 +449,17 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | In Transit Date
+        | IN TRANSIT DATE
         |--------------------------------------------------------------------------
         */
 
+            $statusLower = strtolower(
+                trim($status)
+            );
+
             if (
-                stripos($status, 'intransit') !== false ||
-                stripos($status, 'in transit') !== false
+                str_contains($statusLower, 'intrasit') ||
+                str_contains($statusLower, 'in transit')
             ) {
 
                 if (
@@ -438,15 +472,8 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | DELIVERY PAYMENT RECONCILIATION
+        | PAYMENT RECONCILIATION
         |--------------------------------------------------------------------------
-        |
-        | IMPORTANT:
-        |
-        | We don't simply mark every Delivered order as paid.
-        |
-        | First check Payment table using the same Article Number.
-        |
         */
 
             if (
@@ -459,12 +486,6 @@ class DeliveryController extends Controller
                 )
                     ->latest('id')
                     ->first();
-
-                /*
-            |--------------------------------------------------------------------------
-            | Payment Already Received
-            |--------------------------------------------------------------------------
-            */
 
                 if ($payment) {
 
@@ -479,26 +500,17 @@ class DeliveryController extends Controller
                             $payment->bill_date;
                     }
 
-                    /*
-                | Payment record knows actual delivery date
-                */
-
                     $payment->order_id = $order->id;
 
                     if ($eventDate) {
-                        $payment->delivered_date = $eventDate;
+                        $payment->delivered_date =
+                            $eventDate;
                     }
 
                     $payment->save();
 
                     $paymentMatched++;
-                }
-
-                /*
-            |--------------------------------------------------------------------------
-            | Payment Not Received Yet
-            |--------------------------------------------------------------------------
-            */ else {
+                } else {
 
                     $order->recivedpaysts = 0;
                 }
@@ -506,7 +518,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | Save Order
+        | SAVE ORDER
         |--------------------------------------------------------------------------
         */
 
@@ -514,49 +526,183 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | ByteSpeed Status Mapping
+        | MAP INDIA POST STATUS
+        |--------------------------------------------------------------------------
+        |
+        | Customer - Intrasit
+        | Customer - In Transit
+        | Intrasit
+        | In Transit
+        |       ↓
+        | in_transit
+        |
+        | Out for Delivery
+        |       ↓
+        | out_for_delivery
+        |
+        | On Hold / Hold
+        |       ↓
+        | on_hold
+        |
+        | Delivered
+        |       ↓
+        | delivered
+        |
         |--------------------------------------------------------------------------
         */
 
-            $statusLower = strtolower(
-                trim($status)
-            );
+            $trackingStatus = match (true) {
 
-            $byteSpeedStatus = match ($statusLower) {
-
-                'delivered'
+                $statusLower === 'delivered'
                 => 'delivered',
 
-                'customer - intrasit'
+                str_contains(
+                    $statusLower,
+                    'customer - intrasit'
+                ),
+                str_contains(
+                    $statusLower,
+                    'customer - in transit'
+                ),
+                str_contains(
+                    $statusLower,
+                    'intrasit'
+                ),
+                str_contains(
+                    $statusLower,
+                    'in transit'
+                )
                 => 'in_transit',
 
-                'out for delivery'
+                $statusLower === 'out for delivery'
                 => 'out_for_delivery',
 
-                'on hold'
+                $statusLower === 'on hold',
+                $statusLower === 'hold'
                 => 'on_hold',
 
-                default
-                => null,
+                default => null,
             };
 
-            if ($byteSpeedStatus) {
+            /*
+        |--------------------------------------------------------------------------
+        | SEND TRACKING MESSAGE ONLY WHEN STATUS CHANGED
+        |--------------------------------------------------------------------------
+        */
 
-                app(\App\Services\ByteSpeedService::class)
-                    ->pushStatus(
-                        $order,
-                        $byteSpeedStatus
+            if (
+                $trackingStatus &&
+                strtolower($oldStatus) !== strtolower($status)
+            ) {
+
+                try {
+
+                    /*
+                |--------------------------------------------------------------------------
+                | CLIENT 5 = BYTESPEED
+                |--------------------------------------------------------------------------
+                */
+
+                    if (
+                        (int) $order->client_id === 5
+                    ) {
+
+                        $sent = app(
+                            \App\Services\ByteSpeedService::class
+                        )->pushStatus(
+                            $order,
+                            $trackingStatus
+                        );
+
+                        if ($sent) {
+
+                            $byteSpeedSent++;
+
+                            Log::info(
+                                'BYTESPEED DELIVERY MESSAGE SENT',
+                                [
+                                    'order_id' => $order->order_id,
+                                    'client_id' => $order->client_id,
+                                    'barcode' => $order->barcode,
+                                    'status' => $trackingStatus,
+                                ]
+                            );
+                        } else {
+
+                            $integrationFailed++;
+                        }
+                    }
+
+                    /*
+                |--------------------------------------------------------------------------
+                | CLIENT 2 = AI SENCY
+                |--------------------------------------------------------------------------
+                */ elseif (
+                        (int) $order->client_id === 2
+                    ) {
+
+                        $sent = app(
+                            \App\Services\AiSencyService::class
+                        )->pushStatus(
+                            $order,
+                            $trackingStatus
+                        );
+
+                        if ($sent) {
+
+                            $aiSencySent++;
+
+                            Log::info(
+                                'AI SENCY DELIVERY MESSAGE SENT',
+                                [
+                                    'order_id' => $order->order_id,
+                                    'client_id' => $order->client_id,
+                                    'barcode' => $order->barcode,
+                                    'status' => $trackingStatus,
+                                ]
+                            );
+                        } else {
+
+                            $integrationFailed++;
+                        }
+                    }
+                } catch (\Throwable $e) {
+
+                    $integrationFailed++;
+
+                    Log::error(
+                        'DELIVERY MESSAGE INTEGRATION FAILED',
+                        [
+                            'order_id' => $order->order_id,
+                            'client_id' => $order->client_id,
+                            'status' => $trackingStatus,
+                            'error' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                        ]
                     );
+                }
             }
+
+            /*
+        |--------------------------------------------------------------------------
+        | UPDATED COUNT
+        |--------------------------------------------------------------------------
+        */
 
             $updated++;
         }
+
+
 
         return back()->with(
             'delivery_success',
 
             "{$updated} records updated successfully. "
                 . "{$paymentMatched} payment records matched. "
+                . "{$byteSpeedSent} ByteSpeed messages sent. "
+                . "{$aiSencySent} Ai Sency messages sent. "
+                . "{$integrationFailed} integration failures. "
                 . "{$notFound} tracking numbers not found. "
                 . "{$skipped} rows skipped."
         );

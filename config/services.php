@@ -14,8 +14,35 @@ return [
     |
     */
     'bytespeed' => [
-        'webhook_url' => env('BYTESPEED_WEBHOOK_URL'),
-        'secret' => env('BYTESPEED_WEBHOOK_SECRET'),
+        'url' => env('BYTESPEED_URL'),
+        'token' => env('BYTESPEED_TOKEN'),
+    ],
+
+    'ai_sency' => [
+
+        'url' => env('AISENCY_URL'),
+
+        'token' => env('AISENCY_TOKEN'),
+
+        'campaigns' => [
+
+            'shipped' =>
+            env('AISENCY_CAMPAIGN_SHIPPED'),
+
+            'in_transit' =>
+            env('AISENCY_CAMPAIGN_IN_TRANSIT'),
+
+            'out_for_delivery' =>
+            env('AISENCY_CAMPAIGN_OFD'),
+
+            'on_hold' =>
+            env('AISENCY_CAMPAIGN_HOLD'),
+
+            'delivered' =>
+            env('AISENCY_CAMPAIGN_DELIVERED'),
+
+        ],
+
     ],
 
     'delhivery' => [
