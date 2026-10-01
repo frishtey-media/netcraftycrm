@@ -242,7 +242,7 @@ class CallingOrderController extends Controller
                 ),
 
                 'callingorder.amount',
-
+                'callingorder.payment_mode',
                 /*
             | Calling status becomes delivery_status
             | for frontend.
@@ -334,7 +334,7 @@ class CallingOrderController extends Controller
                 ),
 
                 'orders.amount',
-
+                'orders.payment_mode',
                 /*
             | IMPORTANT:
             | orders uses delivery_status

@@ -11,6 +11,7 @@ use App\Models\Client;
 use App\Models\Payment;
 use App\Exports\DeliveryReportExport;
 use Illuminate\Support\Facades\Log;
+use App\Jobs\SendDeliveryStatusMessage;
 
 class DeliveryController extends Controller
 {
@@ -268,7 +269,7 @@ class DeliveryController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'file' => 'required|mimes:xlsx,xls,csv'
+            'file' => 'required|mimes:xlsx,xls,csv|max:51200',
         ]);
 
         $rows = Excel::toArray([], $request->file('file'));
@@ -280,69 +281,124 @@ class DeliveryController extends Controller
             );
         }
 
+        $excelRows = $rows[0];
+
+        /*
+    |--------------------------------------------------------------------------
+    | COUNTERS
+    |--------------------------------------------------------------------------
+    */
+
         $updated = 0;
         $notFound = 0;
         $skipped = 0;
         $paymentMatched = 0;
 
-        $byteSpeedSent = 0;
-        $aiSencySent = 0;
+        $messageQueued = 0;
         $integrationFailed = 0;
 
-        foreach ($rows[0] as $key => $row) {
+        /*
+    |--------------------------------------------------------------------------
+    | STEP 1
+    | Collect all tracking numbers first
+    |--------------------------------------------------------------------------
+    */
 
-            /*
-        |--------------------------------------------------------------------------
-        | SKIP HEADER
-        |--------------------------------------------------------------------------
-        */
+        $trackingNumbers = [];
 
+        foreach ($excelRows as $key => $row) {
+
+            // Header
             if ($key === 0) {
                 continue;
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | INDIA POST EXCEL COLUMNS
-        |--------------------------------------------------------------------------
-        |
-        | 0 = Sr. No.
-        | 1 = Article Number
-        | 2 = Article Type
-        | 3 = Booked At
-        | 4 = Booked On
-        | 5 = Destination
-        | 6 = Status
-        | 7 = Last Event
-        |
-        |--------------------------------------------------------------------------
-        */
+            $trackingNo = trim((string) ($row[1] ?? ''));
+            $status     = trim((string) ($row[6] ?? ''));
+
+            if ($trackingNo === '' || $status === '') {
+                $skipped++;
+                continue;
+            }
+
+            $trackingNo = strtoupper(
+                preg_replace('/\s+/', '', $trackingNo)
+            );
+
+            $trackingNumbers[] = $trackingNo;
+        }
+
+        $trackingNumbers = array_values(
+            array_unique($trackingNumbers)
+        );
+
+        if (empty($trackingNumbers)) {
+            return back()->with(
+                'error',
+                'No valid tracking numbers found in Excel.'
+            );
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | STEP 2
+    | BULK LOAD ORDERS
+    |
+    | Old code:
+    | One SQL query for every Excel row.
+    |
+    | New code:
+    | Bulk queries in chunks.
+    |--------------------------------------------------------------------------
+    */
+
+        $ordersByBarcode = [];
+
+        foreach (array_chunk($trackingNumbers, 1000) as $trackingChunk) {
+
+            $orders = Order::query()
+                ->whereIn('barcode', $trackingChunk)
+                ->orderBy('id', 'desc')
+                ->get();
+
+            foreach ($orders as $order) {
+
+                $barcode = strtoupper(
+                    preg_replace(
+                        '/\s+/',
+                        '',
+                        trim((string) $order->barcode)
+                    )
+                );
+
+                // Keep latest order
+                if (!isset($ordersByBarcode[$barcode])) {
+                    $ordersByBarcode[$barcode] = $order;
+                }
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | STEP 3
+    | PROCESS EXCEL
+    |--------------------------------------------------------------------------
+    */
+
+        foreach ($excelRows as $key => $row) {
+
+            // Skip header
+            if ($key === 0) {
+                continue;
+            }
 
             $trackingNo = trim((string) ($row[1] ?? ''));
             $status     = trim((string) ($row[6] ?? ''));
             $lastEvent  = trim((string) ($row[7] ?? ''));
 
-            /*
-        |--------------------------------------------------------------------------
-        | VALIDATION
-        |--------------------------------------------------------------------------
-        */
-
-            if ($trackingNo === '') {
-                $skipped++;
+            if ($trackingNo === '' || $status === '') {
                 continue;
             }
-
-            if ($status === '') {
-                $skipped++;
-                continue;
-            }
-
-            /*
-        |--------------------------------------------------------------------------
-        | NORMALIZE TRACKING NUMBER
-        |--------------------------------------------------------------------------
-        */
 
             $trackingNo = strtoupper(
                 preg_replace('/\s+/', '', $trackingNo)
@@ -350,16 +406,11 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | FIND ORDER BY BARCODE
+        | FIND ORDER FROM MEMORY
         |--------------------------------------------------------------------------
         */
 
-            $order = Order::whereRaw(
-                'TRIM(UPPER(barcode)) = ?',
-                [$trackingNo]
-            )
-                ->latest('id')
-                ->first();
+            $order = $ordersByBarcode[$trackingNo] ?? null;
 
             if (!$order) {
                 $notFound++;
@@ -372,13 +423,25 @@ class DeliveryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $oldStatus = trim(
-                (string) $order->delivery_status
+            $oldStatus = strtolower(
+                trim((string) $order->delivery_status)
+            );
+
+            $newStatus = strtolower(
+                trim($status)
             );
 
             /*
         |--------------------------------------------------------------------------
-        | UPDATE DELIVERY STATUS
+        | STATUS CHANGED?
+        |--------------------------------------------------------------------------
+        */
+
+            $statusChanged = $oldStatus !== $newStatus;
+
+            /*
+        |--------------------------------------------------------------------------
+        | UPDATE ORDER
         |--------------------------------------------------------------------------
         */
 
@@ -386,7 +449,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | SAVE LAST EVENT
+        | LAST EVENT
         |--------------------------------------------------------------------------
         */
 
@@ -396,7 +459,7 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | EXTRACT EVENT DATE
+        | EVENT DATE
         |--------------------------------------------------------------------------
         */
 
@@ -415,7 +478,7 @@ class DeliveryController extends Controller
                         'd/m/Y',
                         $matches[1]
                     )->format('Y-m-d');
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
 
                     $eventDate = null;
                 }
@@ -428,7 +491,7 @@ class DeliveryController extends Controller
         */
 
             if (
-                strcasecmp($status, 'Delivered') === 0 &&
+                $newStatus === 'delivered' &&
                 $eventDate
             ) {
                 $order->delivery_date = $eventDate;
@@ -441,7 +504,7 @@ class DeliveryController extends Controller
         */
 
             if (
-                stripos($status, 'RTO') === 0 &&
+                str_starts_with($newStatus, 'rto') &&
                 $eventDate
             ) {
                 $order->rtodate = $eventDate;
@@ -453,13 +516,9 @@ class DeliveryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $statusLower = strtolower(
-                trim($status)
-            );
-
             if (
-                str_contains($statusLower, 'intrasit') ||
-                str_contains($statusLower, 'in transit')
+                str_contains($newStatus, 'intrasit') ||
+                str_contains($newStatus, 'in transit')
             ) {
 
                 if (
@@ -476,14 +535,13 @@ class DeliveryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            if (
-                strcasecmp($status, 'Delivered') === 0
-            ) {
+            if ($newStatus === 'delivered') {
 
-                $payment = Payment::whereRaw(
-                    'TRIM(UPPER(article_number)) = ?',
-                    [$trackingNo]
-                )
+                $payment = Payment::query()
+                    ->whereRaw(
+                        'TRIM(UPPER(article_number)) = ?',
+                        [$trackingNo]
+                    )
                     ->latest('id')
                     ->first();
 
@@ -495,7 +553,6 @@ class DeliveryController extends Controller
                         $payment->cod_value ?? 0;
 
                     if (!empty($payment->bill_date)) {
-
                         $order->pay_bill_date =
                             $payment->bill_date;
                     }
@@ -518,190 +575,138 @@ class DeliveryController extends Controller
 
             /*
         |--------------------------------------------------------------------------
-        | SAVE ORDER
+        | SAVE ONLY IF SOMETHING CHANGED
         |--------------------------------------------------------------------------
         */
 
             $order->save();
 
+            $updated++;
+
             /*
         |--------------------------------------------------------------------------
-        | MAP INDIA POST STATUS
-        |--------------------------------------------------------------------------
-        |
-        | Customer - Intrasit
-        | Customer - In Transit
-        | Intrasit
-        | In Transit
-        |       ↓
-        | in_transit
-        |
-        | Out for Delivery
-        |       ↓
-        | out_for_delivery
-        |
-        | On Hold / Hold
-        |       ↓
-        | on_hold
-        |
-        | Delivered
-        |       ↓
-        | delivered
-        |
+        | STATUS MAPPING
         |--------------------------------------------------------------------------
         */
 
             $trackingStatus = match (true) {
 
-                $statusLower === 'delivered'
+                $newStatus === 'delivered'
                 => 'delivered',
 
-                str_contains(
-                    $statusLower,
-                    'customer - intrasit'
-                ),
-                str_contains(
-                    $statusLower,
-                    'customer - in transit'
-                ),
-                str_contains(
-                    $statusLower,
-                    'intrasit'
-                ),
-                str_contains(
-                    $statusLower,
-                    'in transit'
-                )
+                str_contains($newStatus, 'customer - intrasit'),
+                str_contains($newStatus, 'customer - in transit'),
+                str_contains($newStatus, 'intrasit'),
+                str_contains($newStatus, 'in transit')
                 => 'in_transit',
 
-                $statusLower === 'out for delivery'
+                $newStatus === 'out for delivery'
                 => 'out_for_delivery',
 
-                $statusLower === 'on hold',
-                $statusLower === 'hold'
+                $newStatus === 'on hold',
+                $newStatus === 'hold'
                 => 'on_hold',
 
-                default => null,
+                default
+                => null,
             };
 
             /*
         |--------------------------------------------------------------------------
-        | SEND TRACKING MESSAGE ONLY WHEN STATUS CHANGED
+        | QUEUE MESSAGE
+        |
+        | VERY IMPORTANT:
+        | Only send message when status actually changes.
         |--------------------------------------------------------------------------
         */
 
             if (
-                $trackingStatus &&
-                strtolower($oldStatus) !== strtolower($status)
+                $statusChanged &&
+                $trackingStatus
             ) {
 
                 try {
 
                     /*
-                |--------------------------------------------------------------------------
+                |----------------------------------------------------------------------
                 | CLIENT 5 = BYTESPEED
-                |--------------------------------------------------------------------------
+                |----------------------------------------------------------------------
                 */
 
-                    if (
-                        (int) $order->client_id === 5
-                    ) {
+                    if ((int) $order->client_id === 5) {
 
-                        $sent = app(
-                            \App\Services\ByteSpeedService::class
-                        )->pushStatus(
-                            $order,
-                            $trackingStatus
+                        SendDeliveryStatusMessage::dispatch(
+                            $order->id,
+                            $trackingStatus,
+                            'bytespeed'
                         );
 
-                        if ($sent) {
+                        $messageQueued++;
 
-                            $byteSpeedSent++;
-
-                            Log::info(
-                                'BYTESPEED DELIVERY MESSAGE SENT',
-                                [
-                                    'order_id' => $order->order_id,
-                                    'client_id' => $order->client_id,
-                                    'barcode' => $order->barcode,
-                                    'status' => $trackingStatus,
-                                ]
-                            );
-                        } else {
-
-                            $integrationFailed++;
-                        }
+                        Log::info(
+                            'BYTESPEED DELIVERY MESSAGE QUEUED',
+                            [
+                                'order_id' => $order->order_id,
+                                'client_id' => $order->client_id,
+                                'barcode' => $order->barcode,
+                                'status' => $trackingStatus,
+                            ]
+                        );
                     }
 
                     /*
-                |--------------------------------------------------------------------------
+                |----------------------------------------------------------------------
                 | CLIENT 2 = AI SENCY
-                |--------------------------------------------------------------------------
-                */ elseif (
-                        (int) $order->client_id === 2
-                    ) {
+                |----------------------------------------------------------------------
+                */ elseif ((int) $order->client_id === 2) {
 
-                        $sent = app(
-                            \App\Services\AiSencyService::class
-                        )->pushStatus(
-                            $order,
-                            $trackingStatus
+                        SendDeliveryStatusMessage::dispatch(
+                            $order->id,
+                            $trackingStatus,
+                            'aisency'
                         );
 
-                        if ($sent) {
+                        $messageQueued++;
 
-                            $aiSencySent++;
-
-                            Log::info(
-                                'AI SENCY DELIVERY MESSAGE SENT',
-                                [
-                                    'order_id' => $order->order_id,
-                                    'client_id' => $order->client_id,
-                                    'barcode' => $order->barcode,
-                                    'status' => $trackingStatus,
-                                ]
-                            );
-                        } else {
-
-                            $integrationFailed++;
-                        }
+                        Log::info(
+                            'AI SENCY DELIVERY MESSAGE QUEUED',
+                            [
+                                'order_id' => $order->order_id,
+                                'client_id' => $order->client_id,
+                                'barcode' => $order->barcode,
+                                'status' => $trackingStatus,
+                            ]
+                        );
                     }
                 } catch (\Throwable $e) {
 
                     $integrationFailed++;
 
                     Log::error(
-                        'DELIVERY MESSAGE INTEGRATION FAILED',
+                        'DELIVERY MESSAGE QUEUE FAILED',
                         [
                             'order_id' => $order->order_id,
                             'client_id' => $order->client_id,
                             'status' => $trackingStatus,
                             'error' => $e->getMessage(),
-                            'file' => $e->getFile(),
-                            'line' => $e->getLine(),
                         ]
                     );
                 }
             }
-
-            /*
-        |--------------------------------------------------------------------------
-        | UPDATED COUNT
-        |--------------------------------------------------------------------------
-        */
-
-            $updated++;
         }
 
-
+        /*
+    |--------------------------------------------------------------------------
+    | FINAL RESPONSE
+    |--------------------------------------------------------------------------
+    */
 
         return back()->with(
             'delivery_success',
 
             "{$updated} records updated successfully. "
                 . "{$paymentMatched} payment records matched. "
-                . "{$byteSpeedSent} ByteSpeed messages sent. "
-                . "{$aiSencySent} Ai Sency messages sent. "
+                . "{$messageQueued} messages queued. "
                 . "{$integrationFailed} integration failures. "
                 . "{$notFound} tracking numbers not found. "
                 . "{$skipped} rows skipped."

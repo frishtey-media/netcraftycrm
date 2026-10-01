@@ -1626,22 +1626,76 @@ class InventoryController extends Controller
             now()->toDateString()
         );
 
+        /*
+        |--------------------------------------------------------------------------
+        | FILTER INPUTS
+        |--------------------------------------------------------------------------
+        */
+
         $search = trim(
-            $request->input('search', '')
+            (string) $request->input('search', '')
         );
 
         $clientId = $request->input('client');
 
-        $product = $request->input('product');
+        $product = trim(
+            (string) $request->input('product', '')
+        );
 
         $quantity = $request->input('quantity');
 
-        $status = $request->input('status');
-
-        $labelType = $request->input(
-            'label_type',
-            'all'
+        $status = strtolower(
+            trim(
+                (string) $request->input('status', 'all')
+            )
         );
+
+        $labelType = strtolower(
+            trim(
+                (string) $request->input(
+                    'label_type',
+                    'all'
+                )
+            )
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | VALID FILTER VALUES
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            !in_array(
+                $labelType,
+                ['all', 'india_post', 'delivery'],
+                true
+            )
+        ) {
+            $labelType = 'all';
+        }
+
+        if (
+            !in_array(
+                $status,
+                ['all', 'pending', 'printed'],
+                true
+            )
+        ) {
+            $status = 'all';
+        }
+
+        if (
+            $quantity !== null
+            &&
+            $quantity !== ''
+            &&
+            $quantity !== 'all'
+            &&
+            !ctype_digit((string) $quantity)
+        ) {
+            $quantity = 'all';
+        }
 
         $perPage = (int) $request->input('per_page', 1000);
 
@@ -1684,7 +1738,7 @@ class InventoryController extends Controller
         }
 
         if (
-            !empty($product) &&
+            $product !== '' &&
             $product !== 'all'
         ) {
 
@@ -1695,13 +1749,14 @@ class InventoryController extends Controller
         }
 
         if (
-            !empty($quantity) &&
+            $quantity !== null &&
+            $quantity !== '' &&
             $quantity !== 'all'
         ) {
 
             $baseQuery->where(
                 'quantity',
-                $quantity
+                (int) $quantity
             );
         }
 
@@ -2610,29 +2665,32 @@ class InventoryController extends Controller
 
 
         /*
-    |--------------------------------------------------------------------------
-    | STEP 6 - PRODUCT / INVENTORY MAPPING
-    |--------------------------------------------------------------------------
-    |
-    | WAREHOUSE TYPE 1:
-    |     Direct label
-    |     No mapping
-    |     No stock
-    |     No sale
-    |
-    | WAREHOUSE TYPE 0:
-    |     Normal inventory flow
-    |
-    | CLIENT 5 COMBO:
-    |     Client Product ID 12
-    |         ↓
-    |     Inventory Product 11 + 17
-    |
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| STEP 6 - PRODUCT / INVENTORY MAPPING
+|--------------------------------------------------------------------------
+|
+| WAREHOUSE TYPE 1:
+|     Direct label. No inventory mapping / stock / sale.
+|
+| WAREHOUSE TYPE 0:
+|     Normal inventory flow.
+|
+| CLIENT 5 COMBO:
+|
+|     1 combo = 1 Hair Oil + 1 Shampoo
+|
+|     Quantity 3:
+|         Hair Oil = 3
+|         Shampoo  = 3
+|         Total physical products = 6
+|
+| IMPORTANT:
+|     Client 5 combo NEVER calls findClientProduct().
+|
+|--------------------------------------------------------------------------
+*/
 
         $productGroups = [];
-
 
         foreach ($orders as $order) {
 
@@ -2645,7 +2703,6 @@ class InventoryController extends Controller
             $client = Client::find(
                 $order->client_id
             );
-
 
             if (!$client) {
 
@@ -2662,27 +2719,21 @@ class InventoryController extends Controller
                 continue;
             }
 
-
             /*
         |--------------------------------------------------------------------------
         | WAREHOUSE TYPE 1
         |--------------------------------------------------------------------------
         |
-        | VERY IMPORTANT:
-        |
-        | DO NOT DO ANY PRODUCT MAPPING.
-        |
-        | This order will directly go to PDF.
+        | Direct PDF label only.
+        | Do not map inventory.
         |
         */
 
             if (
                 (int) $client->warehousetype === 1
             ) {
-
                 continue;
             }
-
 
             /*
         |--------------------------------------------------------------------------
@@ -2691,7 +2742,6 @@ class InventoryController extends Controller
         */
 
             $quantity = (int) $order->quantity;
-
 
             if ($quantity <= 0) {
 
@@ -2708,102 +2758,45 @@ class InventoryController extends Controller
                 continue;
             }
 
-
-            /*
-        |--------------------------------------------------------------------------
-        | ORIGINAL PRODUCT NAME
-        |--------------------------------------------------------------------------
-        */
-
             $originalProductName = trim(
                 (string) $order->product
             );
 
+            $productNameLower = strtolower(
+                $originalProductName
+            );
 
             /*
         |--------------------------------------------------------------------------
-        | FIND CLIENT PRODUCT
-        |--------------------------------------------------------------------------
-        */
-
-            $clientProduct =
-                $this->findClientProduct(
-                    $originalProductName
-                );
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | CLIENT PRODUCT NOT FOUND
-        |--------------------------------------------------------------------------
-        */
-
-            if (!$clientProduct) {
-
-                $cleanName = preg_replace(
-                    '/\s*\(Qty\s*:\s*\d+\)\s*$/i',
-                    '',
-                    $originalProductName
-                );
-
-
-                $errors[] = [
-                    'step' => 'Product Mapping',
-                    'status' => 'FAILED',
-                    'order_id' => $order->order_id,
-                    'product' => $originalProductName,
-                    'message' =>
-                    'Product not found in client_products table. ' .
-                        'Cleaned Name: ' .
-                        trim($cleanName),
-                ];
-
-                continue;
-            }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | CLIENT 5 - COMBO PRODUCT
+        | CLIENT 5 COMBO DETECTION
         |--------------------------------------------------------------------------
         |
-        | client_products:
-        |
-        | 11 = Hair Oil
-        | 12 = Hair Oil + Shampoo Combo
-        | 17 = Shampoo Stock
-        |
-        | Combo 12 uses inventory:
-        |
-        | 11 = Hair Oil
-        | 17 = Shampoo Stock
+        | Match by product text, NOT client_products.
         |
         */
 
             $isClient5Combo =
                 (int) $order->client_id === 5
                 &&
-                (
-                    (int) $clientProduct->id === 12
-                    ||
-                    (
-                        stripos(
-                            $originalProductName,
-                            'hair oil'
-                        ) !== false
-                        &&
-                        stripos(
-                            $originalProductName,
-                            'shampoo'
-                        ) !== false
-                    )
+                str_contains(
+                    $productNameLower,
+                    'hair oil'
+                )
+                &&
+                str_contains(
+                    $productNameLower,
+                    'shampoo'
                 );
-
 
             /*
         |--------------------------------------------------------------------------
         | CLIENT 5 COMBO PROCESSING
         |--------------------------------------------------------------------------
+        |
+        | 1 combo = 1 Oil + 1 Shampoo.
+        |
+        | Quantity 3 = 3 Oil + 3 Shampoo.
+        |
         */
 
             if ($isClient5Combo) {
@@ -2813,43 +2806,37 @@ class InventoryController extends Controller
             | HAIR OIL INVENTORY
             |--------------------------------------------------------------------------
             |
-            | Client Product 11
+            | Client 5 inventory Product.name = 11
             |
             */
 
                 $hairOilQuery = Product::where(
                     'client_id',
                     5
-                )
-                    ->where(
-                        'name',
-                        11
-                    );
-
+                )->where(
+                    'name',
+                    11
+                );
 
                 /*
             |--------------------------------------------------------------------------
             | SHAMPOO INVENTORY
             |--------------------------------------------------------------------------
             |
-            | Client Product 17
+            | Client 5 inventory Product.name = 17
             |
             */
 
                 $shampooQuery = Product::where(
                     'client_id',
                     5
-                )
-                    ->where(
-                        'name',
-                        17
-                    );
-
+                )->where(
+                    'name',
+                    17
+                );
 
                 $hairOilProduct = null;
-
                 $shampooProduct = null;
-
 
                 /*
             |--------------------------------------------------------------------------
@@ -2867,8 +2854,8 @@ class InventoryController extends Controller
                             'warehouse_id',
                             $order->warehouse_id
                         )
+                        ->lockForUpdate()
                         ->first();
-
 
                     $shampooProduct =
                         (clone $shampooQuery)
@@ -2876,9 +2863,9 @@ class InventoryController extends Controller
                             'warehouse_id',
                             $order->warehouse_id
                         )
+                        ->lockForUpdate()
                         ->first();
                 }
-
 
                 /*
             |--------------------------------------------------------------------------
@@ -2889,16 +2876,18 @@ class InventoryController extends Controller
                 if (!$hairOilProduct) {
 
                     $hairOilProduct =
-                        $hairOilQuery->first();
+                        $hairOilQuery
+                        ->lockForUpdate()
+                        ->first();
                 }
-
 
                 if (!$shampooProduct) {
 
                     $shampooProduct =
-                        $shampooQuery->first();
+                        $shampooQuery
+                        ->lockForUpdate()
+                        ->first();
                 }
-
 
                 /*
             |--------------------------------------------------------------------------
@@ -2914,20 +2903,15 @@ class InventoryController extends Controller
 
                     $missing = [];
 
-
                     if (!$hairOilProduct) {
-
                         $missing[] =
-                            'Hair Oil (Inventory Name = 11)';
+                            'Hair Oil (Inventory name = 11)';
                     }
-
 
                     if (!$shampooProduct) {
-
                         $missing[] =
-                            'Shampoo Stock (Inventory Name = 17)';
+                            'Shampoo (Inventory name = 17)';
                     }
-
 
                     $errors[] = [
                         'step' => 'Inventory Mapping',
@@ -2935,14 +2919,24 @@ class InventoryController extends Controller
                         'order_id' => $order->order_id,
                         'product' => $originalProductName,
                         'message' =>
-                        'Combo inventory mapping not found: ' .
+                        'Client 5 combo inventory not found: ' .
                             implode(', ', $missing),
                     ];
-
 
                     continue;
                 }
 
+                /*
+            |--------------------------------------------------------------------------
+            | COMBO QUANTITY
+            |--------------------------------------------------------------------------
+            |
+            | DO NOT multiply by 3.
+            |
+            */
+
+                $hairOilQty = $quantity;
+                $shampooQty = $quantity;
 
                 /*
             |--------------------------------------------------------------------------
@@ -2955,7 +2949,6 @@ class InventoryController extends Controller
                     '_' .
                     $hairOilProduct->warehouse_id;
 
-
                 if (
                     !isset(
                         $productGroups[$hairOilKey]
@@ -2963,7 +2956,6 @@ class InventoryController extends Controller
                 ) {
 
                     $productGroups[$hairOilKey] = [
-
                         'product' =>
                         $hairOilProduct,
 
@@ -2987,20 +2979,16 @@ class InventoryController extends Controller
                     ];
                 }
 
-
                 $productGroups[$hairOilKey]['quantity']
-                    += $quantity;
-
+                    += $hairOilQty;
 
                 $productGroups[$hairOilKey]['amount']
                     +=
-                    $quantity *
+                    $hairOilQty *
                     (float) $hairOilProduct->price;
-
 
                 $productGroups[$hairOilKey]['orders'][]
                     = $order;
-
 
                 /*
             |--------------------------------------------------------------------------
@@ -3013,7 +3001,6 @@ class InventoryController extends Controller
                     '_' .
                     $shampooProduct->warehouse_id;
 
-
                 if (
                     !isset(
                         $productGroups[$shampooKey]
@@ -3021,7 +3008,6 @@ class InventoryController extends Controller
                 ) {
 
                     $productGroups[$shampooKey] = [
-
                         'product' =>
                         $shampooProduct,
 
@@ -3045,61 +3031,78 @@ class InventoryController extends Controller
                     ];
                 }
 
-
                 $productGroups[$shampooKey]['quantity']
-                    += $quantity;
-
+                    += $shampooQty;
 
                 $productGroups[$shampooKey]['amount']
                     +=
-                    $quantity *
+                    $shampooQty *
                     (float) $shampooProduct->price;
-
 
                 $productGroups[$shampooKey]['orders'][]
                     = $order;
-
 
                 /*
             |--------------------------------------------------------------------------
             | IMPORTANT
             |--------------------------------------------------------------------------
             |
-            | Do not execute normal mapping for combo.
+            | Combo is completely processed.
+            | NEVER execute normal client_products mapping.
             |
             */
 
                 continue;
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | NORMAL PRODUCT MAPPING
+        |--------------------------------------------------------------------------
+        */
+
+            $clientProduct =
+                $this->findClientProduct(
+                    $originalProductName
+                );
+
+            if (!$clientProduct) {
+
+                $cleanName = preg_replace(
+                    '/\s*\(Qty\s*:\s*\d+\)\s*$/i',
+                    '',
+                    $originalProductName
+                );
+
+                $errors[] = [
+                    'step' => 'Product Mapping',
+                    'status' => 'FAILED',
+                    'order_id' => $order->order_id,
+                    'product' => $originalProductName,
+                    'message' =>
+                    'Product not found in client_products table. ' .
+                        'Cleaned Name: ' .
+                        trim($cleanName),
+                ];
+
+                continue;
+            }
 
             /*
         |--------------------------------------------------------------------------
-        | NORMAL PRODUCT INVENTORY MAPPING
+        | NORMAL INVENTORY PRODUCT
         |--------------------------------------------------------------------------
-        |
-        | products.name = client_products.id
-        |
         */
 
             $productQuery = Product::where(
                 'client_id',
                 $order->client_id
-            )
-                ->where(
-                    'name',
-                    $clientProduct->id
-                );
-
+            )->where(
+                'name',
+                $clientProduct->id
+            );
 
             $product = null;
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | TRY ORDER WAREHOUSE
-        |--------------------------------------------------------------------------
-        */
 
             if (
                 !empty($order->warehouse_id)
@@ -3111,28 +3114,17 @@ class InventoryController extends Controller
                         'warehouse_id',
                         $order->warehouse_id
                     )
+                    ->lockForUpdate()
                     ->first();
             }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | FALLBACK ANY WAREHOUSE
-        |--------------------------------------------------------------------------
-        */
 
             if (!$product) {
 
                 $product =
-                    $productQuery->first();
+                    $productQuery
+                    ->lockForUpdate()
+                    ->first();
             }
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | INVENTORY NOT FOUND
-        |--------------------------------------------------------------------------
-        */
 
             if (!$product) {
 
@@ -3152,7 +3144,6 @@ class InventoryController extends Controller
                 continue;
             }
 
-
             /*
         |--------------------------------------------------------------------------
         | NORMAL PRODUCT GROUP
@@ -3164,7 +3155,6 @@ class InventoryController extends Controller
                 '_' .
                 $product->warehouse_id;
 
-
             if (
                 !isset(
                     $productGroups[$key]
@@ -3172,7 +3162,6 @@ class InventoryController extends Controller
             ) {
 
                 $productGroups[$key] = [
-
                     'product' =>
                     $product,
 
@@ -3196,21 +3185,17 @@ class InventoryController extends Controller
                 ];
             }
 
-
             $productGroups[$key]['quantity']
                 += $quantity;
-
 
             $productGroups[$key]['amount']
                 +=
                 $quantity *
                 (float) $product->price;
 
-
             $productGroups[$key]['orders'][]
                 = $order;
         }
-
 
         /*
     |--------------------------------------------------------------------------
@@ -3225,7 +3210,6 @@ class InventoryController extends Controller
                 $errors
             );
         }
-
 
         /*
     |--------------------------------------------------------------------------

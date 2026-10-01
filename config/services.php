@@ -15,7 +15,7 @@ return [
     */
     'bytespeed' => [
         'url' => env('BYTESPEED_URL'),
-        'token' => env('BYTESPEED_TOKEN'),
+        // 'token' => env('BYTESPEED_TOKEN'),
     ],
 
     'ai_sency' => [

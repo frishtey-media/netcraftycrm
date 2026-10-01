@@ -1658,10 +1658,7 @@
                         }
                     );
                 }
-
-
                 updateSelectedCount();
-
             }
         );
 
