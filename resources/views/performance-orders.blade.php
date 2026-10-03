@@ -586,7 +586,7 @@
                                     <th>Payment</th>
 
                                     <th>Status</th>
-
+                                    <th>Shipping Address</th>
                                     <th>Remarks</th>
 
                                     <th>Updated Date</th>
@@ -767,7 +767,11 @@
 
                                         </td>
 
+                                        <td>
 
+                                            {{ $order->shipping_address ?: '-' }}
+
+                                        </td>
                                         {{-- REMARKS --}}
                                         <td>
 

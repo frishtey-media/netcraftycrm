@@ -3,15 +3,27 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laravel\Sanctum\HasApiTokens;
 use App\Models\callingorder;
 
 class CallingUser extends Authenticatable
 {
+    use HasApiTokens;
+
     protected $table = 'calling_users';
 
-    protected $fillable = ['name', 'email', 'password', 'status'];
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'status',
+    ];
 
-    protected $hidden = ['password'];
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
     public function orders()
     {
         return $this->hasMany(
@@ -19,6 +31,7 @@ class CallingUser extends Authenticatable
             'assigned_to'
         );
     }
+
     public function clients()
     {
         return $this->belongsToMany(
