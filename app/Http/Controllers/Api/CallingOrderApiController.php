@@ -9,11 +9,78 @@ use Illuminate\Support\Facades\Log;
 use App\Models\KnowlarityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Client;
+use Laravel\Sanctum\PersonalAccessToken;
+use App\Models\ClientProduct;
 
 class CallingOrderApiController extends Controller
 {
+    private function generateOrderId($staff, $selectedDate)
+    {
+        $name = trim($staff->name);
 
+        $shortName =
+            strtoupper(substr($name, 0, 1)) .
+            strtolower(substr($name, -1));
 
+        $date = $selectedDate->format('d-m-y');
+
+        // Get the highest existing number for this staff + date
+        $prefix = $shortName . '-' . $date . '-';
+
+        $lastOrder = CallingOrder::where(
+            'assigned_to',
+            $staff->id
+        )
+            ->where(
+                'order_id',
+                'like',
+                $prefix . '%'
+            )
+            ->orderByRaw("
+                CAST(
+                    SUBSTRING_INDEX(order_id, '-', -1)
+                    AS UNSIGNED
+                ) DESC
+            ")
+            ->first();
+
+        if ($lastOrder) {
+
+            $lastNumber = (int) substr(
+                $lastOrder->order_id,
+                strrpos($lastOrder->order_id, '-') + 1
+            );
+
+            $count = $lastNumber + 1;
+        } else {
+
+            $count = 1;
+        }
+
+        // Make absolutely sure the ID is unique
+        do {
+
+            $orderId = $prefix . $count;
+
+            $exists = CallingOrder::where(
+                'order_id',
+                $orderId
+            )->exists();
+
+            if ($exists) {
+                $count++;
+            }
+        } while ($exists);
+
+        return $orderId;
+    }
+    private function apiCallingStaff(Request $request)
+    {
+        return $request->user()
+            ?: Auth::guard('calling_user')->user();
+    }
     public function verifiedOrders(Request $request)
     {
         $user = $request->user();
@@ -65,6 +132,1517 @@ class CallingOrderApiController extends Controller
                 'status_count' => $orders->total(),
             ],
         ]);
+    }
+
+    public function sameOrders(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        $userId = $user->id;
+
+        /*
+    |--------------------------------------------------------------------------
+    | Client Tabs
+    |--------------------------------------------------------------------------
+    */
+
+        $clients = CallingOrder::query()
+            ->select(
+                'client_id',
+                DB::raw('COUNT(*) as total')
+            )
+            ->where('assigned_to', $userId)
+            ->where('status', 'same_order')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get()
+            ->map(function ($row) {
+
+                return [
+                    'client_id' => $row->client_id,
+
+                    'client_name' =>
+                    $row->client->client_name
+                        ?? 'Client',
+
+                    'total' => (int) $row->total,
+                ];
+            });
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Orders Query
+    |--------------------------------------------------------------------------
+    */
+
+        $query = CallingOrder::query()
+            ->where('assigned_to', $userId)
+            ->where('status', 'same_order');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Client Filter
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('client_id')) {
+
+            $query->where(
+                'client_id',
+                $request->client_id
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('search')) {
+
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'order_id',
+                    'like',
+                    "%{$search}%"
+                )
+
+                    ->orWhere(
+                        'customer_name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'customer_phone',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'product_name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'city',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'state',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'pincode',
+                        'like',
+                        "%{$search}%"
+                    );
+            });
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------
+    */
+
+        $orders = $query
+            ->latest('created_at')
+            ->paginate(50);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Response
+    |--------------------------------------------------------------------------
+    */
+
+        return response()->json([
+
+            'success' => true,
+
+            'data' => [
+
+                'orders' => $orders,
+
+                'clients' => $clients,
+
+                'status_label' => 'Same Order',
+
+                'status_count' => $orders->total(),
+
+            ]
+
+        ]);
+    }
+
+    public function customerSearch(Request $request)
+    {
+        $staff = Auth::guard('calling_user')->user();
+
+        if (!$staff) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Calling staff login required.'
+            ], 401);
+        }
+
+        $request->validate([
+            'customer_phone' => [
+                'required',
+                'string',
+                'max:20'
+            ],
+        ]);
+
+        $phone = preg_replace('/\D+/', '', $request->customer_phone);
+
+        if (strlen($phone) === 12 && str_starts_with($phone, '91')) {
+            $phone = substr($phone, 2);
+        }
+
+        if (strlen($phone) === 11 && str_starts_with($phone, '0')) {
+            $phone = substr($phone, 1);
+        }
+
+        if (strlen($phone) > 10) {
+            $phone = substr($phone, -10);
+        }
+
+        if (strlen($phone) !== 10) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid customer phone number.'
+            ], 422);
+        }
+
+        $orders = CallingOrder::where(
+            'customer_phone',
+            $phone
+        )
+            ->latest('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'phone' => $phone,
+            'orders' => $orders,
+            'staff' => [
+                'id' => $staff->id,
+                'name' => $staff->name,
+                'email' => $staff->email,
+            ],
+        ]);
+    }
+    public function cancelOrders(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        $userId = $user->id;
+
+        // Client-wise counts
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
+            ->where('assigned_to', $userId)
+            ->where('status', 'cancel')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'client_id' => $row->client_id,
+                    'client_name' =>
+                    $row->client?->client_name
+                        ?? 'Client',
+                    'total' => (int) $row->total,
+                ];
+            })
+            ->values();
+
+        // Orders
+        $query = CallingOrder::where('assigned_to', $userId)
+            ->where('status', 'cancel');
+
+        // Client filter
+        if ($request->filled('client_id')) {
+            $query->where(
+                'client_id',
+                $request->client_id
+            );
+        }
+
+        // Search
+        if ($request->filled('search')) {
+
+            $search = trim($request->search);
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'order_id',
+                    'like',
+                    "%{$search}%"
+                )
+                    ->orWhere(
+                        'customer_name',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhere(
+                        'customer_phone',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhere(
+                        'product_name',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhere(
+                        'city',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhere(
+                        'state',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhere(
+                        'pincode',
+                        'like',
+                        "%{$search}%"
+                    );
+            });
+        }
+
+        $orders = $query
+            ->latest('created_at')
+            ->paginate(50)
+            ->withQueryString();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cancel orders fetched successfully.',
+            'data' => [
+                'orders' => $orders,
+                'clients' => $clients,
+                'status_label' => 'Cancel Order',
+                'status_count' => $orders->total(),
+            ],
+        ]);
+    }
+
+    public function notReachableOrders(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        $userId = $user->id;
+
+        /*
+    |--------------------------------------------------------------------------
+    | Clients
+    |--------------------------------------------------------------------------
+    */
+
+        $clients = CallingOrder::select(
+            'client_id',
+            DB::raw('COUNT(*) as total')
+        )
+            ->where('assigned_to', $userId)
+            ->where('status', 'not_reachable')
+            ->groupBy('client_id')
+            ->with('client')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'client_id' => $row->client_id,
+
+                    'client_name' =>
+                    $row->client?->client_name
+                        ?? 'Client',
+
+                    'total' => (int) $row->total,
+                ];
+            })
+            ->values();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Orders
+    |--------------------------------------------------------------------------
+    */
+
+        $query = CallingOrder::where(
+            'assigned_to',
+            $userId
+        )
+            ->where(
+                'status',
+                'not_reachable'
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Client Filter
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('client_id')) {
+            $query->where(
+                'client_id',
+                $request->client_id
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('search')) {
+
+            $search = trim(
+                $request->search
+            );
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'order_id',
+                    'like',
+                    "%{$search}%"
+                )
+
+                    ->orWhere(
+                        'customer_name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'customer_phone',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'product_name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'city',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'state',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'pincode',
+                        'like',
+                        "%{$search}%"
+                    );
+            });
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Pagination
+    |--------------------------------------------------------------------------
+    */
+
+        $orders = $query
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
+
+
+        return response()->json([
+            'success' => true,
+
+            'message' =>
+            'Not Reachable orders fetched successfully.',
+
+            'data' => [
+
+                'orders' => $orders,
+
+                'clients' => $clients,
+
+                'status_label' =>
+                'Not Reachable',
+
+                'status_count' =>
+                $orders->total(),
+            ],
+        ]);
+    }
+    public function notReachableOrderStatus(
+        Request $request,
+        int $id
+    ) {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'status' => [
+                'required',
+                'in:verified,same_order,not_reachable,cancel'
+            ],
+        ]);
+
+        $order = CallingOrder::where('id', $id)
+            ->where('assigned_to', $user->id)
+            ->where('status', 'not_reachable')
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' =>
+                'Not Reachable order not found.',
+            ], 404);
+        }
+
+        $order->status = $validated['status'];
+        $order->save();
+
+        return response()->json([
+            'success' => true,
+            'message' =>
+            'Order status updated successfully.',
+
+            'data' => [
+                'order' => $order->fresh(),
+            ],
+        ]);
+    }
+    public function notReachableOrderUpdate(
+        Request $request,
+        int $id
+    ) {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        $validated = $request->validate([
+
+            'customer_name' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'customer_phone' => [
+                'required',
+                'digits:10'
+            ],
+
+            'product_name' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'father_name' => [
+                'nullable',
+                'string',
+                'max:255'
+            ],
+
+            'quantity' => [
+                'required',
+                'integer',
+                'min:1'
+            ],
+
+            'payment_mode' => [
+                'required',
+                'in:COD,Prepaid'
+            ],
+
+            'amount' => [
+                'required',
+                'numeric',
+                'min:0.01'
+            ],
+
+            'age' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:120'
+            ],
+
+            'city' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'state' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'pincode' => [
+                'required',
+                'digits:6'
+            ],
+
+            'shipping_address' => [
+                'required',
+                'string',
+                'max:1000'
+            ],
+
+            'remarks' => [
+                'nullable',
+                'string',
+                'max:1000'
+            ],
+        ]);
+
+
+        $order = CallingOrder::where('id', $id)
+            ->where(
+                'assigned_to',
+                $user->id
+            )
+            ->where(
+                'status',
+                'not_reachable'
+            )
+            ->first();
+
+
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' =>
+                'Not Reachable order not found.',
+            ], 404);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Update
+    |--------------------------------------------------------------------------
+    */
+
+        $order->customer_name =
+            $validated['customer_name'];
+
+        $order->customer_phone =
+            $validated['customer_phone'];
+
+        $order->product_name =
+            $validated['product_name'];
+
+        $order->father_name =
+            $validated['father_name'] ?? null;
+
+        $order->quantity =
+            $validated['quantity'];
+
+        $order->payment_mode =
+            $validated['payment_mode'];
+
+        $order->amount =
+            $validated['amount'];
+
+        $order->age =
+            $validated['age'];
+
+        $order->city =
+            $validated['city'];
+
+        $order->state =
+            $validated['state'];
+
+        $order->pincode =
+            $validated['pincode'];
+
+        $order->shipping_address =
+            $validated['shipping_address'];
+
+        $order->remarks =
+            $validated['remarks'] ?? null;
+
+        $order->save();
+
+
+        return response()->json([
+            'success' => true,
+
+            'message' =>
+            'Not Reachable order updated successfully.',
+
+            'data' => [
+                'order' => $order->fresh(),
+            ],
+        ]);
+    }
+
+    public function whatsappOrders(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        $staffId = $user->id;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | WHATSAPP ORDERS
+    |--------------------------------------------------------------------------
+    */
+
+        $query = CallingOrder::query()
+            ->where(
+                'assigned_to',
+                $staffId
+            )
+            ->where(
+                'order_source',
+                'whatsapp'
+            );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT FILTER
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('client_id')) {
+
+            $query->where(
+                'client_id',
+                $request->client_id
+            );
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | SEARCH
+    |--------------------------------------------------------------------------
+    */
+
+        if ($request->filled('search')) {
+
+            $search = trim(
+                $request->search
+            );
+
+            $query->where(function ($q) use ($search) {
+
+                $q->where(
+                    'order_id',
+                    'like',
+                    "%{$search}%"
+                )
+
+                    ->orWhere(
+                        'customer_name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'customer_phone',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'product_name',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'city',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'state',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'pincode',
+                        'like',
+                        "%{$search}%"
+                    )
+
+                    ->orWhere(
+                        'shipping_address',
+                        'like',
+                        "%{$search}%"
+                    );
+            });
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ORDERS
+    |--------------------------------------------------------------------------
+    */
+
+        $perPage = (int) $request->get(
+            'per_page',
+            20
+        );
+
+        $perPage = min(
+            max($perPage, 10),
+            100
+        );
+
+
+        $orders = $query
+            ->with('client')
+            ->latest()
+            ->paginate($perPage)
+            ->withQueryString();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | CLIENT LIST
+    |--------------------------------------------------------------------------
+    */
+
+        $clients = CallingOrder::query()
+            ->select(
+                'client_id',
+                DB::raw(
+                    'COUNT(*) as total'
+                )
+            )
+            ->where(
+                'assigned_to',
+                $staffId
+            )
+            ->where(
+                'order_source',
+                'whatsapp'
+            )
+            ->groupBy('client_id')
+            ->with('client')
+            ->get()
+            ->map(function ($row) {
+
+                return [
+                    'id' => $row->client_id,
+
+                    'client_name' =>
+                    $row->client?->client_name
+                        ?? 'Client',
+
+                    'total' =>
+                    (int) $row->total,
+                ];
+            })
+            ->values();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | RESPONSE
+    |--------------------------------------------------------------------------
+    */
+
+        return response()->json([
+
+            'success' => true,
+
+            'message' =>
+            'WhatsApp orders fetched successfully.',
+
+            'data' => [
+
+                'orders' => $orders,
+
+                'clients' => $clients,
+
+                'status_label' =>
+                'WhatsApp Orders',
+
+                'status_count' =>
+                $orders->total(),
+            ],
+
+        ]);
+    }
+
+    public function whatsappOrderStatus(
+        Request $request,
+        int $id
+    ) {
+
+        $user = $request->user();
+
+        if (!$user) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+
+        $validated = $request->validate([
+
+            'status' => [
+                'required',
+
+                'in:
+                verified,
+                same_order,
+                not_reachable,
+                cancel'
+            ],
+
+        ]);
+
+
+        $order = CallingOrder::query()
+            ->where(
+                'id',
+                $id
+            )
+            ->where(
+                'assigned_to',
+                $user->id
+            )
+            ->where(
+                'order_source',
+                'whatsapp'
+            )
+            ->first();
+
+
+        if (!$order) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                'WhatsApp order not found.',
+            ], 404);
+        }
+
+
+        $order->status =
+            $validated['status'];
+
+        $order->save();
+
+
+        return response()->json([
+
+            'success' => true,
+
+            'message' =>
+            'Order status updated successfully.',
+
+            'data' => [
+                'order' =>
+                $order->fresh(),
+            ],
+
+        ]);
+    }
+
+    public function whatsappOrderUpdate(
+        Request $request,
+        int $id
+    ) {
+
+        $user = $request->user();
+
+        if (!$user) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                'Unauthenticated.',
+            ], 401);
+        }
+
+
+        $validated = $request->validate([
+
+            'customer_name' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'customer_phone' => [
+                'required',
+                'digits:10'
+            ],
+
+            'product_name' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'father_name' => [
+                'nullable',
+                'string',
+                'max:255'
+            ],
+
+            'quantity' => [
+                'required',
+                'integer',
+                'min:1'
+            ],
+
+            'payment_mode' => [
+                'required',
+                'in:COD,Prepaid'
+            ],
+
+            'amount' => [
+                'required',
+                'numeric',
+                'min:0.01'
+            ],
+
+            'age' => [
+                'required',
+                'integer',
+                'min:1',
+                'max:120'
+            ],
+
+            'city' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'state' => [
+                'required',
+                'string',
+                'max:255'
+            ],
+
+            'pincode' => [
+                'required',
+                'digits:6'
+            ],
+
+            'shipping_address' => [
+                'required',
+                'string',
+                'max:1000'
+            ],
+
+            'remarks' => [
+                'nullable',
+                'string',
+                'max:1000'
+            ],
+
+        ]);
+
+
+        $order = CallingOrder::query()
+            ->where(
+                'id',
+                $id
+            )
+            ->where(
+                'assigned_to',
+                $user->id
+            )
+            ->where(
+                'order_source',
+                'whatsapp'
+            )
+            ->first();
+
+
+        if (!$order) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                'WhatsApp order not found.',
+            ], 404);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | UPDATE
+    |--------------------------------------------------------------------------
+    */
+
+        $order->customer_name =
+            $validated['customer_name'];
+
+        $order->customer_phone =
+            $validated['customer_phone'];
+
+        $order->product_name =
+            $validated['product_name'];
+
+        $order->father_name =
+            $validated['father_name'] ?? null;
+
+        $order->quantity =
+            $validated['quantity'];
+
+        $order->payment_mode =
+            $validated['payment_mode'];
+
+        $order->amount =
+            $validated['amount'];
+
+        $order->age =
+            $validated['age'];
+
+        $order->city =
+            $validated['city'];
+
+        $order->state =
+            $validated['state'];
+
+        $order->pincode =
+            $validated['pincode'];
+
+        $order->shipping_address =
+            $validated['shipping_address'];
+
+        $order->remarks =
+            $validated['remarks'] ?? null;
+
+
+        $order->save();
+
+
+        return response()->json([
+
+            'success' => true,
+
+            'message' =>
+            'WhatsApp order updated successfully.',
+
+            'data' => [
+
+                'order' =>
+                $order->fresh(),
+
+            ],
+
+        ]);
+    }
+    public function manualOrderStore(Request $request)
+    {
+        $staff = $this->apiCallingStaff($request);
+
+        if (!$staff) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Calling staff login required.',
+            ], 403);
+        }
+
+        $request->validate([
+            'created_at' => ['required', 'date'],
+            'client_id' => ['required', 'exists:clients,id'],
+            'customer_phone' => ['required', 'string'],
+            'status' => [
+                'required',
+                'in:verified,pending,not_reachable,same_order,cancel,Other',
+            ],
+        ]);
+
+        $selectedDate = Carbon::parse($request->created_at);
+        $phone = $this->normalizePhone($request->customer_phone);
+
+        if (strlen($phone) !== 10) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter a valid customer phone number.',
+            ], 422);
+        }
+
+        if ($request->status === 'verified') {
+            $request->validate([
+                'customer_name' => ['required', 'string', 'max:255'],
+                'product_name' => ['required', 'string', 'max:255'],
+                'quantity' => ['required', 'integer', 'min:1'],
+                'weight' => ['required', 'numeric', 'gt:0'],
+                'age' => ['required', 'integer', 'min:1', 'max:120'],
+                'amount' => ['required', 'numeric', 'gt:0'],
+                'payment_mode' => ['required', 'in:COD,VPP,Prepaid'],
+                'pincode' => ['required', 'regex:/^[0-9]{6}$/'],
+                'city' => ['required', 'string', 'max:255'],
+                'state' => ['required', 'string', 'max:255'],
+                'address' => ['required', 'string', 'max:1000'],
+                'remarks' => ['nullable', 'string', 'max:1000'],
+            ]);
+
+            $duplicate = CallingOrder::where('client_id', $request->client_id)
+                ->whereDate('order_date', $selectedDate->format('Y-m-d'))
+                ->where('customer_phone', $phone)
+                ->where('status', 'verified')
+                ->exists();
+
+            if ($duplicate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This customer number is already verified for this client on ' .
+                        $selectedDate->format('d-m-Y') .
+                        '. Same customer/order cannot be verified again.',
+                ], 422);
+            }
+        } else {
+            $request->validate([
+                'remarks' => ['required', 'string', 'max:1000'],
+            ]);
+        }
+
+        $orderId = $this->generateOrderId($staff, $selectedDate);
+
+        $data = [
+            'client_id' => $request->client_id,
+            'assigned_to' => $staff->id,
+            'order_id' => $orderId,
+            'order_date' => $selectedDate,
+            'customer_phone' => $phone,
+            'status' => $request->status,
+            'remarks' => $request->remarks ?? null,
+            'order_source' => 'whatsapp',
+            'created_at' => $selectedDate,
+            'updated_at' => now(),
+        ];
+
+        if ($request->status === 'verified') {
+            $quantity = (int) $request->quantity;
+            $weight = (float) $request->weight;
+
+            $data = array_merge($data, [
+                'product_name' => $request->product_name,
+                'shopify_product_name' => $request->product_name,
+                'quantity' => $quantity,
+                'weight' => $weight,
+                'total_weight' => $quantity * $weight,
+                'customer_name' => $request->customer_name,
+                'father_name' => $request->father_name,
+                'age' => $request->age,
+                'shipping_address' => $request->address,
+                'city' => $request->city,
+                'state' => $request->state,
+                'pincode' => $request->pincode,
+                'payment_mode' => $request->payment_mode,
+                'amount' => $request->amount,
+            ]);
+        }
+
+        $order = CallingOrder::create($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order saved successfully.',
+            'data' => [
+                'order' => $order->fresh('client'),
+                'order_id' => $orderId,
+            ],
+        ]);
+    }
+
+    public function manualCustomerSearch(Request $request)
+    {
+        $staff = $this->apiCallingStaff($request);
+
+        if (!$staff) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Calling staff login required.',
+            ], 403);
+        }
+
+        $request->validate([
+            'customer_phone' => ['required', 'string'],
+        ]);
+
+        $phone = $this->normalizePhone(
+            $request->customer_phone
+        );
+
+        if (strlen($phone) !== 10) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter a valid 10 digit mobile number.',
+            ], 422);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Search all common phone formats
+    |--------------------------------------------------------------------------
+    */
+
+        $phoneFormats = [
+            $phone,
+            '0' . $phone,
+            '91' . $phone,
+            '+91' . $phone,
+        ];
+
+        $orders = CallingOrder::with('client')
+            ->where(function ($query) use ($phoneFormats) {
+
+                foreach ($phoneFormats as $index => $number) {
+
+                    if ($index === 0) {
+                        $query->where(
+                            'customer_phone',
+                            $number
+                        );
+                    } else {
+                        $query->orWhere(
+                            'customer_phone',
+                            $number
+                        );
+                    }
+                }
+            })
+            ->orderByDesc('order_date')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $latest = $orders->first();
+
+        return response()->json([
+            'success' => true,
+
+            'data' => [
+                'phone' => $phone,
+
+                /*
+             * IMPORTANT:
+             * Return ALL matching orders.
+             */
+                'orders' => $orders,
+
+                'customer' => $latest ? [
+                    'customer_name' =>
+                    $latest->customer_name,
+
+                    'customer_phone' =>
+                    $latest->customer_phone,
+
+                    'father_name' =>
+                    $latest->father_name,
+
+                    'age' =>
+                    $latest->age,
+
+                    'city' =>
+                    $latest->city,
+
+                    'state' =>
+                    $latest->state,
+
+                    'pincode' =>
+                    $latest->pincode,
+
+                    'shipping_address' =>
+                    $latest->shipping_address,
+                ] : null,
+            ],
+        ]);
+    }
+
+    public function manualOrderClients(Request $request)
+    {
+        if (!$this->apiCallingStaff($request)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Calling staff login required.',
+            ], 403);
+        }
+
+        $clients = Client::query()
+            ->orderBy('client_name')
+            ->get(['id', 'client_name']);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'clients' => $clients,
+            ],
+        ]);
+    }
+    public function manualClientProducts(Request $request, $clientId)
+    {
+        if (!$this->apiCallingStaff($request)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Calling staff login required.',
+            ], 403);
+        }
+
+        $client = Client::find($clientId);
+
+        if (!$client) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Client not found.',
+            ], 404);
+        }
+
+        $products = ClientProduct::query()
+            ->where('client_id', $client->id)
+            ->whereNotNull('shopify_product_name')
+            ->where('shopify_product_name', '!=', '')
+            ->orderBy('shopify_product_name')
+            ->get([
+                'id',
+                'shopify_product_name',
+                'weight_per_unit',
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'client' => [
+                    'id' => $client->id,
+                    'client_name' => $client->client_name,
+                ],
+                'products' => $products,
+            ],
+        ]);
+    }
+
+    public function manualPreviewOrderId(Request $request)
+    {
+        $staff = $this->apiCallingStaff($request);
+
+        if (!$staff) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Calling staff login required.',
+            ], 403);
+        }
+
+        $request->validate([
+            'date' => ['nullable', 'date'],
+        ]);
+
+        $selectedDate = $request->filled('date')
+            ? Carbon::parse($request->date)
+            : now();
+
+        $orderId = $this->generateOrderId($staff, $selectedDate);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'order_id' => $orderId,
+                'date' => $selectedDate->format('Y-m-d'),
+            ],
+        ]);
+    }
+    private function normalizePhone($phone)
+    {
+        $phone = preg_replace('/\D+/', '', (string) $phone);
+
+        if (strlen($phone) === 12 && str_starts_with($phone, '91')) {
+            $phone = substr($phone, 2);
+        }
+
+        if (strlen($phone) === 11 && str_starts_with($phone, '0')) {
+            $phone = substr($phone, 1);
+        }
+
+        if (strlen($phone) > 10) {
+            $phone = substr($phone, -10);
+        }
+
+        return $phone;
     }
     private function getStaffDeliveryOrders(
         Request $request,

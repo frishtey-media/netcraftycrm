@@ -1245,28 +1245,52 @@ class CallingUserAuthController extends Controller
                 'status' => 'required|in:verified,same_order,not_reachable,cancel',
             ]);
 
-
             /*
         |--------------------------------------------------------------------------
         | VERIFIED DUPLICATE CHECK
         |--------------------------------------------------------------------------
-        | Only check TODAY's records
+        | Same client
+        | Same order date
+        | Same customer phone
+        | Existing status = verified
+        |
+        | Only when changing current order to VERIFIED
         |--------------------------------------------------------------------------
         */
 
             if ($request->status === 'verified') {
 
+                // Normalize current order phone
                 $currentPhone = $this->normalizePhone(
                     $order->customer_phone
                 );
 
-                // TODAY date
-                $today = Carbon::today()->format('Y-m-d');
+                if (empty($currentPhone)) {
+                    return back()
+                        ->withInput()
+                        ->with(
+                            'error',
+                            'Customer phone number is invalid.'
+                        );
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | USE CURRENT ORDER DATE
+            |--------------------------------------------------------------------------
+            | Do NOT use Carbon::today()
+            | because an order may have an older selected order_date.
+            |--------------------------------------------------------------------------
+            */
+
+                $orderDate = Carbon::parse(
+                    $order->order_date
+                )->format('Y-m-d');
 
 
                 /*
             |--------------------------------------------------------------------------
-            | GET TODAY'S VERIFIED ORDERS
+            | GET EXISTING VERIFIED ORDERS
             |--------------------------------------------------------------------------
             */
 
@@ -1276,7 +1300,7 @@ class CallingUserAuthController extends Controller
                 )
                     ->whereDate(
                         'order_date',
-                        $today
+                        $orderDate
                     )
                     ->where(
                         'status',
@@ -1296,7 +1320,7 @@ class CallingUserAuthController extends Controller
 
                 /*
             |--------------------------------------------------------------------------
-            | COMPARE PHONE
+            | COMPARE NORMALIZED PHONE NUMBERS
             |--------------------------------------------------------------------------
             */
 
@@ -1307,7 +1331,7 @@ class CallingUserAuthController extends Controller
                     );
 
                     if (
-                        !empty($currentPhone) &&
+                        !empty($existingPhone) &&
                         $currentPhone === $existingPhone
                     ) {
 
@@ -1315,7 +1339,9 @@ class CallingUserAuthController extends Controller
                             ->withInput()
                             ->with(
                                 'error',
-                                'This customer number is already verified for this client today. Same customer/order cannot be verified again.'
+                                'This customer number is already verified for this client on ' .
+                                    Carbon::parse($order->order_date)->format('d-m-Y') .
+                                    '. Same customer/order cannot be verified again.'
                             );
                     }
                 }
@@ -1334,6 +1360,12 @@ class CallingUserAuthController extends Controller
             ]);
 
 
+            /*
+        |--------------------------------------------------------------------------
+        | SUCCESS
+        |--------------------------------------------------------------------------
+        */
+
             return back()->with(
                 'success',
                 'Order status updated successfully.'
@@ -1351,6 +1383,7 @@ class CallingUserAuthController extends Controller
                 'file' => $e->getFile(),
 
                 'line' => $e->getLine(),
+
             ]);
 
 

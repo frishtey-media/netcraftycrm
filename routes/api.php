@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\CallingOrderApiController;
 use App\Http\Controllers\Api\CallingUserAuthController;
+use App\Http\Controllers\Api\CallRecordingController;
 
 Route::post('/staff/login', [
     CallingUserAuthController::class,
@@ -159,4 +160,92 @@ Route::middleware('auth:sanctum')->group(function () {
         CallingOrderApiController::class,
         'verifiedOrders'
     ]);
+    Route::get('/cancel-orders', [
+        CallingOrderApiController::class,
+        'cancelOrders'
+    ]);
+    Route::get('/not-reachable', [
+        CallingOrderApiController::class,
+        'notReachableOrders'
+    ]);
+
+    Route::post('/not-reachable/{id}/status', [
+        CallingOrderApiController::class,
+        'notReachableOrderStatus'
+    ]);
+
+    Route::put('/not-reachable/{id}', [
+        CallingOrderApiController::class,
+        'notReachableOrderUpdate'
+    ]);
+
+    Route::get(
+        '/whatsapp-orders',
+        [
+            CallingOrderApiController::class,
+            'whatsappOrders'
+        ]
+    );
+
+
+    Route::post(
+        '/whatsapp-orders/{id}/status',
+        [
+            CallingOrderApiController::class,
+            'whatsappOrderStatus'
+        ]
+    );
+
+    Route::put(
+        '/whatsapp-orders/{id}',
+        [
+            CallingOrderApiController::class,
+            'whatsappOrderUpdate'
+        ]
+    );
+
+    Route::get('/manual-order/clients', [
+        CallingOrderApiController::class,
+        'manualOrderClients',
+    ]);
+
+    Route::get('/manual-order/client-products/{clientId}', [
+        CallingOrderApiController::class,
+        'manualClientProducts',
+    ]);
+
+    Route::get('/manual-order/preview-order-id', [
+        CallingOrderApiController::class,
+        'manualPreviewOrderId',
+    ]);
+
+    Route::get('/manual-order/customer-search', [
+        CallingOrderApiController::class,
+        'manualCustomerSearch',
+    ]);
+
+    Route::post('/manual-order/store', [
+        CallingOrderApiController::class,
+        'manualOrderStore',
+    ]);
+
+    Route::post(
+        '/calls/start',
+        [CallRecordingController::class, 'start']
+    );
+
+    Route::post(
+        '/calls/complete',
+        [CallRecordingController::class, 'complete']
+    );
+
+    Route::post(
+        '/calls/upload-recording',
+        [CallRecordingController::class, 'upload']
+    );
+
+    Route::get(
+        '/calls/{id}/recording',
+        [CallRecordingController::class, 'recording']
+    );
 });
