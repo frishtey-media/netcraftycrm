@@ -139,6 +139,11 @@ Route::middleware(['auth'])->group(function () {
         'index'
     ])->name('staff.performance.report');
 
+    Route::get('/staff-performance-report1', [
+        OrdersReportController::class,
+        'index1'
+    ])->name('staff.performance.report1');
+
 
     Route::get(
         '/staff-performance/{staffId}',

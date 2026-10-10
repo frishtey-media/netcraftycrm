@@ -592,53 +592,59 @@
                         </div>
 
 
+
                         {{-- PINCODE --}}
                         <div class="col-md-4">
                             <label class="form-label">
                                 Pincode <span class="required">*</span>
                             </label>
 
-                            <input type="text" name="pincode" class="form-control verified-required pincode-field"
-                                inputmode="numeric" maxlength="6">
+                            <input type="text" name="pincode" id="pincode"
+                                class="form-control verified-required pincode-field" inputmode="numeric" maxlength="6"
+                                pattern="[0-9]{6}" placeholder="Enter 6-digit pincode" required>
 
+                            <div id="pincode_message" class="small mt-1"></div>
                             <div class="invalid-feedback"></div>
                         </div>
 
-
-                        {{-- CITY --}}
-                        <div class="col-md-6">
-                            <label class="form-label">
-                                City <span class="required">*</span>
-                            </label>
-
-                            <input type="text" name="city" class="form-control verified-required english-only">
-
-                            <div class="invalid-feedback"></div>
-                        </div>
 
 
                         {{-- STATE --}}
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">
                                 State <span class="required">*</span>
                             </label>
 
-                            <input type="text" name="state" class="form-control verified-required english-only">
+                            <input type="text" name="state" id="state" class="form-control verified-required"
+                                readonly required>
 
                             <div class="invalid-feedback"></div>
                         </div>
+                        {{-- CITY / VILLAGE --}}
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                City / Village <span class="required">*</span>
+                            </label>
 
+                            <select name="city" id="city" class="form-select verified-required" required
+                                disabled>
+                                <option value="">Enter pincode first</option>
+                            </select>
 
-                        {{-- ADDRESS --}}
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        {{-- SHIPPING ADDRESS --}}
                         <div class="col-md-12">
                             <label class="form-label">
                                 Shipping Address <span class="required">*</span>
                             </label>
 
-                            <textarea name="address" class="form-control verified-required english-only" rows="3" maxlength="1000"></textarea>
+                            <textarea name="address" id="address" class="form-control verified-required english-only" rows="3"
+                                maxlength="1000" placeholder="Enter house number, street, landmark, etc." required></textarea>
 
                             <div class="invalid-feedback"></div>
                         </div>
+
 
 
                         <div class="text-end mt-4">
@@ -666,6 +672,150 @@
     {{-- ========================================================= --}}
     {{-- JAVASCRIPT --}}
     {{-- ========================================================= --}}
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const pincodeInput = document.getElementById('pincode');
+            const citySelect = document.getElementById('city');
+            const stateInput = document.getElementById('state');
+            const message = document.getElementById('pincode_message');
+
+            if (!pincodeInput || !citySelect || !stateInput || !message) {
+                return;
+            }
+
+            let debounceTimer;
+            let requestController;
+
+            function resetLocation(text = 'Enter pincode first') {
+                citySelect.innerHTML = '';
+
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = text;
+                citySelect.appendChild(option);
+
+                citySelect.disabled = true;
+                stateInput.value = '';
+            }
+
+            function showMessage(text, success = false) {
+                message.textContent = text;
+                message.className = success ?
+                    'small mt-1 text-success' :
+                    'small mt-1 text-danger';
+            }
+
+            async function fetchPincodeData(pincode) {
+                if (!/^[0-9]{6}$/.test(pincode)) {
+                    resetLocation();
+                    message.textContent = '';
+                    return;
+                }
+
+                if (requestController) {
+                    requestController.abort();
+                }
+
+                requestController = new AbortController();
+                const controller = requestController;
+
+                resetLocation('Loading locations...');
+                showMessage('Fetching pincode details...', true);
+
+                try {
+                    const response = await fetch(
+                        `https://api.postalpincode.in/pincode/${pincode}`, {
+                            signal: controller.signal
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error('API request failed');
+                    }
+
+                    const result = await response.json();
+
+                    // Ignore stale responses
+                    if (controller !== requestController ||
+                        pincodeInput.value !== pincode) {
+                        return;
+                    }
+
+                    const data = result[0];
+
+                    if (
+                        !data ||
+                        data.Status !== 'Success' ||
+                        !Array.isArray(data.PostOffice) ||
+                        data.PostOffice.length === 0
+                    ) {
+                        resetLocation('No locations found');
+                        showMessage('Invalid pincode or no post offices found.');
+                        return;
+                    }
+
+                    // State is shared by all post offices for this pincode
+                    stateInput.value = data.PostOffice[0].State || '';
+
+                    citySelect.innerHTML = '';
+
+                    const placeholder = document.createElement('option');
+                    placeholder.value = '';
+                    placeholder.textContent = 'Select City / Village';
+                    citySelect.appendChild(placeholder);
+
+                    // Unique post office names
+                    const locations = [
+                        ...new Set(
+                            data.PostOffice
+                            .map(item => item.Name)
+                            .filter(Boolean)
+                        )
+                    ].sort((a, b) => a.localeCompare(b));
+
+                    locations.forEach(function(name) {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        citySelect.appendChild(option);
+                    });
+
+                    citySelect.disabled = false;
+                    showMessage(
+                        locations.length + ' locations found.',
+                        true
+                    );
+
+                } catch (error) {
+                    if (error.name === 'AbortError') return;
+
+                    resetLocation('Unable to load locations');
+                    showMessage(
+                        'Unable to fetch pincode details. Please try again.'
+                    );
+                }
+            }
+
+            pincodeInput.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+
+                const pincode = this.value.replace(/\D/g, '').slice(0, 6);
+                this.value = pincode;
+
+                resetLocation();
+                message.textContent = '';
+
+                if (pincode.length === 6) {
+                    debounceTimer = setTimeout(function() {
+                        fetchPincodeData(pincode);
+                    }, 300);
+                }
+            });
+        });
+    </script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
 

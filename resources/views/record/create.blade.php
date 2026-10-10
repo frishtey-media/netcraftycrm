@@ -420,13 +420,13 @@
 
                 <!--  <div class="mb-3">
 
-                                                                                                                            <button type="button" class="btn btn-primary" data-bs-toggle="modal"
-                                                                                                                                data-bs-target="#bulkImportModal">
-                                                                                                                                <i class="fas fa-upload"></i>
-                                                                                                                                Bulk Order Import
-                                                                                                                            </button>
+                                                                <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                                                    data-bs-target="#bulkImportModal">
+                                                                    <i class="fas fa-upload"></i>
+                                                                    Bulk Order Import
+                                                                </button>
 
-                                                                                                                        </div>-->
+                                                            </div>-->
 
                 <div class="card-header bg-success text-white">
 
@@ -603,45 +603,34 @@
 
 
 
-                        {{-- CITY --}}
-
-                        <div class="col-md-4">
-
-                            <label class="form-label">
-                                City
-                            </label>
-
-                            <input type="text" name="city" class="form-control">
-
-                        </div>
-
-
-
-                        {{-- STATE --}}
-
-                        <div class="col-md-4">
-
-                            <label class="form-label">
-                                State
-                            </label>
-
-                            <input type="text" name="state" class="form-control">
-
-                        </div>
-
-
-
                         {{-- PINCODE --}}
-
                         <div class="col-md-4">
+                            <label class="form-label">Shipping Pincode</label>
 
-                            <label class="form-label">
-                                Shipping Pincode
-                            </label>
-
-                            <input type="text" name="shipping_pincode" class="form-control verified-required">
-
+                            <input type="text" name="shipping_pincode" id="verified_pincode"
+                                class="form-control verified-required" inputmode="numeric" maxlength="6"
+                                pattern="[0-9]{6}" placeholder="Enter 6-digit pincode" required>
                         </div>
+                        {{-- STATE --}}
+                        <div class="col-md-4">
+                            <label class="form-label">State</label>
+
+                            <input type="text" name="state" id="verified_state" class="form-control" readonly>
+                        </div>
+                        {{-- CITY / VILLAGE --}}
+                        <div class="col-md-4">
+                            <label class="form-label">City / Village</label>
+
+                            <select name="city" id="verified_city" class="form-select" disabled>
+                                <option value="">Enter pincode first</option>
+                            </select>
+
+                            <div id="verified_city_message" class="small mt-1"></div>
+                        </div>
+
+
+
+
 
 
 
@@ -874,6 +863,113 @@
     {{-- =========================================================
     JAVASCRIPT
 ========================================================== --}}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const pincode = document.getElementById('verified_pincode');
+            const city = document.getElementById('verified_city');
+            const state = document.getElementById('verified_state');
+            const message = document.getElementById('verified_city_message');
+
+            if (!pincode || !city || !state || !message) return;
+
+            let timer;
+            let controller;
+
+            function resetLocation(text = 'Enter pincode first') {
+                city.replaceChildren(new Option(text, ''));
+                city.disabled = true;
+                state.value = '';
+            }
+
+            function showMessage(text, success = false) {
+                message.textContent = text;
+                message.className = 'small mt-1 ' +
+                    (success ? 'text-success' : 'text-danger');
+            }
+
+            async function loadPincodeDetails(pin) {
+                if (!/^[0-9]{6}$/.test(pin)) return;
+
+                if (controller) controller.abort();
+                controller = new AbortController();
+
+                const currentController = controller;
+
+                resetLocation('Loading locations...');
+                showMessage('Fetching pincode details...', true);
+
+                try {
+                    const response = await fetch(
+                        'https://api.postalpincode.in/pincode/' + pin, {
+                            signal: currentController.signal
+                        }
+                    );
+
+                    if (!response.ok) throw new Error('Request failed');
+
+                    const result = await response.json();
+
+                    if (
+                        currentController !== controller ||
+                        pincode.value !== pin
+                    ) return;
+
+                    const data = result[0];
+
+                    if (
+                        !data ||
+                        data.Status !== 'Success' ||
+                        !Array.isArray(data.PostOffice) ||
+                        !data.PostOffice.length
+                    ) {
+                        resetLocation('No locations found');
+                        showMessage('Invalid pincode or no post offices found.');
+                        return;
+                    }
+
+                    state.value = data.PostOffice[0].State || '';
+
+                    const names = [...new Set(
+                        data.PostOffice.map(post => post.Name).filter(Boolean)
+                    )].sort((a, b) => a.localeCompare(b));
+
+                    city.replaceChildren(
+                        new Option('Select City / Village', '')
+                    );
+
+                    names.forEach(name => {
+                        city.add(new Option(name, name));
+                    });
+
+                    city.disabled = false;
+                    showMessage(names.length + ' locations found.', true);
+
+                } catch (error) {
+                    if (error.name === 'AbortError') return;
+
+                    resetLocation('Unable to load locations');
+                    showMessage('API error. Please try again.');
+                }
+            }
+
+            pincode.addEventListener('input', function() {
+                clearTimeout(timer);
+
+                this.value = this.value.replace(/\D/g, '').slice(0, 6);
+
+                if (controller) controller.abort();
+
+                resetLocation();
+                message.textContent = '';
+
+                if (this.value.length === 6) {
+                    const pin = this.value;
+                    timer = setTimeout(() => loadPincodeDetails(pin), 300);
+                }
+            });
+        });
+    </script>
 
     <script>
         $(document).ready(function() {

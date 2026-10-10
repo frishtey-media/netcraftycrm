@@ -3436,126 +3436,77 @@ class AdminController extends Controller
         $to   = Carbon::now();
 
 
-
         $getRepeatPending = function ($clientId) {
 
-            $repeatDays = ((int) $clientId === 2) ? 20 : 25;
+            // Client 2 = 20 days, all other clients = 45 days
+            $repeatDays = ((int) $clientId === 2) ? 20 : 45;
 
+            // Normalize order phone: remove common symbols, use last 10 digits
             $orderPhone = "
-            RIGHT(
-                REPLACE(
-                    REPLACE(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(
-                                    REPLACE(
-                                        orders.customer_phone,
-                                        ' ',
-                                        ''
-                                    ),
-                                    '+',
-                                    ''
-                                ),
-                                '-',
-                                ''
-                            ),
-                            '(',
-                            ''
-                        ),
-                        ')',
-                        ''
-                    ),
-                    '.',
-                    ''
-                ),
-                10
-            )
-        ";
+        RIGHT(
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                orders.customer_phone,
+                ' ', ''
+            ), '+', ''), '-', ''), '(', ''), ')', ''), '.', ''),
+            10
+        )
+    ";
+
+            // Normalize calling order phone
+            $callingPhone = "
+        RIGHT(
+            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                callingorder.customer_phone,
+                ' ', ''
+            ), '+', ''), '-', ''), '(', ''), ')', ''), '.', ''),
+            10
+        )
+    ";
 
             return DB::table('orders')
+                ->where('orders.client_id', $clientId)
 
-                ->where(
-                    'orders.client_id',
-                    $clientId
-                )
-
+                // Delivered orders only
                 ->whereRaw(
                     'LOWER(TRIM(orders.delivery_status)) = ?',
                     ['delivered']
                 )
+                ->whereNotNull('orders.delivery_date')
 
-                ->whereNotNull(
-                    'orders.delivery_date'
-                )
-
+                // Delivery must be at least 20/45 days old
                 ->whereDate(
                     'orders.delivery_date',
                     '<=',
-                    now()
-                        ->subDays($repeatDays)
-                        ->toDateString()
+                    now()->subDays($repeatDays)->toDateString()
                 )
 
-                ->whereNotExists(function ($q) use ($orderPhone) {
-
-                    $callingPhone = "
-                    RIGHT(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(
-                                    REPLACE(
-                                        REPLACE(
-                                            REPLACE(
-                                                callingorder.customer_phone,
-                                                ' ',
-                                                ''
-                                            ),
-                                            '+',
-                                            ''
-                                        ),
-                                        '-',
-                                        ''
-                                    ),
-                                    '(',
-                                    ''
-                                ),
-                                ')',
-                                ''
-                            ),
-                            '.',
-                            ''
-                        ),
-                        10
-                    )
-                ";
-
-                    $q->select(
-                        DB::raw(1)
-                    )
-
+                // Exclude customers who reordered after this delivery
+                ->whereNotExists(function ($q) use (
+                    $callingPhone,
+                    $orderPhone
+                ) {
+                    $q->select(DB::raw(1))
                         ->from('callingorder')
-
                         ->whereColumn(
                             'callingorder.client_id',
                             'orders.client_id'
                         )
-
                         ->where(
                             'callingorder.order_source',
                             'deliveredreorder'
                         )
-
                         ->whereRaw(
                             "{$callingPhone} = {$orderPhone}"
+                        )
+                        ->whereRaw(
+                            'DATE(callingorder.order_date) >= DATE(orders.delivery_date)'
                         );
                 })
 
+                // One customer = one count
                 ->selectRaw(
-                    "COUNT(
-                    DISTINCT {$orderPhone}
-                ) as total"
+                    "COUNT(DISTINCT {$orderPhone}) AS total"
                 )
-
                 ->value('total');
         };
 
