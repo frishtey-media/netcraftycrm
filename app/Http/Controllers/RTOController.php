@@ -173,6 +173,146 @@ class RTOController extends Controller
             )
         );
     }
+
+    public function receivedBased(Request $request)
+    {
+        $clients = Client::orderBy('client_name')->get();
+        $staffs = CallingUser::orderBy('name')->get();
+
+        $fromDate = $request->input('from_date', now()->toDateString());
+        $toDate = $request->input('to_date', now()->toDateString());
+
+        $staffCounts = DB::table('orders')
+            ->leftJoin('callingorder', function ($join) {
+                $join->on('orders.order_id', '=', 'callingorder.order_id');
+            })
+            ->leftJoin('calling_users', 'callingorder.assigned_to', '=', 'calling_users.id')
+            ->leftJoin('clients', 'orders.client_id', '=', 'clients.id')
+            ->where('orders.delivery_status', 'RTO Received')
+            ->where('orders.rtorecivedsts', 1)
+            ->whereNotNull('orders.rtoreciveddate')
+            ->whereDate('orders.rtoreciveddate', '>=', $fromDate)
+            ->whereDate('orders.rtoreciveddate', '<=', $toDate)
+            ->when($request->filled('client_id'), function ($q) use ($request) {
+                $q->where('orders.client_id', $request->client_id);
+            })
+            ->when($request->filled('staff_id'), function ($q) use ($request) {
+                if ($request->staff_id === 'other') {
+                    $q->whereNull('callingorder.assigned_to');
+                } else {
+                    $q->where('callingorder.assigned_to', $request->staff_id);
+                }
+            })
+            ->selectRaw("
+            COALESCE(calling_users.name, 'Other') as staff_name,
+            COALESCE(clients.client_name, 'Client Mapping Missing') as client_name,
+            COUNT(DISTINCT orders.id) as total_rto,
+            COUNT(DISTINCT CASE
+                WHEN callingorder.order_source IS NULL THEN orders.id
+            END) as web_rto,
+            COUNT(DISTINCT CASE
+                WHEN callingorder.order_source = 'whatsapp' THEN orders.id
+            END) as whatsapp_rto,
+            COUNT(DISTINCT orders.id) as rto_received,
+            0 as pending_rto
+        ")
+            ->groupByRaw("
+            COALESCE(calling_users.name, 'Other'),
+            COALESCE(clients.client_name, 'Client Mapping Missing')
+        ")
+            ->orderByDesc('total_rto')
+            ->get();
+
+        $grandTotal = $staffCounts->sum('total_rto');
+        $grandWeb = $staffCounts->sum('web_rto');
+        $grandWhatsapp = $staffCounts->sum('whatsapp_rto');
+        $grandReceived = $staffCounts->sum('rto_received');
+        $grandPending = 0;
+
+        return view('rto.received_based', compact(
+            'clients',
+            'staffs',
+            'staffCounts',
+            'grandTotal',
+            'grandWeb',
+            'grandWhatsapp',
+            'grandReceived',
+            'grandPending',
+            'fromDate',
+            'toDate'
+        ));
+    }
+
+
+
+    public function receivedofcBased(Request $request)
+    {
+        $clients = Client::orderBy('client_name')->get();
+
+        $fromDate = $request->input('from_date', now()->toDateString());
+        $toDate = $request->input('to_date', now()->toDateString());
+
+        $baseQuery = DB::table('rto_reports')
+            ->leftJoin(
+                'orders',
+                'orders.order_id',
+                '=',
+                'rto_reports.order_id'
+            )
+            ->leftJoin(
+                'clients',
+                'orders.client_id',
+                '=',
+                'clients.id'
+            )
+            ->leftJoin(
+                'calling_users',
+                'calling_users.id',
+                '=',
+                'rto_reports.staff_id'
+            )
+            ->whereDate('rto_reports.created_at', '>=', $fromDate)
+            ->whereDate('rto_reports.created_at', '<=', $toDate)
+            ->when($request->filled('client_id'), function ($query) use ($request) {
+                $query->where('orders.client_id', $request->client_id);
+            });
+
+        // Staff-wise scan counting only
+
+        $staffCounts = DB::table('rto_reports')
+            ->join('orders', 'orders.order_id', '=', 'rto_reports.order_id')
+            ->join('callingorder', 'callingorder.order_id', '=', 'orders.order_id')
+            ->leftJoin('calling_users', 'calling_users.id', '=', 'callingorder.assigned_to')
+            ->whereDate('rto_reports.created_at', '>=', $fromDate)
+            ->whereDate('rto_reports.created_at', '<=', $toDate)
+            ->when($request->filled('client_id'), function ($query) use ($request) {
+                $query->where('orders.client_id', $request->client_id)
+                    ->where('callingorder.client_id', $request->client_id);
+            })
+            ->selectRaw("
+        callingorder.assigned_to AS staff_id,
+        COALESCE(calling_users.name, 'Unknown Staff') AS staff_name,
+        COUNT(DISTINCT rto_reports.id) AS total_scans
+    ")
+            ->groupBy(
+                'callingorder.assigned_to',
+                'calling_users.name'
+            )
+            ->orderByDesc('total_scans')
+            ->get();
+
+        $totalScanned = $staffCounts->sum('total_scans');
+
+
+        return view('rto.receivedofc', compact(
+            'clients',
+            'fromDate',
+            'toDate',
+            'staffCounts',
+            'totalScanned'
+        ));
+    }
+
     public function details(Request $request)
     {
         $query = Order::query()

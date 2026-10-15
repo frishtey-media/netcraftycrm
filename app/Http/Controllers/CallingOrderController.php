@@ -7,7 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use App\Models\callingorder;
 use App\Models\Client;
 use App\Models\ClientProduct;
@@ -21,21 +22,6 @@ class CallingOrderController extends Controller
         return Auth::guard('calling_user')->user();
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | Normalize Phone
-    |--------------------------------------------------------------------------
-    |
-    | +91 98034 56598
-    | 919803456598
-    | 09803456598
-    | 98034-56598
-    |
-    | All become:
-    | 9803456598
-    |
-    */
 
     private function normalizePhone($phone)
     {
@@ -665,6 +651,8 @@ class CallingOrderController extends Controller
         ]);
     }
 
+
+
     public function store(Request $request)
     {
         $staff = Auth::guard('calling_user')->user();
@@ -673,7 +661,6 @@ class CallingOrderController extends Controller
             abort(403);
         }
 
-        // Basic validation
         $request->validate([
             'created_at' => 'required|date',
             'client_id' => 'required|exists:clients,id',
@@ -681,371 +668,268 @@ class CallingOrderController extends Controller
             'status' => 'required|in:verified,pending,not_reachable,same_order,cancel,Other',
         ]);
 
-        // Verified order validation
         if ($request->status === 'verified') {
-
             $request->validate([
-                'customer_name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    'regex:/^[A-Za-z0-9\s.,\/\-()]+$/'
-                ],
-
-                'product_name' => [
-                    'required',
-                    'string',
-                ],
-
-                'quantity' => [
-                    'required',
-                    'integer',
-                    'min:1',
-                ],
-
-                'weight' => [
-                    'required',
-                    'numeric',
-                    'gt:0',
-                ],
-
-                'age' => [
-                    'required',
-                    'integer',
-                    'min:1',
-                    'max:120',
-                ],
-
-                'amount' => [
-                    'required',
-                    'numeric',
-                    'gt:0',
-                ],
-
-                'payment_mode' => [
-                    'required',
-                    'in:COD,VPP,Prepaid',
-                ],
-
-                'pincode' => [
-                    'required',
-                    'regex:/^[0-9]{6}$/',
-                ],
-
-                'city' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    'regex:/^[A-Za-z\s.\-]+$/',
-                ],
-
-                'state' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    'regex:/^[A-Za-z\s.\-]+$/',
-                ],
-
-                'address' => [
-                    'required',
-                    'string',
-                    'max:1000',
-                    'regex:/^[A-Za-z0-9\s.,\/\-#()]+$/',
-                ],
-            ], [
-
-                'customer_name.required' =>
-                'Customer name is required.',
-
-                'customer_name.regex' =>
-                'Customer name must be entered in English only.',
-
-                'product_name.required' =>
-                'Please select a product.',
-
-                'quantity.required' =>
-                'Quantity is required.',
-
-                'quantity.min' =>
-                'Quantity must be at least 1.',
-
-                'weight.required' =>
-                'Weight is required.',
-
-                'weight.gt' =>
-                'Weight must be greater than 0.',
-
-                'age.required' =>
-                'Age is required.',
-
-                'age.max' =>
-                'Please enter a valid age.',
-
-                'amount.required' =>
-                'Amount is required.',
-
-                'amount.gt' =>
-                'Amount must be greater than 0.',
-
-                'payment_mode.required' =>
-                'Please select payment mode.',
-
-                'pincode.required' =>
-                'Pincode is required.',
-
-                'pincode.regex' =>
-                'Pincode must contain exactly 6 digits.',
-
-                'city.required' =>
-                'City is required.',
-
-                'city.regex' =>
-                'City must be entered in English only.',
-
-                'state.required' =>
-                'State is required.',
-
-                'state.regex' =>
-                'State must be entered in English only.',
-
-                'address.required' =>
-                'Shipping address is required.',
-
-                'address.regex' =>
-                'Shipping address must be entered in English only.',
+                'customer_name' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9\s.,\/\-()]+$/'],
+                'product_name' => 'required|string',
+                'quantity' => 'required|integer|min:1',
+                'weight' => 'required|numeric|gt:0',
+                'age' => 'required|integer|min:1|max:120',
+                'amount' => 'required|numeric|gt:0',
+                'payment_mode' => 'required|in:COD,VPP,Prepaid',
+                'pincode' => 'required|regex:/^[0-9]{6}$/',
+                'city' => 'required|string|max:255',
+                'state' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s.\-]+$/'],
+                'address' => ['required', 'string', 'max:1000', 'regex:/^[A-Za-z0-9\s.,\/\-#()]+$/'],
             ]);
         } else {
-
-            // Non-verified order validation
             $request->validate([
                 'remarks' => 'required|string|max:1000',
             ]);
         }
 
+        try {
+            $selectedDate = Carbon::parse($request->created_at);
+            $phone = $this->normalizePhone($request->customer_phone);
 
-        // Selected date
-        $selectedDate = Carbon::parse($request->created_at);
-
-
-        // Normalize phone number
-        $phone = $this->normalizePhone($request->customer_phone);
-
-
-        // Check valid phone
-        if (empty($phone)) {
-
-            return redirect()
-                ->back()
-                ->withInput()
-                ->withErrors([
-                    'customer_phone' =>
+            if (empty($phone)) {
+                return back()->withInput()->with(
+                    'error',
                     'Please enter a valid customer phone number.'
-                ]);
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | DUPLICATE VERIFIED ORDER CHECK
-    |--------------------------------------------------------------------------
-    |
-    | Same client
-    | Same date
-    | Same customer number
-    | Existing status = verified
-    |
-    | Only new VERIFIED order is blocked.
-    |--------------------------------------------------------------------------
-    */
-
-        if ($request->status === 'verified') {
-
-            $duplicateNumber = CallingOrder::where(
-                'client_id',
-                $request->client_id
-            )
-                ->whereDate(
-                    'order_date',
-                    $selectedDate->format('Y-m-d')
-                )
-                ->where(
-                    'customer_phone',
-                    $phone
-                )
-                ->where(
-                    'status',
-                    'verified'
-                )
-                ->exists();
-
-
-            if ($duplicateNumber) {
-
-                return redirect()
-                    ->back()
-                    ->withInput()
-                    ->withErrors([
-                        'customer_phone' =>
-                        'This customer number is already verified for this client on ' .
-                            $selectedDate->format('d-m-Y') .
-                            '. Same customer/order cannot be verified again.'
-                    ]);
+                );
             }
-        }
 
+            if ($request->status === 'verified') {
 
-        // Generate order ID
-        $orderId = $this->generateOrderId(
-            $staff,
-            $selectedDate
-        );
+                /*
+            |--------------------------------------------------------------------------
+            | 1. DUPLICATE: SAME CLIENT + DATE + PHONE + PRODUCT
+            |--------------------------------------------------------------------------
+            */
 
+                $existingOrders = CallingOrder::where(
+                    'client_id',
+                    $request->client_id
+                )
+                    ->whereDate('order_date', $selectedDate->toDateString())
+                    ->where('status', 'verified')
+                    ->get([
+                        'id',
+                        'order_id',
+                        'customer_phone',
+                        'product_name',
+                    ]);
 
-        /*
-    |--------------------------------------------------------------------------
-    | VERIFIED ORDER
-    |--------------------------------------------------------------------------
-    */
+                foreach ($existingOrders as $existing) {
+                    $existingPhone = $this->normalizePhone(
+                        $existing->customer_phone
+                    );
 
-        if ($request->status === 'verified') {
+                    $sameProduct = strtolower(trim(
+                        (string) $existing->product_name
+                    )) === strtolower(trim(
+                        (string) $request->product_name
+                    ));
 
-            $quantity = (int) $request->quantity;
+                    if (
+                        !empty($existingPhone)
+                        && $existingPhone === $phone
+                        && $sameProduct
+                    ) {
+                        return back()->withInput()->with(
+                            'error',
+                            'Duplicate blocked! This customer has already verified this product on ' .
+                                $selectedDate->format('d-m-Y') .
+                                '. Existing Order ID: ' .
+                                ($existing->order_id ?? $existing->id)
+                        );
+                    }
+                }
 
-            $weight = (float) $request->weight;
+                /*
+            |--------------------------------------------------------------------------
+            | 2. CUSTOMER SHIPPING HISTORY
+            |--------------------------------------------------------------------------
+            */
 
-            $totalWeight = $quantity * $weight;
+                $customerOrders = DB::table('orders')
+                    ->where('client_id', $request->client_id)
+                    ->whereNotNull('customer_phone')
+                    ->get([
+                        'id',
+                        'order_id',
+                        'customer_phone',
+                        'delivery_status',
+                        'payment_mode',
+                    ])
+                    ->filter(function ($item) use ($phone) {
+                        $existingPhone = $this->normalizePhone(
+                            $item->customer_phone
+                        );
 
+                        return !empty($existingPhone)
+                            && $existingPhone === $phone;
+                    });
 
-            CallingOrder::create([
+                /*
+            |--------------------------------------------------------------------------
+            | 3. CUSTOMER CURRENTLY IN TRANSIT
+            |--------------------------------------------------------------------------
+            | Customer - Intrasit blocks a new verification.
+            | RTO-intrasit records are counted below for the prepaid rule.
+            |--------------------------------------------------------------------------
+            */
 
-                'client_id' =>
-                $request->client_id,
+                $customerInTransit = $customerOrders->first(
+                    function ($item) {
+                        $status = strtolower(
+                            preg_replace(
+                                '/[^a-z]/',
+                                '',
+                                trim((string) $item->delivery_status)
+                            )
+                        );
 
-                'assigned_to' =>
-                $staff->id,
+                        return $status === 'customerintrasit';
+                    }
+                );
 
-                'order_id' =>
-                $orderId,
+                if ($customerInTransit) {
+                    return back()->withInput()->with(
+                        'error',
+                        'Verification blocked! Customer has an order with delivery status "' .
+                            $customerInTransit->delivery_status .
+                            '". Please check the shipping status before confirming a new order.'
+                    );
+                }
 
-                'order_date' =>
-                $selectedDate,
+                /*
+            |--------------------------------------------------------------------------
+            | 4. COUNT RTO HISTORY
+            |--------------------------------------------------------------------------
+            */
 
-                'product_name' =>
-                $request->product_name,
+                $rtoCount = $customerOrders->filter(
+                    function ($item) {
+                        $status = strtolower(
+                            preg_replace(
+                                '/[^a-z]/',
+                                '',
+                                trim((string) $item->delivery_status)
+                            )
+                        );
 
-                'shopify_product_name' =>
-                $request->product_name,
+                        return $status === 'rtointrasit';
+                    }
+                )->count();
 
-                'quantity' =>
-                $quantity,
+                /*
+            |--------------------------------------------------------------------------
+            | 5. TWO OR MORE RTOS = PREPAID ONLY
+            |--------------------------------------------------------------------------
+            */
 
-                'weight' =>
-                $weight,
-
-                'total_weight' =>
-                $totalWeight,
-
-                'customer_name' =>
-                $request->customer_name,
-
-                'father_name' =>
-                $request->father_name,
-
-                'age' =>
-                $request->age,
-
-                'customer_phone' =>
-                $phone,
-
-                'shipping_address' =>
-                $request->address,
-
-                'city' =>
-                $request->city,
-
-                'state' =>
-                $request->state,
-
-                'pincode' =>
-                $request->pincode,
-
-                'payment_mode' =>
-                $request->payment_mode,
-
-                'amount' =>
-                $request->amount,
-
-                'status' =>
-                'verified',
-
-                'remarks' =>
-                $request->remarks,
-
-                'order_source' =>
-                'whatsapp',
-
-                'created_at' =>
-                $selectedDate,
-
-                'updated_at' =>
-                $selectedDate,
-            ]);
-        } else {
+                if (
+                    $rtoCount >= 2
+                    && $request->payment_mode !== 'Prepaid'
+                ) {
+                    return back()->withInput()->with(
+                        'error',
+                        'Verification blocked! Customer has ' .
+                            $rtoCount .
+                            ' RTO records. Only Prepaid payment mode is allowed.'
+                    );
+                }
+            }
 
             /*
         |--------------------------------------------------------------------------
-        | NON VERIFIED ORDER
+        | 6. GENERATE ORDER ID
         |--------------------------------------------------------------------------
         */
 
-            CallingOrder::create([
+            $orderId = $this->generateOrderId(
+                $staff,
+                $selectedDate
+            );
 
-                'client_id' =>
-                $request->client_id,
+            /*
+        |--------------------------------------------------------------------------
+        | 7. CREATE ORDER
+        |--------------------------------------------------------------------------
+        */
 
-                'assigned_to' =>
-                $staff->id,
+            if ($request->status === 'verified') {
+                $quantity = (int) $request->quantity;
+                $weight = (float) $request->weight;
 
-                'order_id' =>
-                $orderId,
+                $data = [
+                    'client_id' => $request->client_id,
+                    'assigned_to' => $staff->id,
+                    'order_id' => $orderId,
+                    'order_date' => $selectedDate,
+                    'product_name' => $request->product_name,
+                    'shopify_product_name' => $request->product_name,
+                    'quantity' => $quantity,
+                    'weight' => $weight,
+                    'total_weight' => $quantity * $weight,
+                    'customer_name' => $request->customer_name,
+                    'father_name' => $request->father_name,
+                    'age' => $request->age,
+                    'customer_phone' => $phone,
+                    'shipping_address' => $request->address,
+                    'city' => $request->city,
+                    'state' => $request->state,
+                    'pincode' => $request->pincode,
+                    'payment_mode' => $request->payment_mode,
+                    'amount' => $request->amount,
+                    'status' => 'verified',
+                    'remarks' => $request->remarks,
+                    'order_source' => 'whatsapp',
+                    'created_at' => $selectedDate,
+                    'updated_at' => $selectedDate,
+                ];
+            } else {
+                $data = [
+                    'client_id' => $request->client_id,
+                    'assigned_to' => $staff->id,
+                    'order_id' => $orderId,
+                    'order_date' => $selectedDate,
+                    'customer_phone' => $phone,
+                    'status' => $request->status,
+                    'remarks' => $request->remarks,
+                    'order_source' => 'whatsapp',
+                    'created_at' => $selectedDate,
+                    'updated_at' => $selectedDate,
+                ];
+            }
 
-                'order_date' =>
-                $selectedDate,
+            CallingOrder::create($data);
 
-                'customer_phone' =>
-                $phone,
-
-                'status' =>
-                $request->status,
-
-                'remarks' =>
-                $request->remarks,
-
-                'order_source' =>
-                'whatsapp',
-
-                'created_at' =>
-                $selectedDate,
-
-                'updated_at' =>
-                $selectedDate,
-            ]);
-        }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | SUCCESS
-    |--------------------------------------------------------------------------
-    */
-
-        return redirect()
-            ->back()
-            ->with(
+            return back()->with(
                 'success',
                 'Lead saved successfully. Order ID: ' . $orderId
             );
+        } catch (\Throwable $e) {
+            Log::error('Calling order creation failed', [
+                'client_id' => $request->client_id,
+                'status' => $request->status,
+                'staff_id' => $staff->id,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return back()->withInput()->with(
+                'error',
+                config('app.debug')
+                    ? 'Technical error: ' . $e->getMessage()
+                    : 'Unable to save lead. Please try again or contact support.'
+            );
+        }
     }
+
+
     public function whatsappOrders(Request $request)
     {
         $staff = $this->callingStaff();

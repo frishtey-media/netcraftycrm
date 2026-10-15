@@ -43,33 +43,34 @@
         <div class="row g-4">
             <div class="col-md-12">
                 @if (auth()->user()->role == 'super_admin')
-                    <a class="btn btn-primary" style="
-    margin: 20px;
-    float: right;
-"
+                    <a class="btn btn-primary"
+                        style="
+                                            margin: 20px;
+                                            float: right;
+                                        "
                         href="{{ route('assignment.scheduler') }}">
                         Order Assign Scheduler
                     </a>
                 @endif
             </div>
         </div>
-        <div class="row g-4">
 
+        <div class="row g-4">
             @foreach ($clients as $client)
                 <div class="col-md-4">
-                    <div class="dashboard-card card-green"
-                        onclick="window.location='{{ route('ordersdashboard', $client->id) }}'">
+                    <a href="{{ route('ordersdashboard', $client->id) }}"
+                        class="dashboard-card card-green text-decoration-none d-block">
 
-                        <div onclick="window.location='{{ route('ordersdashboard', $client->id) }}'">
-                            <div class="card-title">{{ $client->client_name }}</div>
-                            <spam>Click Here</spam>
+                        <div class="card-title">
+                            {{ $client->client_name }}
                         </div>
 
-
-                    </div>
+                        <span>Click Here</span>
+                    </a>
                 </div>
             @endforeach
         </div>
+
 
     </div>
 @endsection

@@ -82,6 +82,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/clientsorders', [AdminController::class, 'clientsorders'])->name('clientsorders');
 
+
+
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])->name('labelsenders');
     Route::post('/labelsenders', [AdminController::class, 'storeLabelSenders'])->name('labelsenders.store');
     Route::get('/labelgenrate', [AdminController::class, 'labelgenrate'])->name('labelgenrate');
@@ -287,6 +289,13 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
     Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
+
+
+    Route::get('/rto/received-based', [RTOController::class, 'receivedBased'])
+        ->name('rto.receivedBased');
+    Route::get('/rto/received-Ofc', [RTOController::class, 'receivedofcBased'])
+        ->name('rto.receivedofcBased');
+
 
     Route::get('/rto/details', [RTOController::class, 'details'])
         ->name('rto.details');

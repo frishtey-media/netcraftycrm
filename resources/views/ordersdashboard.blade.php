@@ -188,6 +188,45 @@
 
                 </div>
             @endforeach
+
+
+            {{-- SELLOSHIP RECORDS --}}
+            @foreach ($ordersData as $data)
+                <div class="col-md-4">
+
+                    <div class="dashboard-card card-green"
+                        onclick="openSelloshipAssignModal(
+                {{ $data['client_id'] }},
+                {{ $data['selloship_records'] ?? 0 }}
+            )">
+
+                        <div>
+
+                            <div class="card-title">
+
+                                Whatsapp Leads
+                            </div>
+
+                            <span>
+                                {{ $data['client_name'] }}
+                            </span>
+
+                            <div class="card-count">
+                                {{ $data['selloship_records'] ?? 0 }}
+                            </div>
+
+                            <small>
+                                Pending Assignment
+                            </small>
+
+                        </div>
+
+                        <i class="bi bi-file-earmark-arrow-up card-icon"></i>
+
+                    </div>
+
+                </div>
+            @endforeach
         </div>
 
     </div>
@@ -479,10 +518,10 @@
     </div>
     <script>
         /*
-                                                                                                                        |--------------------------------------------------------------------------
-                                                                                                                        | Open Selloship Assignment Modal
-                                                                                                                        |--------------------------------------------------------------------------
-                                                                                                                        */
+                                                                                                                                                                                                                                            |--------------------------------------------------------------------------
+                                                                                                                                                                                                                                            | Open Selloship Assignment Modal
+                                                                                                                                                                                                                                            |--------------------------------------------------------------------------
+                                                                                                                                                                                                                                            */
 
         function openSelloshipAssignModal(clientId, count) {
 

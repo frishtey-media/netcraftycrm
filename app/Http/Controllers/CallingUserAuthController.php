@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class CallingUserAuthController extends Controller
 {
@@ -1235,166 +1236,259 @@ class CallingUserAuthController extends Controller
 
         return $phone;
     }
+
+
     public function statusupdate(Request $request, $id)
     {
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:verified,same_order,not_reachable,cancel',
+        ]);
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator)
+                ->withInput()
+                ->with('error', 'Please select a valid order status.');
+        }
+
         try {
-
             $order = CallingOrder::findOrFail($id);
-
-            $request->validate([
-                'status' => 'required|in:verified,same_order,not_reachable,cancel',
-            ]);
-
-            /*
-        |--------------------------------------------------------------------------
-        | VERIFIED DUPLICATE CHECK
-        |--------------------------------------------------------------------------
-        | Same client
-        | Same order date
-        | Same customer phone
-        | Existing status = verified
-        |
-        | Only when changing current order to VERIFIED
-        |--------------------------------------------------------------------------
-        */
 
             if ($request->status === 'verified') {
 
-                // Normalize current order phone
-                $currentPhone = $this->normalizePhone(
-                    $order->customer_phone
-                );
+                $phone = $this->normalizePhone($order->customer_phone);
 
-                if (empty($currentPhone)) {
-                    return back()
-                        ->withInput()
-                        ->with(
-                            'error',
-                            'Customer phone number is invalid.'
-                        );
+                if (empty($phone)) {
+                    return back()->withInput()->with(
+                        'error',
+                        'Customer phone number is invalid.'
+                    );
                 }
 
                 /*
             |--------------------------------------------------------------------------
-            | USE CURRENT ORDER DATE
-            |--------------------------------------------------------------------------
-            | Do NOT use Carbon::today()
-            | because an order may have an older selected order_date.
+            | 1. FIND CUSTOMER SHIPPING ORDERS
             |--------------------------------------------------------------------------
             */
 
-                $orderDate = Carbon::parse(
-                    $order->order_date
-                )->format('Y-m-d');
+                $customerOrders = DB::table('orders')
+                    ->where('client_id', $order->client_id)
+                    ->whereNotNull('customer_phone')
+                    ->get([
+                        'id',
+                        'order_id',
+                        'customer_phone',
+                        'delivery_status',
+                        'payment_mode',
+                    ])
+                    ->filter(function ($item) use ($phone) {
+                        $existingPhone = $this->normalizePhone(
+                            $item->customer_phone
+                        );
 
+                        return !empty($existingPhone)
+                            && $existingPhone === $phone;
+                    });
 
                 /*
             |--------------------------------------------------------------------------
-            | GET EXISTING VERIFIED ORDERS
+            | 2. FIND CURRENT SHIPPING ORDER
             |--------------------------------------------------------------------------
             */
+
+                $shippingOrder = $customerOrders->first(
+                    function ($item) use ($order) {
+                        return (string) $item->order_id ===
+                            (string) $order->order_id;
+                    }
+                );
+
+                /*
+            |--------------------------------------------------------------------------
+            | 3. BLOCK CURRENT ORDER IN TRANSIT
+            |--------------------------------------------------------------------------
+            */
+
+                if ($shippingOrder) {
+                    $shippingStatus = strtolower(
+                        preg_replace(
+                            '/[^a-z]/',
+                            '',
+                            trim((string) $shippingOrder->delivery_status)
+                        )
+                    );
+
+                    if (in_array($shippingStatus, [
+                        'rtointrasit',
+                        'customerintrasit',
+                    ], true)) {
+                        return back()->withInput()->with(
+                            'error',
+                            'Verification blocked! Current delivery status is "' .
+                                $shippingOrder->delivery_status .
+                                '". This order cannot be verified.'
+                        );
+                    }
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | 4. COUNT PREVIOUS RTO RECORDS
+            |--------------------------------------------------------------------------
+            */
+
+                $rtoCount = $customerOrders->filter(
+                    function ($item) use ($order) {
+                        // Exclude current shipping order
+                        if (
+                            (string) $item->order_id ===
+                            (string) $order->order_id
+                        ) {
+                            return false;
+                        }
+
+                        $status = strtolower(
+                            preg_replace(
+                                '/[^a-z]/',
+                                '',
+                                trim((string) $item->delivery_status)
+                            )
+                        );
+
+                        return $status === 'rtointrasit';
+                    }
+                )->count();
+
+                /*
+            |--------------------------------------------------------------------------
+            | 5. TWO OR MORE RTOS = PREPAID ONLY
+            |--------------------------------------------------------------------------
+            */
+
+                if ($rtoCount >= 2) {
+                    if (!$shippingOrder) {
+                        return back()->withInput()->with(
+                            'error',
+                            'Verification blocked! Current shipping order was not found.'
+                        );
+                    }
+
+                    $paymentMode = strtolower(
+                        trim((string) $shippingOrder->payment_mode)
+                    );
+
+                    if ($paymentMode !== 'prepaid') {
+                        return back()->withInput()->with(
+                            'error',
+                            'Verification blocked! Customer has ' .
+                                $rtoCount .
+                                ' previous RTO records. Only Prepaid orders are allowed.'
+                        );
+                    }
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | 6. SAME DATE + SAME PHONE + SAME PRODUCT DUPLICATE CHECK
+            |--------------------------------------------------------------------------
+            */
+
+                if (empty($order->order_date)) {
+                    return back()->withInput()->with(
+                        'error',
+                        'Order date is missing. Verification cannot proceed.'
+                    );
+                }
+
+                $orderDate = Carbon::parse($order->order_date)
+                    ->toDateString();
 
                 $verifiedOrders = CallingOrder::where(
                     'client_id',
                     $order->client_id
                 )
-                    ->whereDate(
-                        'order_date',
-                        $orderDate
-                    )
-                    ->where(
-                        'status',
-                        'verified'
-                    )
-                    ->where(
-                        'id',
-                        '!=',
-                        $order->id
-                    )
+                    ->whereDate('order_date', $orderDate)
+                    ->where('status', 'verified')
+                    ->where('id', '!=', $order->id)
                     ->get([
                         'id',
                         'customer_phone',
-                        'order_id'
+                        'order_id',
+                        'product_name',
                     ]);
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | COMPARE NORMALIZED PHONE NUMBERS
-            |--------------------------------------------------------------------------
-            */
-
-                foreach ($verifiedOrders as $verifiedOrder) {
-
+                foreach ($verifiedOrders as $existing) {
                     $existingPhone = $this->normalizePhone(
-                        $verifiedOrder->customer_phone
+                        $existing->customer_phone
                     );
 
-                    if (
-                        !empty($existingPhone) &&
-                        $currentPhone === $existingPhone
-                    ) {
+                    $sameProduct = strtolower(trim(
+                        (string) $existing->product_name
+                    )) === strtolower(trim(
+                        (string) $order->product_name
+                    ));
 
-                        return back()
-                            ->withInput()
-                            ->with(
-                                'error',
-                                'This customer number is already verified for this client on ' .
-                                    Carbon::parse($order->order_date)->format('d-m-Y') .
-                                    '. Same customer/order cannot be verified again.'
-                            );
+                    if (
+                        !empty($existingPhone)
+                        && $existingPhone === $phone
+                        && $sameProduct
+                    ) {
+                        return back()->withInput()->with(
+                            'error',
+                            'Duplicate verification blocked! This customer has already verified this product on ' .
+                                Carbon::parse($order->order_date)->format('d-m-Y') .
+                                '. Existing Order ID: ' .
+                                ($existing->order_id ?? $existing->id)
+                        );
                     }
                 }
             }
 
-
             /*
         |--------------------------------------------------------------------------
-        | UPDATE STATUS
+        | 7. UPDATE STATUS
         |--------------------------------------------------------------------------
         */
 
-            $order->update([
-                'status' => $request->status,
-                'updated_at' => now(),
-            ]);
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | SUCCESS
-        |--------------------------------------------------------------------------
-        */
+            $order->status = $request->status;
+            $order->save();
 
             return back()->with(
                 'success',
-                'Order status updated successfully.'
+                'Order #' . $order->order_id .
+                    ' status updated successfully to ' .
+                    str_replace('_', ' ', ucfirst($request->status)) . '.'
             );
-        } catch (\Throwable $e) {
-
-            Log::error('Calling order status update failed', [
-
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::warning('Calling order not found during status update', [
                 'order_id' => $id,
-
-                'status' => $request->status ?? null,
-
-                'error' => $e->getMessage(),
-
-                'file' => $e->getFile(),
-
-                'line' => $e->getLine(),
-
             ]);
 
+            return back()->with(
+                'error',
+                'Order not found. It may have been deleted or is no longer available.'
+            );
+        } catch (\Throwable $e) {
+            Log::error('Calling order status update failed', [
+                'order_id' => $id,
+                'requested_status' => $request->status,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
-            return back()
-                ->withInput()
-                ->with(
-                    'error',
-                    'Order update failed: ' . $e->getMessage()
-                );
+            return back()->withInput()->with(
+                'error',
+                config('app.debug')
+                    ? 'Technical error: ' . $e->getMessage()
+                    : 'Unable to update order status. Please try again or contact support.'
+            );
         }
     }
+
+
     public function logout()
     {
         Auth::guard('calling_user')->logout();

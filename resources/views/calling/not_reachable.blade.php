@@ -102,6 +102,34 @@
     <!-- ================= MOBILE ================= -->
     <div class="d-block d-md-none">
 
+        {{-- SUCCESS MESSAGE --}}
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                <strong>Success!</strong> {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        {{-- GENERAL ERROR MESSAGE --}}
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+                <strong>Error!</strong> {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        {{-- VALIDATION ERRORS --}}
+        @if ($errors->any())
+            <div class="alert alert-warning mb-3" role="alert">
+                <strong>Please correct the following:</strong>
+                <ul class="mb-0 mt-2">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         @foreach ($orders as $order)
             <div class="card mb-3 shadow-sm border-0 rounded-3">
 
@@ -170,7 +198,7 @@
 
     </div>
 
-    <!-- ================= MODALS ================= -->
+
     <!-- ================= MODALS ================= -->
     @foreach ($orders as $order)
         <div class="modal fade" id="edit{{ $order->id }}" tabindex="-1">

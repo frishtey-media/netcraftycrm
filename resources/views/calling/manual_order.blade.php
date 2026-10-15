@@ -29,47 +29,36 @@
         }
     </style>
 
+    {{-- SUCCESS MESSAGE --}}
     @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show">
-
-            {{ session('success') }}
-
-            <button type="button" class="btn-close" data-bs-dismiss="alert">
-            </button>
-
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Success!</strong> {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
 
-
+    {{-- GENERAL ERROR / WARNING MESSAGE --}}
     @if (session('error'))
-        <div class="alert alert-danger">
-
-            {{ session('error') }}
-
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Verification Warning!</strong>
+            <div class="mt-1">{{ session('error') }}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
-    @error('customer_phone')
-        <div class="text-danger mt-1">
-            {{ $message }}
-        </div>
-    @enderror
 
+    {{-- VALIDATION ERRORS --}}
     @if ($errors->any())
-
-        <div class="alert alert-danger">
-
-            <strong>Please correct following errors:</strong>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Please correct the following errors:</strong>
 
             <ul class="mb-0 mt-2">
-
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
-
             </ul>
 
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-
     @endif
 
 

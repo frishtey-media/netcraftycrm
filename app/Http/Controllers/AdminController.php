@@ -3474,7 +3474,7 @@ class AdminController extends Controller
                 ->whereNotNull('orders.delivery_date')
 
                 // Delivery must be at least 20/45 days old
-                ->whereDate(
+                ->where(
                     'orders.delivery_date',
                     '<=',
                     now()->subDays($repeatDays)->toDateString()
@@ -3582,10 +3582,8 @@ class AdminController extends Controller
 
                         ->count();
 
-                    $repeatPending = $getRepeatPending(
-                        $client->id
-                    );
-
+                    $repeatPending = 0;
+                    // $repeatPending = $getRepeatPending($client->id);
 
                     return [
 
@@ -3734,11 +3732,9 @@ class AdminController extends Controller
 
                     ->count();
 
-                $repeatPending = $getRepeatPending(
-                    $client->id
-                );
+                $repeatPending = 0;
 
-
+                // $repeatPending = $getRepeatPending($client->id);
                 return [
 
                     'client_name' =>
@@ -4161,141 +4157,324 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Clients 2 and 14 use separate Shopify stores but share staff.
+     * Other clients remain isolated.
+     */
+    private function rtoLookupClientIds(int $clientId): array
+    {
+        return in_array($clientId, [2, 14], true)
+            ? [2, 14]
+            : [$clientId];
+    }
+
+    /**
+     * Find the most recent assigned parent order, including an earlier RTO.
+     * This is necessary when the same order returns as RTO repeatedly.
+     */
+    private function findRtoParentOrder(int $clientId, string $orderId): ?CallingOrder
+    {
+        $clientIds = $this->rtoLookupClientIds($clientId);
+        $orderId = trim($orderId);
+
+        $parent = CallingOrder::query()
+            ->whereIn('client_id', $clientIds)
+            ->where('order_id', $orderId)
+            ->whereNotNull('assigned_to')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($parent) {
+            return $parent;
+        }
+
+        // Fallback for data where the report points to an RTO ID
+        // but only the original/base calling order exists.
+        $baseOrderId = preg_replace('/R+$/i', '', $orderId);
+
+        if (!$baseOrderId || $baseOrderId === $orderId) {
+            return null;
+        }
+
+        return CallingOrder::query()
+            ->whereIn('client_id', $clientIds)
+            ->where('order_id', $baseOrderId)
+            ->whereNotNull('assigned_to')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * Append one more R for each repeated RTO.
+     * S2-3186 => S2-3186R => S2-3186RR => S2-3186RRR.
+     */
+    private function nextRepeatedRtoOrderId(string $sourceOrderId): string
+    {
+        $sourceOrderId = trim($sourceOrderId);
+        $baseOrderId = preg_replace('/R+$/i', '', $sourceOrderId);
+
+        if ($baseOrderId === '') {
+            throw new \RuntimeException('Cannot generate an RTO ID from an empty order ID.');
+        }
+
+        $rCount = strlen($sourceOrderId) - strlen($baseOrderId);
+
+        // Find existing IDs with this exact base and one or more trailing R characters.
+        $existingIds = CallingOrder::query()
+            ->where('order_id', 'like', $baseOrderId . 'R%')
+            ->pluck('order_id');
+
+        foreach ($existingIds as $existingId) {
+            if (preg_match(
+                '/^' . preg_quote($baseOrderId, '/') . '(R+)$/i',
+                trim($existingId),
+                $matches
+            )) {
+                $rCount = max($rCount, strlen($matches[1]));
+            }
+        }
+
+        do {
+            $rCount++;
+            $candidate = $baseOrderId . str_repeat('R', $rCount);
+
+            $exists = CallingOrder::query()
+                ->where('order_id', $candidate)
+                ->exists();
+        } while ($exists);
+
+        return $candidate;
+    }
+
     public function assignRtoOrders(Request $request)
     {
-        DB::beginTransaction();
+        $request->validate([
+            'client_id' => ['required', 'integer'],
+            'assign'    => ['required', 'array'],
+            'assign.*'  => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $clientId = (int) $request->client_id;
+        $lockName = 'rto_order_id_generation';
+        $lockAcquired = false;
 
         try {
+            // Manual aur scheduler assignment ke beech ID collision rokne ke liye.
+            $lock = DB::selectOne(
+                'SELECT GET_LOCK(?, 10) AS acquired',
+                [$lockName]
+            );
 
-            // Get all pending RTO orders
+            if (!$lock || (int) $lock->acquired !== 1) {
+                throw new \RuntimeException(
+                    'RTO assignment is busy. Please try again.'
+                );
+            }
+
+            $lockAcquired = true;
+
+            DB::beginTransaction();
+
+            // Sirf isi client ke pending RTO records.
             $rtoOrders = DB::table('rto_reports')
-                ->join('orders', 'orders.order_id', '=', 'rto_reports.order_id')
-                ->where('orders.client_id', $request->client_id)
+                ->join(
+                    'orders',
+                    'orders.order_id',
+                    '=',
+                    'rto_reports.order_id'
+                )
+                ->where('orders.client_id', $clientId)
                 ->where('rto_reports.is_exported', 0)
                 ->orderBy('rto_reports.id')
                 ->select(
-                    'rto_reports.*',
-
+                    'rto_reports.id as rto_report_id',
+                    'rto_reports.order_id as original_order_id',
+                    'rto_reports.order_date',
+                    'rto_reports.product',
+                    'rto_reports.quantity',
+                    'rto_reports.weight',
+                    'rto_reports.customer_name',
+                    'rto_reports.customer_phone',
+                    'rto_reports.shipping_address',
+                    'rto_reports.payment_mode',
+                    'rto_reports.amount',
                     'orders.client_id',
                     'orders.city',
                     'orders.state',
                     'orders.pincode',
                     'orders.father_name'
                 )
+                ->lockForUpdate()
                 ->get();
 
-            foreach ($request->assign as $staffId => $qty) {
+            if ($rtoOrders->isEmpty()) {
+                throw new \RuntimeException('No pending RTO orders found.');
+            }
 
-                if (empty($qty) || $qty <= 0) {
+            /*
+         * Pehle har RTO ka original staff find karein.
+         * Original staff missing/inactive ho to order pending rahega.
+         */
+            $eligibleByStaff = [];
+
+            foreach ($rtoOrders as $order) {
+                $originalCallingOrder = $this->findRtoParentOrder(
+                    $clientId,
+                    (string) $order->original_order_id
+                );
+
+                if (!$originalCallingOrder) {
+                    Log::warning('RTO left pending: original assignment not found', [
+                        'client_id'        => $clientId,
+                        'rto_report_id'    => $order->rto_report_id,
+                        'original_order_id' => $order->original_order_id,
+                    ]);
+
                     continue;
                 }
 
-                // Get selected orders
-                $selectedOrders = $rtoOrders->splice(0, $qty);
+                $originalStaffId = (int) $originalCallingOrder->assigned_to;
 
-                // Staff Details
-                $staff = CallingUser::findOrFail($staffId);
+                $originalStaff = CallingUser::query()
+                    ->where('id', $originalStaffId)
+                    ->where('status', 1)
+                    ->first();
 
-                $name = strtoupper(trim($staff->name));
-
-                // First + Last Letter
-                $prefix = substr($name, 0, 1) . substr($name, -1, 1);
-
-                $date = now()->format('d-m-y');
-
-                // Last Serial Number of Today
-                $lastSerial = CallingOrder::where('assigned_to', $staffId)
-                    ->whereDate('created_at', today())
-                    ->count();
-
-                foreach ($selectedOrders as $order) {
-
-                    // Increment Serial
-                    $lastSerial++;
-
-                    // Generate Order ID
-                    $callingOrderId = $prefix . '-' . $date . '-' . $lastSerial . 'R';
-
-                    CallingOrder::create([
-
-                        'client_id'          => $order->client_id,
-
-                        // Auto Generated Calling Order ID
-                        'order_id'           => $callingOrderId,
-
-
-                        'order_date'         => $order->order_date,
-
-
-
-                        'product_name'       => $order->product,
-
-                        'quantity'           => $order->quantity,
-
-                        'weight'             => $order->weight,
-
-                        'customer_name'      => $order->customer_name,
-
-                        'father_name'        => $order->father_name,
-
-                        'city'               => $order->city,
-
-                        'state'              => $order->state,
-
-                        'pincode'            => $order->pincode,
-
-                        'customer_phone'     => $order->customer_phone,
-
-                        'shipping_address'   => $order->shipping_address,
-
-                        'payment_mode'       => $order->payment_mode,
-
-                        'amount'             => $order->amount,
-
-                        'assigned_to'        => $staffId,
-
-                        'status'             => 'pending',
-
-                        'order_source'       => 'RTO',
-
-
-
+                if (!$originalStaff) {
+                    Log::warning('RTO left pending: original staff inactive/missing', [
+                        'client_id'         => $clientId,
+                        'rto_report_id'     => $order->rto_report_id,
+                        'original_order_id' => $order->original_order_id,
+                        'original_staff_id' => $originalStaffId,
                     ]);
 
-                    // Update RTO Report
-                    $updated = DB::table('rto_reports')
-                        ->where('order_id', $order->order_id)
-                        ->update([
-                            'is_exported'  => 1,
-                            'assign_staff' => $staffId,
-                            'assigndate'   => now(),
-                        ]);
+                    continue;
+                }
 
-                    if (!$updated) {
-                        throw new \Exception(
-                            'Unable to update RTO Report. Order ID: ' . $order->order_id
+                $order->original_staff_id = $originalStaffId;
+
+                if (!isset($eligibleByStaff[$originalStaffId])) {
+                    $eligibleByStaff[$originalStaffId] = collect();
+                }
+
+                $eligibleByStaff[$originalStaffId]->push($order);
+            }
+
+            // Quantity ko sirf usi staff ke eligible RTO records se match karein.
+            $assignments = $request->input('assign', []);
+            $selectedOrdersByStaff = [];
+
+            foreach ($assignments as $staffId => $qty) {
+                $staffId = (int) $staffId;
+                $qty = (int) ($qty ?? 0);
+
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $staff = CallingUser::query()
+                    ->where('id', $staffId)
+                    ->where('status', 1)
+                    ->first();
+
+                if (!$staff) {
+                    throw new \RuntimeException(
+                        "Selected staff ID {$staffId} is inactive or unavailable."
+                    );
+                }
+
+                $available = $eligibleByStaff[$staffId] ?? collect();
+
+                if ($qty > $available->count()) {
+                    throw new \RuntimeException(
+                        "Staff {$staff->name} has only {$available->count()} eligible RTO orders. You requested {$qty}. No orders were assigned."
+                    );
+                }
+
+                $selectedOrdersByStaff[$staffId] = $available->take($qty);
+            }
+
+            $assignedTotal = 0;
+
+            foreach ($selectedOrdersByStaff as $staffId => $selectedOrders) {
+                foreach ($selectedOrders as $order) {
+                    // Safety check: only the staff assigned to the parent order can receive this RTO.
+                    if ((int) $order->original_staff_id !== (int) $staffId) {
+                        throw new \RuntimeException(
+                            "RTO staff mismatch for source order {$order->original_order_id}."
                         );
                     }
+
+                    // Each repeat gets one additional trailing R.
+                    $callingOrderId = $this->nextRepeatedRtoOrderId(
+                        (string) $order->original_order_id
+                    );
+
+                    CallingOrder::create([
+                        'client_id'        => $order->client_id,
+                        'order_id'         => $callingOrderId,
+                        'order_date'       => $order->order_date,
+                        'product_name'     => $order->product,
+                        'quantity'         => $order->quantity,
+                        'weight'           => $order->weight,
+                        'customer_name'    => $order->customer_name,
+                        'father_name'      => $order->father_name,
+                        'city'             => $order->city,
+                        'state'            => $order->state,
+                        'pincode'          => $order->pincode,
+                        'customer_phone'   => $order->customer_phone,
+                        'shipping_address' => $order->shipping_address,
+                        'payment_mode'     => $order->payment_mode,
+                        'amount'           => $order->amount,
+                        'assigned_to'      => $staffId,
+                        'status'           => 'pending',
+                        'order_source'     => 'RTO',
+                    ]);
+
+                    // Update only this exact RTO report row.
+                    $updated = DB::table('rto_reports')
+                        ->where('id', $order->rto_report_id)
+                        ->where('is_exported', 0)
+                        ->update([
+                            'is_exported' => 1,
+                            'assign_staff' => $staffId,
+                            'assigndate' => now(),
+                        ]);
+
+                    if ($updated !== 1) {
+                        throw new \RuntimeException(
+                            "RTO report was already assigned or changed. Original order: {$order->original_order_id}"
+                        );
+                    }
+
+                    $assignedTotal++;
                 }
             }
 
             DB::commit();
 
-            return back()->with('success', 'RTO Orders Assigned Successfully.');
-        } catch (\Exception $e) {
+            return back()->with(
+                'success',
+                "{$assignedTotal} RTO orders assigned to their original staff only."
+            );
+        } catch (\Throwable $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
 
-            DB::rollBack();
-
-            Log::error('RTO Assignment Error', [
-                'message' => $e->getMessage(),
-                'line'    => $e->getLine(),
-                'file'    => $e->getFile(),
-                'trace'   => $e->getTraceAsString(),
+            Log::error('Manual RTO assignment failed', [
+                'client_id' => $clientId,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
-            return back()->withErrors([
-                'error' => $e->getMessage() . ' | Line : ' . $e->getLine()
-            ]);
+            return back()->with('error', $e->getMessage());
+        } finally {
+            if ($lockAcquired) {
+                DB::selectOne('SELECT RELEASE_LOCK(?) AS released', [$lockName]);
+            }
         }
     }
 

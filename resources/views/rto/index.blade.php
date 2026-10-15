@@ -45,25 +45,25 @@
         @endif
         {{-- Upload Excel --}}
         <!-- <form method="POST" action="{{ route('rto.search') }}" enctype="multipart/form-data">
-                    @csrf
+                                            @csrf
 
-                    <div class="card-body">
-                        <div class="row">
+                                            <div class="card-body">
+                                                <div class="row">
 
-                            <div class="col-md-4">
-                                <label>Upload RTO Barcodes (Excel)</label>
-                                <input type="file" name="rtobarcodes" class="form-control" required>
-                            </div>
+                                                    <div class="col-md-4">
+                                                        <label>Upload RTO Barcodes (Excel)</label>
+                                                        <input type="file" name="rtobarcodes" class="form-control" required>
+                                                    </div>
 
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button class="btn btn-success">
-                                    Submit
-                                </button>
-                            </div>
+                                                    <div class="col-md-2 d-flex align-items-end">
+                                                        <button class="btn btn-success">
+                                                            Submit
+                                                        </button>
+                                                    </div>
 
-                        </div>
-                    </div>
-                </form>-->
+                                                </div>
+                                            </div>
+                                        </form>-->
     </div>
 
     {{-- Export Button --}}
@@ -80,13 +80,14 @@
         <div class="card-body">
 
             {{-- Date Filter --}}
+
             <form method="GET" action="{{ route('rto.index') }}">
-                <div class="row mb-4">
-                    <div class="col-md-2">
-                        <label>Client</label>
+                <div class="row g-2 mb-4 align-items-end">
+
+                    <div class="col">
+                        <label class="form-label">Client</label>
                         <select name="client_id" class="form-control">
                             <option value="">All Clients</option>
-
                             @foreach ($clients as $client)
                                 <option value="{{ $client->id }}"
                                     {{ request('client_id') == $client->id ? 'selected' : '' }}>
@@ -96,50 +97,56 @@
                         </select>
                     </div>
 
-                    <div class="col-md-2">
-                        <label>Staff</label>
-
+                    <div class="col">
+                        <label class="form-label">Staff</label>
                         <select name="staff_id" class="form-control">
-
                             <option value="">All Staff</option>
-
                             <option value="other" {{ request('staff_id') == 'other' ? 'selected' : '' }}>
                                 Other
                             </option>
-
                             @foreach ($staffs as $staff)
                                 <option value="{{ $staff->id }}"
                                     {{ request('staff_id') == $staff->id ? 'selected' : '' }}>
                                     {{ $staff->name }}
                                 </option>
                             @endforeach
-
                         </select>
                     </div>
-                    <div class="col-md-2">
-                        <label>From Date</label>
+
+                    <div class="col">
+                        <label class="form-label">From Date</label>
                         <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
                     </div>
 
-                    <div class="col-md-2">
-                        <label>To Date</label>
+                    <div class="col">
+                        <label class="form-label">To Date</label>
                         <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
                     </div>
 
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-primary">
-                            Filter
-                        </button>
-                    </div>
+                    <div class="col-auto">
+                        <label class="form-label d-block">Actions</label>
+                        <div class="d-flex flex-nowrap gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                Filter
+                            </button>
 
-                    <div class="col-md-2 d-flex align-items-end">
-                        <a href="{{ route('rto.index') }}" class="btn btn-secondary">
-                            Reset
-                        </a>
+                            <a href="{{ route('rto.index') }}" class="btn btn-secondary">
+                                Reset
+                            </a>
+
+                            <a href="{{ route('rto.receivedBased') }}" class="btn btn-danger text-nowrap">
+                                India Post Based
+                            </a>
+
+                            <a href="{{ route('rto.receivedofcBased') }}" class="btn btn-success text-nowrap">
+                                Received OFC
+                            </a>
+                        </div>
                     </div>
 
                 </div>
             </form>
+
 
             {{-- Staff Wise Summary --}}
             @if (isset($staffCounts) && $staffCounts->count())
