@@ -82,7 +82,20 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/clientsorders', [AdminController::class, 'clientsorders'])->name('clientsorders');
 
+    Route::get(
+        '/whatsapp-fresh-leads/{clientId?}',
+        [AdminController::class, 'whatsappFreshLeads']
+    )->name('whatsapp.fresh-leads.index');
 
+    Route::post(
+        '/whatsapp-fresh-leads/share',
+        [AdminController::class, 'assignWhatsappFreshLeads']
+    )->name('whatsapp.fresh-leads.assign');
+
+    Route::post(
+        '/whatsapp-fresh-leads/status',
+        [AdminController::class, 'updateWhatsappFreshLeadStatus']
+    )->name('whatsapp.fresh-leads.status');
 
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])->name('labelsenders');
     Route::post('/labelsenders', [AdminController::class, 'storeLabelSenders'])->name('labelsenders.store');
@@ -539,6 +552,17 @@ Route::middleware('calling_user')->group(function () {
 
     Route::get('/calling/WhatsApp', [CallingUserAuthController::class, 'WhatsApp'])
         ->name('calling.WhatsApp');
+    Route::get('/calling/whatsapp-leads', [CallingUserAuthController::class, 'staffWhatsappLeads'])->name('calling.whatsapp-leads');
+
+    Route::post(
+        '/calling/whatsapp-leads/{id}/status',
+        [CallingUserAuthController::class, 'updateWhatsappLeadStatus']
+    )->name('calling.whatsapp-leads.status');
+
+    Route::post(
+        '/calling/whatsapp-leads/{id}/update',
+        [CallingUserAuthController::class, 'updateWhatsappLead']
+    )->name('calling.whatsapp-leads.update');
 
     Route::get('/calling/deliverordersorders', [CallingUserAuthController::class, 'deliverordersorders'])
         ->name('calling.deliverorders');

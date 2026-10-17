@@ -378,7 +378,264 @@ class CallingUserAuthController extends Controller
             'successRate'
         ));
     }
+    public function staffWhatsappLeads(Request $request)
+    {
+        $staffId = Auth::guard('calling_user')->id();
 
+        if (!$staffId) {
+            abort(403, 'Please login as calling staff.');
+        }
+
+        $statuses = [
+            'pending',
+            'not_reachable',
+            'not reachable',
+            'not-reachable',
+        ];
+
+        // Last 3 calendar days: today and previous 2 days
+        $from = now()->startOfDay()->subDays(2);
+        $to = now()->startOfDay()->addDay();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Base Query: Normal Assigned + Shared WhatsApp Leads
+    |--------------------------------------------------------------------------
+    */
+        $baseQuery = DB::table('callingorder as c')
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(c.order_source, ''))) = ?",
+                ['whatsapp']
+            )
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(c.status, ''))) = ?",
+                ['pending']
+            )
+            ->where(function ($q) {
+                $q->whereNull('c.remarks')
+                    ->orWhereRaw("TRIM(c.remarks) = ''");
+            })
+            ->where('c.order_date', '>=', $from)
+            ->where('c.order_date', '<', $to)
+            ->where(function ($q) use ($staffId) {
+                $q->where(function ($normal) use ($staffId) {
+                    // Normal assigned leads, excluding leads shared with anyone
+                    $normal->where('c.assigned_to', $staffId)
+                        ->whereNotExists(function ($sub) {
+                            $sub->selectRaw('1')
+                                ->from('whatsapp_fresh_lead_shares as s')
+                                ->whereColumn('s.callingorder_id', 'c.id');
+                        });
+                })
+                    ->orWhereExists(function ($sub) use ($staffId) {
+                        // Leads shared with logged-in staff only
+                        $sub->selectRaw('1')
+                            ->from('whatsapp_fresh_lead_shares as s')
+                            ->whereColumn('s.callingorder_id', 'c.id')
+                            ->where('s.shared_with_staff_id', $staffId);
+                    });
+            });
+
+        $clients = DB::table('clients as cl')
+            ->join('callingorder as c', 'c.client_id', '=', 'cl.id')
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(c.order_source, ''))) = ?",
+                ['whatsapp']
+            )
+            ->whereIn(
+                DB::raw('LOWER(TRIM(c.status))'),
+                $statuses
+            )
+            ->where('c.order_date', '>=', $from)
+            ->where('c.order_date', '<', $to)
+            ->where(function ($q) use ($staffId) {
+                $q->where('c.assigned_to', $staffId)
+                    ->orWhereExists(function ($sub) use ($staffId) {
+                        $sub->selectRaw('1')
+                            ->from('whatsapp_fresh_lead_shares as s')
+                            ->whereColumn(
+                                's.callingorder_id',
+                                'c.id'
+                            )
+                            ->where(
+                                's.shared_with_staff_id',
+                                $staffId
+                            );
+                    });
+            })
+            ->select(
+                'cl.id as client_id',
+                'cl.client_name',
+                DB::raw('COUNT(DISTINCT c.id) as total')
+            )
+            ->groupBy('cl.id', 'cl.client_name')
+            ->orderBy('cl.client_name')
+            ->get();
+
+        $query = clone $baseQuery;
+
+        if ($request->filled('client_id')) {
+            $query->where('c.client_id', $request->client_id);
+        }
+
+        $orders = $query
+            ->select([
+                'c.id',
+                'c.id as callingorder_id',
+                'c.order_id',
+                'c.customer_name',
+                'c.customer_phone',
+                'c.product_name',
+                'c.shipping_address',
+                'c.city',
+                'c.state',
+                'c.pincode',
+                'c.order_date',
+                'c.status',
+                'c.remarks',
+                'c.client_id',
+                'c.payment_mode',
+                'c.quantity',
+                'c.amount',
+                'c.age',
+                'c.father_name',
+            ])
+            ->orderByDesc('c.order_date')
+            ->orderByDesc('c.id')
+            ->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Show Shared Order ID for Shared Leads
+    |--------------------------------------------------------------------------
+    */
+        $sharedOrderIds = DB::table('whatsapp_fresh_lead_shares')
+            ->where('shared_with_staff_id', $staffId)
+            ->whereIn(
+                'callingorder_id',
+                $orders->pluck('callingorder_id')->unique()->values()
+            )
+            ->select('callingorder_id', 'shared_order_id')
+            ->get()
+            ->keyBy('callingorder_id');
+
+        $orders->transform(function ($order) use ($sharedOrderIds) {
+            $share = $sharedOrderIds->get($order->callingorder_id);
+
+            if ($share && !empty($share->shared_order_id)) {
+                $order->order_id = $share->shared_order_id;
+                $order->lead_type = 'Shared';
+            } else {
+                $order->lead_type = 'Normal Assigned';
+            }
+
+            return $order;
+        });
+
+        return view('calling.whatsapp-leads', [
+            'orders'       => $orders,
+            'clients'      => $clients,
+            'statusLabel'  => 'WhatsApp Leads',
+            'statusClass'  => 'warning',
+            'statusCount'  => $orders->count(),
+        ]);
+    }
+    public function updateWhatsappLeadStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:verified,same_order,not_reachable,cancel',
+        ]);
+
+        $staffId = Auth::guard('calling_user')->id();
+
+        abort_unless($staffId, 403, 'Please login as calling staff.');
+
+        $lead = DB::table('callingorder as c')
+            ->where('c.id', $id)
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(c.order_source, ''))) = ?",
+                ['whatsapp']
+            )
+            ->where(function ($q) use ($staffId) {
+                $q->where('c.assigned_to', $staffId)
+                    ->orWhereExists(function ($sub) use ($staffId) {
+                        $sub->selectRaw('1')
+                            ->from('whatsapp_fresh_lead_shares as s')
+                            ->whereColumn('s.callingorder_id', 'c.id')
+                            ->where('s.shared_with_staff_id', $staffId);
+                    });
+            })
+            ->select('c.id', 'c.status')
+            ->first();
+
+        abort_unless($lead, 404, 'WhatsApp lead not found or access denied.');
+
+        DB::table('callingorder')
+            ->where('id', $lead->id)
+            ->update([
+                'status' => $request->status,
+                'updated_at' => now(),
+            ]);
+
+        return redirect()->back()->with(
+            'success',
+            'WhatsApp lead status updated successfully. The update applies to both staff members.'
+        );
+    }
+
+    public function updateWhatsappLead(Request $request, $id)
+    {
+        $staffId = Auth::guard('calling_user')->id();
+
+        abort_unless($staffId, 403, 'Please login as calling staff.');
+
+        $data = $request->validate([
+            'customer_name'    => 'nullable|string|max:255',
+            'customer_phone'   => 'nullable|string|max:30',
+            'product_name'     => 'nullable|string|max:1000',
+            'father_name'      => 'nullable|string|max:255',
+            'quantity'         => 'nullable|integer|min:1',
+            'payment_mode'     => 'nullable|in:COD,Prepaid',
+            'amount'           => 'nullable|numeric|min:0',
+            'age'              => 'nullable|integer|min:0|max:150',
+            'city'             => 'nullable|string|max:255',
+            'state'            => 'nullable|string|max:255',
+            'pincode'          => 'nullable|string|max:20',
+            'shipping_address' => 'nullable|string|max:2000',
+            'remarks'           => 'nullable|string|max:2000',
+        ]);
+
+        $lead = DB::table('callingorder as c')
+            ->where('c.id', $id)
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(c.order_source, ''))) = ?",
+                ['whatsapp']
+            )
+            ->where(function ($q) use ($staffId) {
+                $q->where('c.assigned_to', $staffId)
+                    ->orWhereExists(function ($sub) use ($staffId) {
+                        $sub->selectRaw('1')
+                            ->from('whatsapp_fresh_lead_shares as s')
+                            ->whereColumn('s.callingorder_id', 'c.id')
+                            ->where('s.shared_with_staff_id', $staffId);
+                    });
+            })
+            ->select('c.id')
+            ->first();
+
+        abort_unless($lead, 404, 'WhatsApp lead not found or access denied.');
+
+        DB::table('callingorder')
+            ->where('id', $lead->id)
+            ->update(array_merge($data, [
+                'updated_at' => now(),
+            ]));
+
+        return redirect()->back()->with(
+            'success',
+            'WhatsApp lead updated successfully for both staff members.'
+        );
+    }
     public function trackCall(Request $request)
     {
         $request->validate([

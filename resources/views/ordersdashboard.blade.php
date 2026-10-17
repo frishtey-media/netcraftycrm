@@ -189,44 +189,35 @@
                 </div>
             @endforeach
 
+            @if (auth()->user()->role == 'super_admin')
+                @foreach ($ordersData as $data)
+                    <div class="col-md-4">
+                        <a href="{{ route('whatsapp.fresh-leads.index', [
+                            'clientId' => $data['client_id'],
+                        ]) }}"
+                            class="text-decoration-none">
 
-            {{-- SELLOSHIP RECORDS --}}
-            @foreach ($ordersData as $data)
-                <div class="col-md-4">
+                            <div class="dashboard-card card-green">
+                                <div>
+                                    <div class="card-title">
+                                        WhatsApp Fresh Leads
+                                    </div>
 
-                    <div class="dashboard-card card-green"
-                        onclick="openSelloshipAssignModal(
-                {{ $data['client_id'] }},
-                {{ $data['selloship_records'] ?? 0 }}
-            )">
+                                    <span>{{ $data['client_name'] }}</span>
 
-                        <div>
+                                    <div class="card-count">
+                                        {{ $data['fresh_leads'] ?? 0 }}
+                                    </div>
 
-                            <div class="card-title">
+                                    <small>Pending / Not Reachable · Last 3 Days</small>
+                                </div>
 
-                                Whatsapp Leads
+                                <i class="bi bi-whatsapp card-icon"></i>
                             </div>
-
-                            <span>
-                                {{ $data['client_name'] }}
-                            </span>
-
-                            <div class="card-count">
-                                {{ $data['selloship_records'] ?? 0 }}
-                            </div>
-
-                            <small>
-                                Pending Assignment
-                            </small>
-
-                        </div>
-
-                        <i class="bi bi-file-earmark-arrow-up card-icon"></i>
-
+                        </a>
                     </div>
-
-                </div>
-            @endforeach
+                @endforeach
+            @endif
         </div>
 
     </div>
@@ -518,10 +509,10 @@
     </div>
     <script>
         /*
-                                                                                                                                                                                                                                            |--------------------------------------------------------------------------
-                                                                                                                                                                                                                                            | Open Selloship Assignment Modal
-                                                                                                                                                                                                                                            |--------------------------------------------------------------------------
-                                                                                                                                                                                                                                            */
+                                                                                                                                                                                                                                                        |--------------------------------------------------------------------------
+                                                                                                                                                                                                                                                        | Open Selloship Assignment Modal
+                                                                                                                                                                                                                                                        |--------------------------------------------------------------------------
+                                                                                                                                                                                                                                                        */
 
         function openSelloshipAssignModal(clientId, count) {
 

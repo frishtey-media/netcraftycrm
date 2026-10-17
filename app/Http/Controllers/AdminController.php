@@ -25,7 +25,6 @@ use App\Models\RtoReport;
 use App\Models\OrderAssignmentScheduler;
 use App\Imports\SelloshipImport;
 
-
 class AdminController extends Controller
 {
 
@@ -2199,15 +2198,18 @@ class AdminController extends Controller
         ];
 
 
+        $staffId = (int) $request->staff_id;
+
         $query = CallingOrder::query()
-            ->where(
-                'assigned_to',
-                $request->staff_id
-            )
-            ->whereBetween(
-                'updated_at',
-                [$from, $to]
-            );
+            ->where(function ($q) use ($staffId) {
+                $q->where('callingorder.assigned_to', $staffId)
+                    ->orWhereIn('callingorder.id', function ($sub) use ($staffId) {
+                        $sub->select('callingorder_id')
+                            ->from('whatsapp_fresh_lead_shares')
+                            ->where('shared_with_staff_id', $staffId);
+                    });
+            })
+            ->whereBetween('callingorder.updated_at', [$from, $to]);
 
 
         if ($request->filled('order_source')) {
@@ -3415,6 +3417,347 @@ class AdminController extends Controller
         ]);
     }
 
+
+
+
+    /**
+     * WhatsApp Fresh Leads
+     * Shows original leads plus leads shared with the selected staff member.
+     */
+    public function whatsappFreshLeads(Request $request, $clientId = null)
+    {
+        // Client login can only access its own data.
+        if ($this->isClient()) {
+            $clientId = (int) $this->clientId();
+        } else {
+            $clientId = (int) ($clientId ?: $request->input('client_id'));
+        }
+
+        abort_unless($clientId > 0, 422, 'Please select a client.');
+
+        if ($this->isClient() && $clientId !== (int) $this->clientId()) {
+            abort(403, 'Unauthorized Access');
+        }
+
+        $client = Client::findOrFail($clientId);
+
+        $staffId = $request->filled('staff_id')
+            ? (int) $request->staff_id
+            : null;
+
+        $from = Carbon::today()->subDays(2)->startOfDay();
+        $to   = Carbon::today()->endOfDay();
+
+        $query = DB::table('callingorder')
+            ->where('callingorder.client_id', $clientId)
+            ->whereBetween('callingorder.order_date', [$from, $to])
+            ->whereIn(
+                DB::raw('LOWER(TRIM(callingorder.status))'),
+                ['pending', 'not_reachable', 'not reachable', 'not-reachable']
+            )
+            ->where(function ($q) {
+                $q->whereNull('callingorder.remarks')
+                    ->orWhere('callingorder.remarks', '<>', 'Selloship Import');
+            });
+
+        // Include original leads and leads shared with the selected staff.
+        if ($staffId) {
+            $query->where(function ($q) use ($staffId) {
+                $q->where('callingorder.assigned_to', $staffId)
+                    ->orWhereExists(function ($sub) use ($staffId) {
+                        $sub->selectRaw('1')
+                            ->from('whatsapp_fresh_lead_shares as shares')
+                            ->whereColumn(
+                                'shares.callingorder_id',
+                                'callingorder.id'
+                            )
+                            ->where('shares.client_id', $this->isClient()
+                                ? (int) $this->clientId()
+                                : (int) request()->input('client_id', request()->route('clientId')))
+                            ->where('shares.shared_with_staff_id', $staffId);
+                    });
+            });
+        }
+
+        $leads = $query
+            ->select('callingorder.*')
+            ->orderByDesc('callingorder.order_date')
+            ->get();
+
+        // Load staff names once instead of querying for every row.
+        $staffNames = CallingUser::pluck('name', 'id');
+
+        $leads->transform(function ($lead) use ($staffNames, $clientId) {
+            $lead->assigned_staff_name =
+                $staffNames[$lead->assigned_to ?? 0] ?? 'Unassigned';
+
+            $lead->shared_staff_names = DB::table('whatsapp_fresh_lead_shares as shares')
+                ->join(
+                    'calling_users',
+                    'calling_users.id',
+                    '=',
+                    'shares.shared_with_staff_id'
+                )
+                ->where('shares.client_id', $clientId)
+                ->where('shares.callingorder_id', $lead->id)
+                ->pluck('calling_users.name')
+                ->toArray();
+
+            return $lead;
+        });
+
+        // Only active staff belonging to this client, if client_id exists on calling_users.
+        // If calling_users has no client_id column, use CallingUser::where('status', 1) instead.
+        $staff = CallingUser::where('status', 1)
+            ->orderBy('name')
+            ->get();
+
+        return view('whatsapp-fresh-leads', compact(
+            'client',
+            'clientId',
+            'staffId',
+            'staff',
+            'leads',
+            'from',
+            'to'
+        ));
+    }
+
+
+    public function assignWhatsappFreshLeads(Request $request)
+    {
+        $request->validate([
+            'client_id'  => 'required|integer|exists:clients,id',
+            'staff_id'   => 'required|integer|exists:calling_users,id',
+            'lead_ids'   => 'required|array|min:1',
+            'lead_ids.*' => 'required|integer|distinct',
+        ]);
+
+        $clientId = (int) $request->client_id;
+        $staffId  = (int) $request->staff_id;
+
+        // Client access validation
+        if (
+            $this->isClient() &&
+            $clientId !== (int) $this->clientId()
+        ) {
+            abort(403, 'Unauthorized Access');
+        }
+
+        // Validate receiving staff
+        $targetStaff = CallingUser::where('status', 1)
+            ->findOrFail($staffId);
+
+        // Generate receiving staff prefix
+        $nameParts = preg_split(
+            '/\s+/',
+            trim($targetStaff->name),
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        );
+
+        $prefix = count($nameParts) >= 2
+            ? strtoupper(
+                mb_substr($nameParts[0], 0, 1) .
+                    mb_substr($nameParts[1], 0, 1)
+            )
+            : strtoupper(
+                mb_substr($nameParts[0] ?? 'ST', 0, 2)
+            );
+
+        $orderPrefix = $prefix . '-' . now()->format('d-m-y') . '-';
+
+        // Last 3 calendar days: today and previous 2 days
+        $from = Carbon::today()->subDays(2)->startOfDay();
+        $to   = Carbon::today()->endOfDay();
+
+        $sharedCount = DB::transaction(function () use (
+            $request,
+            $clientId,
+            $staffId,
+            $from,
+            $to,
+            $orderPrefix
+        ) {
+            // Existing shared order IDs for this staff and date prefix
+            $existingIds = DB::table('whatsapp_fresh_lead_shares')
+                ->where('shared_with_staff_id', $staffId)
+                ->where('shared_order_id', 'like', $orderPrefix . '%')
+                ->lockForUpdate()
+                ->pluck('shared_order_id');
+
+            // Existing original order IDs with the same prefix
+            $originalIds = DB::table('callingorder')
+                ->where('order_id', 'like', $orderPrefix . '%')
+                ->lockForUpdate()
+                ->pluck('order_id');
+
+            $maxSerial = 0;
+
+            foreach ($existingIds->merge($originalIds) as $id) {
+                if (preg_match('/-(\d+)$/', (string) $id, $matches)) {
+                    $maxSerial = max($maxSerial, (int) $matches[1]);
+                }
+            }
+
+            $serial = $maxSerial + 1;
+            $count  = 0;
+
+            foreach ($request->lead_ids as $leadId) {
+
+                // Lock and validate the original lead
+                $lead = DB::table('callingorder')
+                    ->where('id', (int) $leadId)
+                    ->where('client_id', $clientId)
+                    ->whereRaw(
+                        "LOWER(TRIM(COALESCE(order_source, ''))) = ?",
+                        ['whatsapp']
+                    )
+                    ->whereBetween('order_date', [$from, $to])
+                    ->whereIn(
+                        DB::raw('LOWER(TRIM(status))'),
+                        [
+                            'pending',
+                            'not_reachable',
+                            'not reachable',
+                            'not-reachable',
+                        ]
+                    )
+                    ->where(function ($query) {
+                        $query->whereNull('remarks')
+                            ->orWhere('remarks', '<>', 'Selloship Import');
+                    })
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$lead) {
+                    continue;
+                }
+
+                // Do not share a lead with its current assigned staff member
+                if ((int) $lead->assigned_to === $staffId) {
+                    continue;
+                }
+
+                // Prevent sharing the same lead with the same staff member twice
+                $alreadyShared = DB::table('whatsapp_fresh_lead_shares')
+                    ->where('client_id', $clientId)
+                    ->where('callingorder_id', $lead->id)
+                    ->where('shared_with_staff_id', $staffId)
+                    ->exists();
+
+                if ($alreadyShared) {
+                    continue;
+                }
+
+                // Create the share record
+                DB::table('whatsapp_fresh_lead_shares')->insert([
+                    'client_id'            => $clientId,
+                    'callingorder_id'      => $lead->id,
+                    'original_staff_id'    => $lead->assigned_to,
+                    'shared_with_staff_id' => $staffId,
+                    'shared_order_id'      => $orderPrefix . $serial,
+                    'created_at'           => now(),
+                    'updated_at'           => now(),
+                ]);
+
+                // Reset status and remarks for the shared lead.
+                // Keep assigned_to unchanged.
+                DB::table('callingorder')
+                    ->where('id', $lead->id)
+                    ->update([
+                        'status'     => 'pending',
+                        'remarks'    => '',
+                        'updated_at' => now(),
+                    ]);
+
+                $serial++;
+                $count++;
+            }
+
+            return $count;
+        });
+
+        return redirect()
+            ->route('whatsapp.fresh-leads.index', [
+                'clientId' => $clientId,
+            ])
+            ->with(
+                'success',
+                "{$sharedCount} lead(s) shared with {$targetStaff->name}."
+            );
+    }
+
+
+    /**
+     * Update the existing callingorder row.
+     * A status change is automatically visible to both original and shared staff.
+     */
+    public function updateWhatsappFreshLeadStatus(Request $request)
+    {
+        $request->validate([
+            'client_id' => 'required|integer|exists:clients,id',
+            'lead_id'   => 'required|integer|exists:callingorder,id',
+            'status'    => 'required|in:pending,verified,cancel,not_reachable,same_order',
+        ]);
+
+        $clientId = (int) $request->client_id;
+        $leadId   = (int) $request->lead_id;
+
+        if ($this->isClient() && $clientId !== (int) $this->clientId()) {
+            abort(403, 'Unauthorized Access');
+        }
+
+        $staffId = (int) $request->input('staff_id', 0);
+
+        DB::transaction(function () use ($clientId, $leadId, $staffId, $request) {
+            $lead = DB::table('callingorder')
+                ->where('id', $leadId)
+                ->where('client_id', $clientId)
+                ->lockForUpdate()
+                ->first();
+
+            abort_unless($lead, 404, 'Lead not found.');
+
+            // If a staff ID is provided, make sure that staff owns or shares this lead.
+            if ($staffId > 0) {
+                $isOriginalStaff = (int) ($lead->assigned_to ?? 0) === $staffId;
+
+                $isSharedStaff = DB::table('whatsapp_fresh_lead_shares')
+                    ->where('client_id', $clientId)
+                    ->where('callingorder_id', $leadId)
+                    ->where('shared_with_staff_id', $staffId)
+                    ->exists();
+
+                abort_unless(
+                    $isOriginalStaff || $isSharedStaff,
+                    403,
+                    'This lead is not assigned or shared with this staff member.'
+                );
+            }
+
+            // If another staff member already completed the lead, do not overwrite it.
+            $currentStatus = strtolower(trim((string) $lead->status));
+
+            if (in_array($currentStatus, ['verified', 'cancel', 'same_order'], true)) {
+                return;
+            }
+
+            DB::table('callingorder')
+                ->where('id', $leadId)
+                ->where('client_id', $clientId)
+                ->update([
+                    'status'     => $request->status,
+                    'updated_at' => now(),
+                ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lead status updated. The change applies to both staff members.',
+        ]);
+    }
+
     public function clientsorders()
     {
         if ($this->isClient()) {
@@ -3635,6 +3978,31 @@ class AdminController extends Controller
 
                 ->get();
 
+            $freshFrom = Carbon::today()->subDays(2)->startOfDay();
+            $freshTo   = Carbon::today()->endOfDay();
+
+            $ordersData = $ordersData->map(function ($data) use ($freshFrom, $freshTo) {
+
+                $data['fresh_leads'] = DB::table('callingorder')
+                    ->where('client_id', $data['client_id'])
+                    ->whereBetween('order_date', [$freshFrom, $freshTo])
+                    ->whereIn(
+                        DB::raw('LOWER(TRIM(status))'),
+                        ['pending', 'not_reachable', 'not reachable', 'not-reachable']
+                    )
+                    ->where(function ($q) {
+                        $q->whereNull('order_source')
+                            ->orWhereRaw('UPPER(TRIM(order_source)) <> ?', ['RTO']);
+                    })
+                    ->where(function ($q) {
+                        $q->whereNull('remarks')
+                            ->orWhere('remarks', '<>', 'Selloship Import');
+                    })
+                    ->count();
+
+                return $data;
+            });
+
             return view(
                 'ordersdashboard',
                 [
@@ -3810,7 +4178,29 @@ class AdminController extends Controller
             )
 
             ->get();
+        $freshFrom = Carbon::today()->subDays(2)->startOfDay();
+        $freshTo   = Carbon::today()->endOfDay();
 
+        $ordersData = $ordersData->map(function ($data) use ($freshFrom, $freshTo) {
+            $data['fresh_leads'] = DB::table('callingorder')
+                ->where('client_id', $data['client_id'])
+                ->whereBetween('order_date', [$freshFrom, $freshTo])
+                ->whereIn(
+                    DB::raw('LOWER(TRIM(status))'),
+                    ['pending', 'not_reachable', 'not reachable', 'not-reachable']
+                )
+                ->where(function ($q) {
+                    $q->whereNull('order_source')
+                        ->orWhereRaw('UPPER(TRIM(order_source)) <> ?', ['RTO']);
+                })
+                ->where(function ($q) {
+                    $q->whereNull('remarks')
+                        ->orWhere('remarks', '<>', 'Selloship Import');
+                })
+                ->count();
+
+            return $data;
+        });
         return view(
             'ordersdashboard',
             [

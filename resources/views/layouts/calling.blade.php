@@ -732,6 +732,16 @@
         <div class="menu-section">
             Orders
         </div>
+
+
+        <a href="{{ route('calling.whatsapp-leads') }}"
+            class="menu-link {{ request()->routeIs('calling.whatsapp-leads') ? 'active' : '' }}">
+
+            <i class="bi bi-arrow-return-left"></i>
+
+            <span>WhatsApp Leads</span>
+
+        </a>
         <a href="{{ route('calling.prepaidorders') }}"
             class="menu-link {{ request()->routeIs('calling.prepaidorders') ? 'active' : '' }}">
 
