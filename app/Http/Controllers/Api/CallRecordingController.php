@@ -37,7 +37,7 @@ class CallRecordingController extends Controller
             'order_id' => $validated['order_id'],
             'staff_id' => $user->id,
             'customer_phone' => $phone,
-            'call_status' => 'started',
+            'call_status' => 'called',
             'called_at' => now(),
             'call_started_at' => now(),
             'recording_status' => 'waiting',

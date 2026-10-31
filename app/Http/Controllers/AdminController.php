@@ -20,7 +20,7 @@ use App\Exports\StaffPerformanceExport;
 use App\Exports\StaffPerformanceOrdersExport;
 use App\Exports\SelectedStaffExport;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Facades\Storage;
 use App\Models\RtoReport;
 use App\Models\OrderAssignmentScheduler;
 use App\Imports\SelloshipImport;
@@ -2860,6 +2860,45 @@ class AdminController extends Controller
 
         $orders = (clone $query)
             ->with('client')
+            ->addSelect([
+                'call_log_id' => DB::table('calling_logs as cl')
+                    ->select('cl.id')
+                    ->whereColumn('cl.order_id', 'callingorder.order_id')
+                    ->whereColumn('cl.staff_id', 'callingorder.assigned_to')
+                    ->orderByDesc('cl.id')
+                    ->limit(1),
+
+                'call_started_at' => DB::table('calling_logs as cl')
+                    ->select('cl.call_started_at')
+                    ->whereColumn('cl.order_id', 'callingorder.order_id')
+                    ->whereColumn('cl.staff_id', 'callingorder.assigned_to')
+                    ->orderByDesc('cl.id')
+                    ->limit(1),
+
+                'call_ended_at' => DB::table('calling_logs as cl')
+                    ->select('cl.call_ended_at')
+                    ->whereColumn('cl.order_id', 'callingorder.order_id')
+                    ->whereColumn('cl.staff_id', 'callingorder.assigned_to')
+                    ->orderByDesc('cl.id')
+                    ->limit(1),
+
+                'call_duration_seconds' => DB::table('calling_logs as cl')
+                    ->select('cl.duration_seconds')
+                    ->whereColumn('cl.order_id', 'callingorder.order_id')
+                    ->whereColumn('cl.staff_id', 'callingorder.assigned_to')
+                    ->orderByDesc('cl.id')
+                    ->limit(1),
+
+                'call_recording_id' => DB::table('calling_logs as cl')
+                    ->select('cl.id')
+                    ->whereColumn('cl.order_id', 'callingorder.order_id')
+                    ->whereColumn('cl.staff_id', 'callingorder.assigned_to')
+                    ->where('cl.recording_status', 'uploaded')
+                    ->whereNotNull('cl.recording_path')
+                    ->where('cl.recording_path', '!=', '')
+                    ->orderByDesc('cl.id')
+                    ->limit(1),
+            ])
             ->orderByDesc('updated_at')
             ->paginate(100)
             ->withQueryString();
@@ -2954,6 +2993,28 @@ class AdminController extends Controller
                 'codOrders',
                 'prepaidOrders'
             )
+        );
+    }
+    public function play($id)
+    {
+        $log = DB::table('calling_logs')
+            ->where('id', $id)
+            ->where('recording_status', 'uploaded')
+            ->first();
+
+        abort_unless($log && $log->recording_path, 404);
+
+        $path = $log->recording_path;
+
+        abort_unless(Storage::disk('local')->exists($path), 404);
+
+        return response()->file(
+            Storage::disk('local')->path($path),
+            [
+                'Content-Type' => 'audio/mpeg',
+                'Content-Disposition' => 'inline',
+                'Accept-Ranges' => 'bytes',
+            ]
         );
     }
     public function exportOrderDetails(Request $request)
@@ -3424,6 +3485,7 @@ class AdminController extends Controller
      * WhatsApp Fresh Leads
      * Shows original leads plus leads shared with the selected staff member.
      */
+
     public function whatsappFreshLeads(Request $request, $clientId = null)
     {
         // Client login can only access its own data.
@@ -3445,12 +3507,19 @@ class AdminController extends Controller
             ? (int) $request->staff_id
             : null;
 
-        $from = Carbon::today()->subDays(2)->startOfDay();
-        $to   = Carbon::today()->endOfDay();
+        // Today's date range only.
+        $from = Carbon::today()->startOfDay();
+        $to   = Carbon::tomorrow()->startOfDay();
 
+        // Only WhatsApp fresh leads.
         $query = DB::table('callingorder')
             ->where('callingorder.client_id', $clientId)
-            ->whereBetween('callingorder.order_date', [$from, $to])
+            ->where('callingorder.order_date', '>=', $from)
+            ->where('callingorder.order_date', '<', $to)
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(callingorder.order_source, ''))) = ?",
+                ['whatsapp']
+            )
             ->whereIn(
                 DB::raw('LOWER(TRIM(callingorder.status))'),
                 ['pending', 'not_reachable', 'not reachable', 'not-reachable']
@@ -3462,18 +3531,16 @@ class AdminController extends Controller
 
         // Include original leads and leads shared with the selected staff.
         if ($staffId) {
-            $query->where(function ($q) use ($staffId) {
+            $query->where(function ($q) use ($staffId, $clientId) {
                 $q->where('callingorder.assigned_to', $staffId)
-                    ->orWhereExists(function ($sub) use ($staffId) {
+                    ->orWhereExists(function ($sub) use ($staffId, $clientId) {
                         $sub->selectRaw('1')
                             ->from('whatsapp_fresh_lead_shares as shares')
                             ->whereColumn(
                                 'shares.callingorder_id',
                                 'callingorder.id'
                             )
-                            ->where('shares.client_id', $this->isClient()
-                                ? (int) $this->clientId()
-                                : (int) request()->input('client_id', request()->route('clientId')))
+                            ->where('shares.client_id', $clientId)
                             ->where('shares.shared_with_staff_id', $staffId);
                     });
             });
@@ -3506,8 +3573,7 @@ class AdminController extends Controller
             return $lead;
         });
 
-        // Only active staff belonging to this client, if client_id exists on calling_users.
-        // If calling_users has no client_id column, use CallingUser::where('status', 1) instead.
+        // Active staff.
         $staff = CallingUser::where('status', 1)
             ->orderBy('name')
             ->get();
@@ -3522,6 +3588,7 @@ class AdminController extends Controller
             'to'
         ));
     }
+
 
 
     public function assignWhatsappFreshLeads(Request $request)
@@ -3781,54 +3848,26 @@ class AdminController extends Controller
 
         $getRepeatPending = function ($clientId) {
 
-            // Client 2 = 20 days, all other clients = 45 days
             $repeatDays = ((int) $clientId === 2) ? 20 : 45;
 
-            // Normalize order phone: remove common symbols, use last 10 digits
-            $orderPhone = "
-        RIGHT(
-            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                orders.customer_phone,
-                ' ', ''
-            ), '+', ''), '-', ''), '(', ''), ')', ''), '.', ''),
-            10
-        )
-    ";
-
-            // Normalize calling order phone
-            $callingPhone = "
-        RIGHT(
-            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                callingorder.customer_phone,
-                ' ', ''
-            ), '+', ''), '-', ''), '(', ''), ')', ''), '.', ''),
-            10
-        )
-    ";
+            $cutoffDate = now()
+                ->subDays($repeatDays)
+                ->toDateString();
 
             return DB::table('orders')
                 ->where('orders.client_id', $clientId)
-
-                // Delivered orders only
                 ->whereRaw(
                     'LOWER(TRIM(orders.delivery_status)) = ?',
                     ['delivered']
                 )
                 ->whereNotNull('orders.delivery_date')
+                ->where('orders.delivery_date', '<=', $cutoffDate)
+                ->whereNotNull('orders.customer_phone_last10')
+                ->where('orders.customer_phone_last10', '<>', '')
 
-                // Delivery must be at least 20/45 days old
-                ->where(
-                    'orders.delivery_date',
-                    '<=',
-                    now()->subDays($repeatDays)->toDateString()
-                )
+                ->whereNotExists(function ($q) {
 
-                // Exclude customers who reordered after this delivery
-                ->whereNotExists(function ($q) use (
-                    $callingPhone,
-                    $orderPhone
-                ) {
-                    $q->select(DB::raw(1))
+                    $q->selectRaw('1')
                         ->from('callingorder')
                         ->whereColumn(
                             'callingorder.client_id',
@@ -3838,20 +3877,32 @@ class AdminController extends Controller
                             'callingorder.order_source',
                             'deliveredreorder'
                         )
-                        ->whereRaw(
-                            "{$callingPhone} = {$orderPhone}"
+                        ->whereColumn(
+                            'callingorder.customer_phone_last10',
+                            'orders.customer_phone_last10'
                         )
-                        ->whereRaw(
-                            'DATE(callingorder.order_date) >= DATE(orders.delivery_date)'
-                        );
+                        ->where(function ($subQuery) {
+
+                            // Assigned repeat customer: exclude from pending
+                            $subQuery->whereNotNull(
+                                'callingorder.assigned_to'
+                            )
+
+                                // Also exclude a reorder placed after delivery
+                                ->orWhereColumn(
+                                    'callingorder.order_date',
+                                    '>=',
+                                    'orders.delivery_date'
+                                );
+                        });
                 })
 
-                // One customer = one count
                 ->selectRaw(
-                    "COUNT(DISTINCT {$orderPhone}) AS total"
+                    'COUNT(DISTINCT orders.customer_phone_last10) AS total'
                 )
                 ->value('total');
         };
+
 
         if ($this->isClient()) {
 
@@ -3925,8 +3976,8 @@ class AdminController extends Controller
 
                         ->count();
 
-                    $repeatPending = 0;
-                    // $repeatPending = $getRepeatPending($client->id);
+                    // $repeatPending = 0;
+                    $repeatPending = $getRepeatPending($client->id);
 
                     return [
 
@@ -3963,11 +4014,9 @@ class AdminController extends Controller
                     $clientId
                 )
 
-                ->whereBetween(
-                    'updated_at',
-                    [$from, $to]
-                )
-
+                // ->whereBetween('updated_at',[$from, $to])
+                ->where('updated_at', '>=', Carbon::today()->startOfDay())
+                ->where('updated_at', '<', Carbon::tomorrow()->startOfDay())
                 ->groupBy(
                     'client_id'
                 )
@@ -3978,25 +4027,22 @@ class AdminController extends Controller
 
                 ->get();
 
-            $freshFrom = Carbon::today()->subDays(2)->startOfDay();
-            $freshTo   = Carbon::today()->endOfDay();
+            //  $freshFrom = Carbon::today()->subDays(2)->startOfDay();
+            // $freshTo   = Carbon::today()->endOfDay();
+            $freshFrom = Carbon::today()->startOfDay();
+            $freshTo   = Carbon::tomorrow()->startOfDay();
 
             $ordersData = $ordersData->map(function ($data) use ($freshFrom, $freshTo) {
-
                 $data['fresh_leads'] = DB::table('callingorder')
-                    ->where('client_id', $data['client_id'])
-                    ->whereBetween('order_date', [$freshFrom, $freshTo])
+                    ->where('callingorder.client_id', $data['client_id'])
+                    ->whereBetween('callingorder.order_date', [$freshFrom, $freshTo])
                     ->whereIn(
-                        DB::raw('LOWER(TRIM(status))'),
+                        DB::raw('LOWER(TRIM(callingorder.status))'),
                         ['pending', 'not_reachable', 'not reachable', 'not-reachable']
                     )
                     ->where(function ($q) {
-                        $q->whereNull('order_source')
-                            ->orWhereRaw('UPPER(TRIM(order_source)) <> ?', ['RTO']);
-                    })
-                    ->where(function ($q) {
-                        $q->whereNull('remarks')
-                            ->orWhere('remarks', '<>', 'Selloship Import');
+                        $q->whereNull('callingorder.remarks')
+                            ->orWhere('callingorder.remarks', '<>', 'Selloship Import');
                     })
                     ->count();
 
@@ -4100,9 +4146,9 @@ class AdminController extends Controller
 
                     ->count();
 
-                $repeatPending = 0;
+                // $repeatPending = 0;
 
-                // $repeatPending = $getRepeatPending($client->id);
+                $repeatPending = $getRepeatPending($client->id);
                 return [
 
                     'client_name' =>
@@ -4178,24 +4224,25 @@ class AdminController extends Controller
             )
 
             ->get();
-        $freshFrom = Carbon::today()->subDays(2)->startOfDay();
-        $freshTo   = Carbon::today()->endOfDay();
+        $freshFrom = Carbon::today()->startOfDay();
+        $freshTo   = Carbon::tomorrow()->startOfDay();
 
         $ordersData = $ordersData->map(function ($data) use ($freshFrom, $freshTo) {
             $data['fresh_leads'] = DB::table('callingorder')
-                ->where('client_id', $data['client_id'])
-                ->whereBetween('order_date', [$freshFrom, $freshTo])
+                ->where('callingorder.client_id', $data['client_id'])
+                ->where('callingorder.order_date', '>=', $freshFrom)
+                ->where('callingorder.order_date', '<', $freshTo)
+                ->whereRaw(
+                    "LOWER(TRIM(COALESCE(callingorder.order_source, ''))) = ?",
+                    ['whatsapp']
+                )
                 ->whereIn(
-                    DB::raw('LOWER(TRIM(status))'),
+                    DB::raw('LOWER(TRIM(callingorder.status))'),
                     ['pending', 'not_reachable', 'not reachable', 'not-reachable']
                 )
                 ->where(function ($q) {
-                    $q->whereNull('order_source')
-                        ->orWhereRaw('UPPER(TRIM(order_source)) <> ?', ['RTO']);
-                })
-                ->where(function ($q) {
-                    $q->whereNull('remarks')
-                        ->orWhere('remarks', '<>', 'Selloship Import');
+                    $q->whereNull('callingorder.remarks')
+                        ->orWhere('callingorder.remarks', '<>', 'Selloship Import');
                 })
                 ->count();
 

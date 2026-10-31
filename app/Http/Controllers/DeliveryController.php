@@ -404,24 +404,12 @@ class DeliveryController extends Controller
                 preg_replace('/\s+/', '', $trackingNo)
             );
 
-            /*
-        |--------------------------------------------------------------------------
-        | FIND ORDER FROM MEMORY
-        |--------------------------------------------------------------------------
-        */
-
             $order = $ordersByBarcode[$trackingNo] ?? null;
 
             if (!$order) {
                 $notFound++;
                 continue;
             }
-
-            /*
-        |--------------------------------------------------------------------------
-        | OLD STATUS
-        |--------------------------------------------------------------------------
-        */
 
             $oldStatus = strtolower(
                 trim((string) $order->delivery_status)
@@ -431,37 +419,13 @@ class DeliveryController extends Controller
                 trim($status)
             );
 
-            /*
-        |--------------------------------------------------------------------------
-        | STATUS CHANGED?
-        |--------------------------------------------------------------------------
-        */
-
             $statusChanged = $oldStatus !== $newStatus;
 
-            /*
-        |--------------------------------------------------------------------------
-        | UPDATE ORDER
-        |--------------------------------------------------------------------------
-        */
-
             $order->delivery_status = $status;
-
-            /*
-        |--------------------------------------------------------------------------
-        | LAST EVENT
-        |--------------------------------------------------------------------------
-        */
 
             if ($lastEvent !== '') {
                 $order->delivery_remark = $lastEvent;
             }
-
-            /*
-        |--------------------------------------------------------------------------
-        | EVENT DATE
-        |--------------------------------------------------------------------------
-        */
 
             $eventDate = null;
 
@@ -484,12 +448,6 @@ class DeliveryController extends Controller
                 }
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | DELIVERED DATE
-        |--------------------------------------------------------------------------
-        */
-
             if (
                 $newStatus === 'delivered' &&
                 $eventDate
@@ -497,24 +455,12 @@ class DeliveryController extends Controller
                 $order->delivery_date = $eventDate;
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | RTO DATE
-        |--------------------------------------------------------------------------
-        */
-
             if (
                 str_starts_with($newStatus, 'rto') &&
                 $eventDate
             ) {
                 $order->rtodate = $eventDate;
             }
-
-            /*
-        |--------------------------------------------------------------------------
-        | IN TRANSIT DATE
-        |--------------------------------------------------------------------------
-        */
 
             if (
                 str_contains($newStatus, 'intrasit') ||
@@ -528,12 +474,6 @@ class DeliveryController extends Controller
                     $order->intransitdate = $eventDate;
                 }
             }
-
-            /*
-        |--------------------------------------------------------------------------
-        | PAYMENT RECONCILIATION
-        |--------------------------------------------------------------------------
-        */
 
             if ($newStatus === 'delivered') {
 
@@ -573,21 +513,9 @@ class DeliveryController extends Controller
                 }
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | SAVE ONLY IF SOMETHING CHANGED
-        |--------------------------------------------------------------------------
-        */
-
             $order->save();
 
             $updated++;
-
-            /*
-        |--------------------------------------------------------------------------
-        | STATUS MAPPING
-        |--------------------------------------------------------------------------
-        */
 
             $trackingStatus = match (true) {
 
@@ -611,15 +539,6 @@ class DeliveryController extends Controller
                 => null,
             };
 
-            /*
-        |--------------------------------------------------------------------------
-        | QUEUE MESSAGE
-        |
-        | VERY IMPORTANT:
-        | Only send message when status actually changes.
-        |--------------------------------------------------------------------------
-        */
-
             if (
                 $statusChanged &&
                 $trackingStatus
@@ -627,11 +546,6 @@ class DeliveryController extends Controller
 
                 try {
 
-                    /*
-                |----------------------------------------------------------------------
-                | CLIENT 5 = BYTESPEED
-                |----------------------------------------------------------------------
-                */
 
                     if ((int) $order->client_id === 5) {
 
@@ -652,13 +566,7 @@ class DeliveryController extends Controller
                                 'status' => $trackingStatus,
                             ]
                         );
-                    }
-
-                    /*
-                |----------------------------------------------------------------------
-                | CLIENT 2 = AI SENCY
-                |----------------------------------------------------------------------
-                */ elseif ((int) $order->client_id === 2) {
+                    } elseif ((int) $order->client_id === 2) {
 
                         SendDeliveryStatusMessage::dispatch(
                             $order->id,
@@ -694,12 +602,6 @@ class DeliveryController extends Controller
                 }
             }
         }
-
-        /*
-    |--------------------------------------------------------------------------
-    | FINAL RESPONSE
-    |--------------------------------------------------------------------------
-    */
 
         return back()->with(
             'delivery_success',

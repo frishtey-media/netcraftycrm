@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Client;
 use Laravel\Sanctum\PersonalAccessToken;
 use App\Models\ClientProduct;
+use Illuminate\Support\Facades\Validator;
 
 class CallingOrderApiController extends Controller
 {
@@ -81,6 +82,327 @@ class CallingOrderApiController extends Controller
         return $request->user()
             ?: Auth::guard('calling_user')->user();
     }
+
+
+
+    public function staffWhatsappLeads(Request $request)
+    {
+        $staffId = $request->user()?->id;
+
+        if (!$staffId) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        // Current day only: midnight today to midnight tomorrow.
+        $from = now()->startOfDay();
+        $to = $from->copy()->addDay();
+
+        $perPage = min(max((int) $request->query('per_page', 20), 1), 100);
+
+        /*
+    |--------------------------------------------------------------------------
+    | Base query: pending WhatsApp leads assigned or shared with this staff
+    |--------------------------------------------------------------------------
+    */
+        $baseQuery = DB::table('callingorder as c')
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(c.order_source, ''))) = ?",
+                ['whatsapp']
+            )
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(c.status, ''))) = ?",
+                ['pending']
+            )
+            ->where(function ($q) {
+                $q->whereNull('c.remarks')
+                    ->orWhereRaw("TRIM(c.remarks) = ''");
+            })
+            ->where('c.order_date', '>=', $from)
+            ->where('c.order_date', '<', $to)
+            ->where(function ($q) use ($staffId) {
+                $q->where(function ($normal) use ($staffId) {
+                    $normal->where('c.assigned_to', $staffId)
+                        ->whereNotExists(function ($sub) {
+                            $sub->selectRaw('1')
+                                ->from('whatsapp_fresh_lead_shares as s')
+                                ->whereColumn('s.callingorder_id', 'c.id');
+                        });
+                })->orWhereExists(function ($sub) use ($staffId) {
+                    $sub->selectRaw('1')
+                        ->from('whatsapp_fresh_lead_shares as s')
+                        ->whereColumn('s.callingorder_id', 'c.id')
+                        ->where('s.shared_with_staff_id', $staffId);
+                });
+            });
+
+        /*
+    |--------------------------------------------------------------------------
+    | Client counts
+    |--------------------------------------------------------------------------
+    | Mirrors the original Blade controller's client-count statuses.
+    */
+        $clients = DB::table('clients as cl')
+            ->join('callingorder as c', 'c.client_id', '=', 'cl.id')
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(c.order_source, ''))) = ?",
+                ['whatsapp']
+            )
+            ->whereIn(
+                DB::raw("LOWER(TRIM(COALESCE(c.status, '')))"),
+                ['pending', 'not_reachable', 'not reachable', 'not-reachable']
+            )
+            ->where('c.order_date', '>=', $from)
+            ->where('c.order_date', '<', $to)
+            ->where(function ($q) use ($staffId) {
+                $q->where('c.assigned_to', $staffId)
+                    ->orWhereExists(function ($sub) use ($staffId) {
+                        $sub->selectRaw('1')
+                            ->from('whatsapp_fresh_lead_shares as s')
+                            ->whereColumn('s.callingorder_id', 'c.id')
+                            ->where('s.shared_with_staff_id', $staffId);
+                    });
+            })
+            ->select(
+                'cl.id as client_id',
+                'cl.client_name',
+                DB::raw('COUNT(DISTINCT c.id) as total')
+            )
+            ->groupBy('cl.id', 'cl.client_name')
+            ->orderBy('cl.client_name')
+            ->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Optional client filter and search
+    |--------------------------------------------------------------------------
+    */
+        $query = clone $baseQuery;
+
+        if ($request->filled('client_id')) {
+            $query->where('c.client_id', $request->query('client_id'));
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->query('search'));
+
+            $query->where(function ($q) use ($search) {
+                $q->where('c.order_id', 'like', "%{$search}%")
+                    ->orWhere('c.customer_name', 'like', "%{$search}%")
+                    ->orWhere('c.customer_phone', 'like', "%{$search}%")
+                    ->orWhere('c.product_name', 'like', "%{$search}%")
+                    ->orWhere('c.city', 'like', "%{$search}%")
+                    ->orWhere('c.pincode', 'like', "%{$search}%");
+            });
+        }
+
+        $orders = $query
+            ->select([
+                'c.id',
+                'c.id as callingorder_id',
+                'c.order_id',
+                'c.client_id',
+                'c.assigned_to',
+                'c.customer_name',
+                'c.customer_phone',
+                'c.product_name',
+                'c.father_name',
+                'c.quantity',
+                'c.payment_mode',
+                'c.amount',
+                'c.age',
+                'c.city',
+                'c.state',
+                'c.pincode',
+                'c.shipping_address',
+                'c.order_date',
+                'c.status',
+                'c.remarks',
+            ])
+            ->orderByDesc('c.order_date')
+            ->orderByDesc('c.id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Shared order ID and lead type
+    |--------------------------------------------------------------------------
+    */
+        $orderIds = $orders->getCollection()
+            ->pluck('callingorder_id')
+            ->unique()
+            ->values();
+
+        $sharedOrderIds = $orderIds->isEmpty()
+            ? collect()
+            : DB::table('whatsapp_fresh_lead_shares')
+            ->where('shared_with_staff_id', $staffId)
+            ->whereIn('callingorder_id', $orderIds)
+            ->select('callingorder_id', 'shared_order_id')
+            ->get()
+            ->keyBy('callingorder_id');
+
+        $orders->getCollection()->transform(function ($order) use ($sharedOrderIds) {
+            $share = $sharedOrderIds->get($order->callingorder_id);
+
+            if ($share) {
+                if (!empty($share->shared_order_id)) {
+                    $order->order_id = $share->shared_order_id;
+                }
+
+                $order->lead_type = 'shared';
+            } else {
+                $order->lead_type = 'normal_assigned';
+            }
+
+            return $order;
+        });
+
+        return response()->json([
+            'orders' => $orders,
+            'clients' => $clients,
+            'status_label' => 'WhatsApp Leads',
+            'status_count' => $orders->total(),
+            'date_from' => $from->toDateTimeString(),
+            'date_to_exclusive' => $to->toDateTimeString(),
+        ]);
+    }
+
+
+
+
+
+    public function staffWhatsappLeadStatus(Request $request, $id)
+    {
+        $staffId = $request->user()?->id;
+
+        if (!$staffId) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:verified,same_order,not_reachable,cancel',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $lead = $this->findAccessibleTodayWhatsappLead($staffId, $id);
+
+        if (!$lead) {
+            return response()->json([
+                'message' => 'WhatsApp lead not found or access denied.',
+            ], 404);
+        }
+
+        DB::table('callingorder')
+            ->where('id', $lead->id)
+            ->update([
+                'status' => $request->input('status'),
+            ]);
+
+        return response()->json([
+            'message' => 'WhatsApp lead status updated successfully.',
+            'id' => (int) $lead->id,
+            'status' => $request->input('status'),
+        ]);
+    }
+
+
+
+
+    public function staffWhatsappLeadUpdate(Request $request, $id)
+    {
+        $staffId = $request->user()?->id;
+
+        if (!$staffId) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $lead = $this->findAccessibleTodayWhatsappLead($staffId, $id);
+
+        if (!$lead) {
+            return response()->json([
+                'message' => 'WhatsApp lead not found or access denied.',
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'customer_name' => 'required|string|max:255',
+            'customer_phone' => 'nullable|string|max:30',
+            'product_name' => 'nullable|string|max:255',
+            'father_name' => 'nullable|string|max:255',
+            'quantity' => 'nullable|numeric|min:1',
+            'payment_mode' => 'nullable|in:COD,Prepaid,COD,PREPAID',
+            'amount' => 'nullable|numeric|min:0',
+            'age' => 'nullable|integer|min:0',
+            'city' => 'nullable|string|max:255',
+            'state' => 'nullable|string|max:255',
+            'pincode' => 'nullable|string|max:20',
+            'shipping_address' => 'nullable|string',
+            'remarks' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
+        // Normalize payment mode for the existing database convention.
+        if (isset($data['payment_mode'])) {
+            $data['payment_mode'] = strtolower($data['payment_mode']) === 'prepaid'
+                ? 'Prepaid'
+                : 'COD';
+        }
+
+        DB::table('callingorder')
+            ->where('id', $lead->id)
+            ->update($data);
+
+        return response()->json([
+            'message' => 'WhatsApp lead updated successfully.',
+            'id' => (int) $lead->id,
+        ]);
+    }
+
+
+
+    private function findAccessibleTodayWhatsappLead($staffId, $id)
+    {
+        $from = now()->startOfDay();
+        $to = $from->copy()->addDay();
+
+        return DB::table('callingorder as c')
+            ->where('c.id', $id)
+            ->whereRaw(
+                "LOWER(TRIM(COALESCE(c.order_source, ''))) = ?",
+                ['whatsapp']
+            )
+            ->where('c.order_date', '>=', $from)
+            ->where('c.order_date', '<', $to)
+            ->where(function ($q) use ($staffId) {
+                $q->where('c.assigned_to', $staffId)
+                    ->orWhereExists(function ($sub) use ($staffId) {
+                        $sub->selectRaw('1')
+                            ->from('whatsapp_fresh_lead_shares as s')
+                            ->whereColumn('s.callingorder_id', 'c.id')
+                            ->where('s.shared_with_staff_id', $staffId);
+                    });
+            })
+            ->select('c.id')
+            ->first();
+    }
+
     public function verifiedOrders(Request $request)
     {
         $user = $request->user();
@@ -1432,6 +1754,7 @@ class CallingOrderApiController extends Controller
         ]);
     }
 
+
     public function manualCustomerSearch(Request $request)
     {
         $staff = $this->apiCallingStaff($request);
@@ -1447,11 +1770,9 @@ class CallingOrderApiController extends Controller
             'customer_phone' => ['required', 'string'],
         ]);
 
-        $phone = $this->normalizePhone(
-            $request->customer_phone
-        );
+        $phone = $this->normalizePhone($request->customer_phone);
 
-        if (strlen($phone) !== 10) {
+        if (!preg_match('/^[0-9]{10}$/', $phone)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Please enter a valid 10 digit mobile number.',
@@ -1460,34 +1781,46 @@ class CallingOrderApiController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Search all common phone formats
+    | Normalize stored phone numbers for matching
     |--------------------------------------------------------------------------
+    | Supports:
+    | 9876543210
+    | 09876543210
+    | 919876543210
+    | +919876543210
+    | +91 98765-43210
     */
 
-        $phoneFormats = [
-            $phone,
-            '0' . $phone,
-            '91' . $phone,
-            '+91' . $phone,
-        ];
+        $cleanPhone = "REPLACE(
+        REPLACE(
+            REPLACE(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(customer_phone, ' ', ''),
+                    '+', ''),
+                '-', ''),
+            '(', ''),
+        ')', ''),
+    '.', '')";
 
         $orders = CallingOrder::with('client')
-            ->where(function ($query) use ($phoneFormats) {
-
-                foreach ($phoneFormats as $index => $number) {
-
-                    if ($index === 0) {
-                        $query->where(
-                            'customer_phone',
-                            $number
-                        );
-                    } else {
-                        $query->orWhere(
-                            'customer_phone',
-                            $number
-                        );
-                    }
-                }
+            ->where(function ($query) use ($cleanPhone, $phone) {
+                $query->whereRaw(
+                    "{$cleanPhone} = ?",
+                    [$phone]
+                )
+                    ->orWhereRaw(
+                        "{$cleanPhone} = ?",
+                        ['0' . $phone]
+                    )
+                    ->orWhereRaw(
+                        "{$cleanPhone} = ?",
+                        ['91' . $phone]
+                    )
+                    ->orWhereRaw(
+                        "{$cleanPhone} = ?",
+                        ['+91' . $phone]
+                    );
             })
             ->orderByDesc('order_date')
             ->orderByDesc('created_at')
@@ -1497,44 +1830,31 @@ class CallingOrderApiController extends Controller
 
         return response()->json([
             'success' => true,
-
             'data' => [
                 'phone' => $phone,
 
-                /*
-             * IMPORTANT:
-             * Return ALL matching orders.
-             */
+                // Return all matching calling orders.
                 'orders' => $orders,
 
                 'customer' => $latest ? [
-                    'customer_name' =>
-                    $latest->customer_name,
-
-                    'customer_phone' =>
-                    $latest->customer_phone,
-
-                    'father_name' =>
-                    $latest->father_name,
-
-                    'age' =>
-                    $latest->age,
-
-                    'city' =>
-                    $latest->city,
-
-                    'state' =>
-                    $latest->state,
-
-                    'pincode' =>
-                    $latest->pincode,
-
-                    'shipping_address' =>
-                    $latest->shipping_address,
+                    'customer_name' => $latest->customer_name,
+                    'customer_phone' => $latest->customer_phone,
+                    'father_name' => $latest->father_name,
+                    'age' => $latest->age,
+                    'city' => $latest->city,
+                    'state' => $latest->state,
+                    'pincode' => $latest->pincode,
+                    'shipping_address' => $latest->shipping_address,
                 ] : null,
+
+                // These values must be added when implementing
+                // the combined delivery-history logic.
+                'hide_call_form' => false,
+                'delivered_order' => null,
             ],
         ]);
     }
+
 
     public function manualOrderClients(Request $request)
     {

@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CallingOrderApiController;
 use App\Http\Controllers\Api\CallingUserAuthController;
 use App\Http\Controllers\Api\CallRecordingController;
+use App\Http\Controllers\Api\StaffCallRecordingController;
 
 Route::post('/staff/login', [
     CallingUserAuthController::class,
@@ -33,11 +34,15 @@ Route::middleware('auth:sanctum')->group(function () {
         'dashboard'
     ]);
 
-
     Route::get('/verified-orders', [
         CallingOrderApiController::class,
         'verifiedOrders'
     ]);
+
+
+    Route::post('/call-recordings', [StaffCallRecordingController::class, 'store']);
+    Route::get('/call-recordings', [StaffCallRecordingController::class, 'index']);
+
 
     Route::get('/same-orders', [
         CallingOrderApiController::class,
@@ -179,6 +184,10 @@ Route::middleware('auth:sanctum')->group(function () {
         'notReachableOrderUpdate'
     ]);
 
+    Route::get('/manual-order/clients/{clientId}/products', [
+        CallingOrderApiController::class,
+        'manualClientProducts',
+    ]);
     Route::get(
         '/whatsapp-orders',
         [
@@ -186,7 +195,6 @@ Route::middleware('auth:sanctum')->group(function () {
             'whatsappOrders'
         ]
     );
-
 
     Route::post(
         '/whatsapp-orders/{id}/status',
@@ -248,4 +256,19 @@ Route::middleware('auth:sanctum')->group(function () {
         '/calls/{id}/recording',
         [CallRecordingController::class, 'recording']
     );
+
+    Route::get('/staff/whatsapp-leads', [
+        CallingOrderApiController::class,
+        'staffWhatsappLeads',
+    ]);
+
+    Route::post('/staff/whatsapp-leads/{id}/status', [
+        CallingOrderApiController::class,
+        'staffWhatsappLeadStatus',
+    ]);
+
+    Route::put('/staff/whatsapp-leads/{id}', [
+        CallingOrderApiController::class,
+        'staffWhatsappLeadUpdate',
+    ]);
 });

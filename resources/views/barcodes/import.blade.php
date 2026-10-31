@@ -168,50 +168,50 @@
 
             </form>
 
-            <table id="barcodeTable" class="table table-bordered table-striped mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Barcode</th>
-                        <th>Client Name</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($barcodes as $product)
-                        <tr>
-                            <td>{{ $product->barcode }}</td>
-                            <td>
-                                {{ $product->client->client_name ?? '—' }}
-                            </td>
+            <!-- <table id="barcodeTable" class="table table-bordered table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Barcode</th>
+                                <th>Client Name</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($barcodes as $product)
+        <tr>
+                                    <td>{{ $product->barcode }}</td>
+                                    <td>
+                                        {{ $product->client->client_name ?? '—' }}
+                                    </td>
 
-                            <td>
-                                @if ($product->barcode_type == 'VPP')
-                                    <span class="badge bg-primary">VPP</span>
-                                @elseif ($product->barcode_type == 'prepaid')
-                                    <span class="badge bg-primary">Prepaid</span>
-                                @else
-                                    <span class="badge bg-warning text-dark">COD</span>
-                                @endif
-                            </td>
+                                    <td>
+                                        @if ($product->barcode_type == 'VPP')
+        <span class="badge bg-primary">VPP</span>
+    @elseif ($product->barcode_type == 'prepaid')
+        <span class="badge bg-primary">Prepaid</span>
+    @else
+        <span class="badge bg-warning text-dark">COD</span>
+        @endif
+                                    </td>
 
-                            <td>
-                                @if ($product->is_used == 1)
-                                    <span class="badge bg-success">Used</span>
-                                @else
-                                    <span class="badge bg-danger">Not Used</span>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="3" class="text-center">
-                                No Barcode added yet
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
+                                    <td>
+                                        @if ($product->is_used == 1)
+        <span class="badge bg-success">Used</span>
+    @else
+        <span class="badge bg-danger">Not Used</span>
+        @endif
+                                    </td>
+                                </tr>
+                        @empty
+                                <tr>
+                                    <td colspan="3" class="text-center">
+                                        No Barcode added yet
+                                    </td>
+                                </tr>
+        @endforelse
+                        </tbody>
 
-            </table>
+                    </table>-->
         </div>
     @endsection

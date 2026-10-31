@@ -990,7 +990,8 @@
                 table.DataTable({
                     pageLength: 10,
                     searching: true,
-                    ordering: true,
+                    ordering: false,
+                    order: [],
                     responsive: true
                 });
             }

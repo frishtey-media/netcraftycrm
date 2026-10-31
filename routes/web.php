@@ -325,10 +325,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/record/create', [RecordController::class, 'create'])->name('record.create');
     Route::post('/record/store', [RecordController::class, 'store'])->name('record.store');
     Route::get('/get-client-products/{clientId}', [RecordController::class, 'getClientProducts'])->name('client.products');
-
     Route::get('/record/generate-order-id/{staffId}', [RecordController::class, 'generateOrderId'])
         ->name('record.generateOrderId');
-
     Route::post('/labels/export', [LabelController::class, 'export'])->name('labels.export');
     Route::post('labels/selected-pdf', [LabelController::class, 'exportSelected'])->name('labels.selected.pdf');
     Route::get('/Invoice', [InvoiceController::class, 'InvoiceIndex'])->name('Invoice.index');
@@ -339,32 +337,24 @@ Route::middleware(['auth'])->group(function () {
     //Route::get('orders/label-pdf', [OrderController::class, 'labelPdf'])->name('orders.label.pdf');
     Route::get('orders/postoffice-excel', [PostOfficeExportController::class, 'postOfficeExcel'])->name('orders.postoffice.excel');
     Route::post('orders/moneyorder-pdf', [MoneyorderExportController::class, 'Moneyorder'])->name('orders.Moneyorder.pdf');
-
     Route::post('/assign-orders', [AdminController::class, 'assignOrders'])->name('assign.orders');
     Route::get('/calling/orderspending', [CallingUserAuthController::class, 'orderspending'])
         ->name('calling.orderspending');
     Route::post('/assign-rto-orders', [AdminController::class, 'assignRtoOrders'])
         ->name('assign.rto.orders');
-
-
     Route::get(
         '/rto/staff-allocation/{client_id}',
         [AdminController::class, 'rtoStaffAllocation']
     )->name('rto.staff.allocation');
-
-
     Route::post('/assign-delivered-orders', [AdminController::class, 'assigndeliveredOrders'])
         ->name('assign.delivered.orders');
-
     Route::post('/assign-abandoned-orders', [AdminController::class, 'assignabandonedOrders'])
         ->name('assign.abandoned.orders');
-
     Route::get('/assign', [AdminController::class, 'assignPage']);
     Route::get('/calling-users', [CallingUserController::class, 'index'])->name('calling.users');
     Route::post('/calling-users', [CallingUserController::class, 'store'])->name('calling.users.store');
     Route::get('/calling-users/toggle/{id}', [CallingUserController::class, 'toggle'])->name('calling.users.toggle');
     Route::get('/performance', [AdminController::class, 'performance'])->name('performance.dashboard');
-
     Route::get(
         '/calling-orders/{id}/edit',
         [AdminController::class, 'editCallingOrder']
@@ -389,11 +379,13 @@ Route::middleware(['auth'])->group(function () {
 
 
     Route::get('/get-products/{client}', [OrderController::class, 'getProducts'])->name('get.products');
-
     Route::get('/performance/orders', [AdminController::class, 'orderDetails'])->name('performance.orders');
     Route::get('/performance/orders/export', [AdminController::class, 'exportOrderDetails'])->name('performance.orders.export');
 
-
+    Route::get(
+        '/admin/call-recordings/{id}/play',
+        [AdminController::class, 'play']
+    )->name('admin.call-recordings.play');
 
     Route::get(
         '/assignment-scheduler',
@@ -415,40 +407,26 @@ Route::middleware(['auth'])->group(function () {
         [AdminController::class, 'deleteAssignmentScheduler']
     )->name('assignment.scheduler.delete');
 
-
-    /*
-|--------------------------------------------------------------------------
-| AUTO STAFF SUGGESTION
-|--------------------------------------------------------------------------
-*/
-
     Route::get(
         '/assignment-scheduler/suggestion',
         [AdminController::class, 'assignmentSchedulerSuggestion']
     )->name('assignment.scheduler.suggestion');
-
-
-
 
     Route::prefix('reports')->group(function () {
         Route::get('/repeat-rto', [RepeatCustomerController::class, 'repeatRto'])->name('reports.repeat.rto');
         Route::get('/repeat-rto/{phone}', [RepeatCustomerController::class, 'repeatRtoDetail'])->name('reports.repeat.rto.detail');
     });
 
-
     Route::get('/reports/{type}', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export/{type}', [ReportController::class, 'export'])->name('reports.export');
     Route::get('/staff-report/{staff_id}', [ReportController::class, 'staffReport'])->name('staff.report');
     Route::get('/delivery', [DeliveryController::class, 'index'])->name('delivery.index');
     Route::post('/delivery/upload', [DeliveryController::class, 'upload'])->name('delivery.upload');
-
     Route::post('/payment-upload', [DeliveryController::class, 'paymentupload'])->name('delivery.paymentupload');
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::get('/payments/export', [PaymentController::class, 'export'])->name('payments.export');
     Route::get('/payments/pending', [PaymentController::class, 'pendingPayment'])->name('payments.pending');
     Route::get('/payments/pending/export', [PaymentController::class, 'pendingPaymentExport'])->name('payments.pending.export');
-
-
     Route::post('/orders/export-selected', [OrderController::class, 'exportSelected'])->name('orders.export.selected');
     Route::post('/rto-received-upload', [DeliveryController::class, 'rtoReceivedUpload'])->name('delivery.rtoReceivedUpload');
     Route::get('/delivery/report/{type}', [DeliveryController::class, 'report'])->name('delivery.report');
@@ -459,7 +437,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/client_assign_staff', [ClientController::class, 'clientStaffForm'])
         ->name('client_staff_form');
-
 
     Route::post('/client_assign_staff.', [ClientController::class, 'saveClientStaff'])
         ->name('client_staff_save');
@@ -636,9 +613,5 @@ Route::middleware('calling_user')->group(function () {
 
     Route::post('/calling/send', [StaffChatController::class, 'send'])->name('calling.send');
 });
-/*
-|--------------------------------------------------------------------------
-| Auth Routes (Login, Register, etc.)
-|--------------------------------------------------------------------------
-*/
+
 require __DIR__ . '/auth.php';

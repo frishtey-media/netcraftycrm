@@ -679,7 +679,7 @@ class CallingOrderController extends Controller
                 'payment_mode' => 'required|in:COD,VPP,Prepaid',
                 'pincode' => 'required|regex:/^[0-9]{6}$/',
                 'city' => 'required|string|max:255',
-                'state' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s.\-]+$/'],
+                //'state' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z\s.\-]+$/'],
                 'address' => ['required', 'string', 'max:1000', 'regex:/^[A-Za-z0-9\s.,\/\-#()]+$/'],
             ]);
         } else {

@@ -738,12 +738,11 @@ class CallingUserAuthController extends Controller
         }
 
 
-
         $orders = $query
-            ->latest()
+            ->orderByDesc('order_date')
+            ->orderByDesc('id')
             ->paginate(50)
             ->withQueryString();
-
 
         return view('calling.weborders', [
             'orders' => $orders,

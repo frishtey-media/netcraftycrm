@@ -587,6 +587,10 @@
 
                                     <th>Status</th>
                                     <th>Shipping Address</th>
+                                    <th>Call Start</th>
+                                    <th>Call End</th>
+                                    <th>Call Duration</th>
+                                    <th>Call Recording</th>
                                     <th>Remarks</th>
 
                                     <th>Updated Date</th>
@@ -771,6 +775,54 @@
 
                                             {{ $order->shipping_address ?: '-' }}
 
+                                        </td>
+                                        {{-- CALL START --}}
+                                        <td>
+                                            @if ($order->call_started_at)
+                                                {{ \Carbon\Carbon::parse($order->call_started_at)->format('d-m-Y h:i:s A') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        {{-- CALL END --}}
+                                        <td>
+                                            @if ($order->call_ended_at)
+                                                {{ \Carbon\Carbon::parse($order->call_ended_at)->format('d-m-Y h:i:s A') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        {{-- CALL DURATION --}}
+                                        <td>
+                                            @if ($order->call_duration_seconds !== null)
+                                                @php
+                                                    $seconds = (int) $order->call_duration_seconds;
+                                                    $hours = intdiv($seconds, 3600);
+                                                    $minutes = intdiv($seconds % 3600, 60);
+                                                    $remainingSeconds = $seconds % 60;
+                                                @endphp
+
+                                                {{ sprintf('%02d:%02d:%02d', $hours, $minutes, $remainingSeconds) }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+
+                                        {{-- RECORDING --}}
+                                        {{-- CALL RECORDING - INLINE PLAYER --}}
+                                        <td style="min-width: 260px;">
+                                            @if ($order->call_recording_id)
+                                                <audio controls preload="none" style="width: 250px; max-width: 100%;">
+                                                    <source
+                                                        src="{{ route('admin.call-recordings.play', $order->call_recording_id) }}"
+                                                        type="audio/mpeg">
+                                                    Your browser does not support audio playback.
+                                                </audio>
+                                            @else
+                                                <span class="text-muted">Recording Not Available</span>
+                                            @endif
                                         </td>
                                         {{-- REMARKS --}}
                                         <td>

@@ -9,7 +9,7 @@
                 <h3 class="mb-1">WhatsApp Fresh Leads</h3>
                 <p class="text-muted mb-0">
                     Client: {{ $client->client_name }}
-                    | Last 3 days:
+                    Today:
                     {{ $from->format('d M Y') }} to {{ $to->format('d M Y') }}
                 </p>
             </div>
@@ -94,14 +94,15 @@
                                     <th style="width:50px">
                                         <input type="checkbox" id="selectAll">
                                     </th>
-                                    <th>Order ID</th>
-                                    <th>Customer Name</th>
+                                    <th style="width: 60px;">S.No.</th>
+                                    <!-- <th>Order ID</th>-->
+                                    <!--  <th>Customer Name</th>-->
                                     <th>Phone</th>
-                                    <th>Product</th>
-                                    <th>Original Staff</th>
-                                    <th>Shared With</th>
+                                    <!--   <th>Product</th>-->
+                                    <!-- <th>Original Staff</th>
+                                                                                    <th>Shared With</th>-->
                                     <th>Source</th>
-                                    <th>Status</th>
+                                    <!-- <th>Status</th>-->
                                 </tr>
                             </thead>
 
@@ -112,38 +113,40 @@
                                             <input type="checkbox" name="lead_ids[]" value="{{ $lead->id }}"
                                                 class="lead-checkbox">
                                         </td>
+                                        <td>{{ $loop->iteration }}</td>
+                                        <!-- <td>{{ $lead->order_id }}</td>-->
 
-                                        <td>{{ $lead->order_id }}</td>
-
-                                        <td>{{ $lead->customer_name ?: '-' }}</td>
+                                        <!--<td>{{ $lead->customer_name ?: '-' }}</td>-->
 
                                         <td>{{ $lead->customer_phone ?: '-' }}</td>
 
-                                        <td>{{ $lead->product_name ?: '-' }}</td>
+                                        <!-- <td>{{ $lead->product_name ?: '-' }}</td>-->
 
-                                        <td>
-                                            <span class="fw-semibold">
-                                                {{ $lead->assigned_staff_name }}
-                                            </span>
-                                        </td>
+                                        <!--  <td>
+                                                                                            <span class="fw-semibold">
+                                                                                                {{ $lead->assigned_staff_name }}
+                                                                                            </span>
+                                                                                        </td>
 
-                                        <td>
-                                            @if (!empty($lead->shared_staff_names))
-                                                {{ implode(', ', $lead->shared_staff_names) }}
-                                            @else
-                                                <span class="text-muted">Not shared</span>
-                                            @endif
-                                        </td>
+                                                                                        <td>
+                                                                                            @if (!empty($lead->shared_staff_names))
+    {{ implode(', ', $lead->shared_staff_names) }}
+@else
+    <span class="text-muted">Not shared</span>
+    @endif
+                                                                                        </td>-->
 
                                         <td>{{ $lead->order_source ?: 'Web' }}</td>
 
-                                        <td>
-                                            @php
-                                                $status = strtolower(trim($lead->status ?? 'pending'));
-                                            @endphp
+                                        <!-- <td>
+                                                                            @php
+                                                                                $status = strtolower(
+                                                                                    trim($lead->status ?? 'pending'),
+                                                                                );
+                                                                            @endphp
 
-                                            <span
-                                                class="badge
+                                                                            <span
+                                                                                class="badge
                                             {{ $status === 'pending'
                                                 ? 'bg-warning text-dark'
                                                 : ($status === 'verified'
@@ -151,9 +154,9 @@
                                                     : (in_array($status, ['cancel', 'same_order'])
                                                         ? 'bg-danger'
                                                         : 'bg-secondary')) }}">
-                                                {{ ucfirst(str_replace('_', ' ', $status)) }}
-                                            </span>
-                                        </td>
+                                                                                {{ ucfirst(str_replace('_', ' ', $status)) }}
+                                                                            </span>
+                                                                        </td>-->
                                     </tr>
                                 @empty
                                     <tr>
