@@ -213,6 +213,12 @@
                     <a href="/rto">
                         <i class="bi bi-receipt"></i> RTO Reports
                     </a>
+
+                    <a href="{{ route('admin.staff-recording-report') }}" class="nav-link">
+                        <i class="bi bi-graph-up"></i>
+                        <span>Staff Recording Report</span>
+                    </a>
+
                     <a href="{{ route('performance.dashboard') }}">
                         <i class="bi bi-graph-up"></i>Staff Leads Performance
                     </a>

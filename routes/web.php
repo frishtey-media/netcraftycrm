@@ -97,6 +97,14 @@ Route::middleware(['auth'])->group(function () {
         [AdminController::class, 'updateWhatsappFreshLeadStatus']
     )->name('whatsapp.fresh-leads.status');
 
+
+Route::get(
+    '/staff-recording-report',
+    [AdminController::class, 'staffRecordingReport']
+)->name('admin.staff-recording-report');
+
+
+
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])->name('labelsenders');
     Route::post('/labelsenders', [AdminController::class, 'storeLabelSenders'])->name('labelsenders.store');
     Route::get('/labelgenrate', [AdminController::class, 'labelgenrate'])->name('labelgenrate');
@@ -381,6 +389,20 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/get-products/{client}', [OrderController::class, 'getProducts'])->name('get.products');
     Route::get('/performance/orders', [AdminController::class, 'orderDetails'])->name('performance.orders');
     Route::get('/performance/orders/export', [AdminController::class, 'exportOrderDetails'])->name('performance.orders.export');
+
+    Route::get(
+        '/admin/staff-recordings/history',
+        [AdminController::class, 'staffRecordingHistory']
+    )->name('admin.staff-recordings.history');
+    Route::get(
+        '/admin/staff-recordings/all',
+        [AdminController::class, 'allStaffRecordings']
+    )->name('admin.staff-recordings.all');
+    Route::get(
+        '/admin/staff-recordings/{id}/play',
+        [AdminController::class, 'playStaffRecording']
+    )->name('admin.staff-recordings.play');
+
 
     Route::get(
         '/admin/call-recordings/{id}/play',

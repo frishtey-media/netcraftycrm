@@ -25,6 +25,10 @@ use App\Models\RtoReport;
 use App\Models\OrderAssignmentScheduler;
 use App\Imports\SelloshipImport;
 
+use Illuminate\Support\Facades\File;
+
+use Symfony\Component\Process\Process;
+
 class AdminController extends Controller
 {
 
@@ -37,6 +41,288 @@ class AdminController extends Controller
     {
         return auth()->user()?->client_id;
     }
+
+    private function getRecordingMime(string $path): string
+    {
+        return match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'm4a' => 'audio/mp4',
+            'mp3' => 'audio/mpeg',
+            'amr' => 'audio/mpeg', // AMR is converted to MP3 for browser playback
+            'wav' => 'audio/wav',
+            'aac' => 'audio/aac',
+            'ogg', 'opus' => 'audio/ogg',
+            '3gp', '3gpp' => 'audio/3gpp',
+            default => 'application/octet-stream',
+        };
+    }
+    public function allStaffRecordings(Request $request)
+    {
+        $request->validate([
+            'staff_id' => 'required|integer|exists:calling_users,id',
+            'from' => 'required|date',
+            'to' => 'required|date|after_or_equal:from',
+        ]);
+
+        $staffId = (int) $request->staff_id;
+
+        if ($this->isClient()) {
+            $allowed = DB::table('callingorder')
+                ->where('client_id', $this->clientId())
+                ->where('assigned_to', $staffId)
+                ->exists();
+
+            abort_unless($allowed, 403, 'Unauthorized staff access.');
+        }
+
+        $from = Carbon::parse($request->from)->startOfDay();
+        $to = Carbon::parse($request->to)->endOfDay();
+
+        $recordings = DB::table('staff_call_recordings')
+            ->where('staff_id', $staffId)
+            ->whereBetween('created_at', [$from, $to])
+            ->orderByDesc('created_at')
+            ->paginate(100);
+
+        $recordings->getCollection()->transform(function ($item) {
+
+            $uploaded = strtolower((string) $item->upload_status) === 'uploaded'
+                && !empty($item->recording_path);
+
+            $item->recording_url = $uploaded
+                ? route('admin.staff-recordings.play', $item->id)
+                : null;
+
+            // Correct MIME based on actual file extension
+            $item->recording_mime = $uploaded
+                ? $this->getRecordingMime($item->recording_path)
+                : null;
+
+            return $item;
+        });
+
+        return response()->json([
+            'success' => true,
+            'total' => $recordings->total(),
+            'current_page' => $recordings->currentPage(),
+            'last_page' => $recordings->lastPage(),
+            'recordings' => $recordings->items(),
+        ]);
+    }
+
+
+
+    public function staffRecordingHistory(Request $request)
+    {
+        $request->validate([
+            'staff_id'       => 'required|integer|exists:calling_users,id',
+            'customer_phone' => 'required|string|max:30',
+            'from'           => 'required|date',
+            'to'             => 'required|date|after_or_equal:from',
+        ]);
+
+        $staffId = (int) $request->staff_id;
+
+        // Client access restriction
+        if ($this->isClient()) {
+            $allowed = DB::table('callingorder')
+                ->where('assigned_to', $staffId)
+                ->where('client_id', $this->clientId())
+                ->exists();
+
+            abort_unless($allowed, 403, 'Unauthorized staff access.');
+        }
+
+        // Normalize phone numbers
+        $normalizePhone = function ($phone) {
+            $phone = preg_replace('/\D+/', '', (string) $phone);
+
+            return strlen($phone) > 10
+                ? substr($phone, -10)
+                : $phone;
+        };
+
+        $customerPhone = $normalizePhone($request->customer_phone);
+
+        if (strlen($customerPhone) !== 10) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid customer phone number.',
+                'recordings' => [],
+            ], 422);
+        }
+
+        $from = Carbon::parse($request->from)->startOfDay();
+        $to = Carbon::parse($request->to)->endOfDay();
+
+        // Fetch recordings for selected staff and date range
+        $recordings = DB::table('staff_call_recordings')
+            ->where('staff_id', $staffId)
+            ->whereBetween('created_at', [$from, $to])
+            ->whereNotNull('customer_phone')
+            ->orderByDesc('created_at')
+            ->get()
+            ->filter(function ($recording) use (
+                $normalizePhone,
+                $customerPhone
+            ) {
+                return $normalizePhone($recording->customer_phone)
+                    === $customerPhone;
+            })
+            ->values();
+
+        $result = $recordings->map(function ($recording) {
+
+            $uploaded = strtolower(trim((string) $recording->upload_status)) === 'uploaded'
+                && !empty($recording->recording_path);
+
+            return [
+                'id' => $recording->id,
+                'staff_id' => $recording->staff_id,
+                'customer_phone' => $recording->customer_phone,
+                'device_phone' => $recording->device_phone,
+                'customer_name' => $recording->customer_name,
+                'call_type' => $recording->call_type,
+                'call_started_at' => $recording->call_started_at,
+                'duration_seconds' => $recording->duration_seconds,
+                'created_at' => $recording->created_at,
+                'recording_path' => $recording->recording_path,
+
+                'recording_mime' => $uploaded
+                    ? $this->getRecordingMime($recording->recording_path)
+                    : null,
+
+                'recording_size' => $recording->recording_size,
+                'upload_status' => $recording->upload_status,
+                'upload_error' => $recording->upload_error,
+
+                'recording_url' => $uploaded
+                    ? route('admin.staff-recordings.play', $recording->id)
+                    : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'staff_id' => $staffId,
+            'customer_phone' => $request->customer_phone,
+            'from' => $from->toDateTimeString(),
+            'to' => $to->toDateTimeString(),
+            'total' => $result->count(),
+            'recordings' => $result,
+        ]);
+    }
+
+
+
+
+    /**
+     * Play a recording from staff_call_recordings.
+     * This is a separate playback route.
+     */
+
+    public function playStaffRecording($id)
+    {
+        $recording = DB::table('staff_call_recordings')
+            ->where('id', $id)
+            ->where('upload_status', 'uploaded')
+            ->first();
+
+        abort_if(
+            !$recording || empty($recording->recording_path),
+            404,
+            'Recording not found.'
+        );
+
+        $relativePath = ltrim($recording->recording_path, '/');
+
+        if (
+            str_contains($relativePath, '..') ||
+            str_contains($relativePath, "\0")
+        ) {
+            abort(403);
+        }
+
+        // Original files are stored in storage/app/private
+        $privateRoot = realpath(storage_path('app/private'));
+
+        abort_if(!$privateRoot, 500, 'Private storage directory not found.');
+
+        $originalPath = realpath(
+            $privateRoot . DIRECTORY_SEPARATOR . $relativePath
+        );
+
+        // Ensure the resolved file remains inside private storage
+        abort_if(
+            !$originalPath ||
+                !str_starts_with(
+                    $originalPath,
+                    $privateRoot . DIRECTORY_SEPARATOR
+                ) ||
+                !is_file($originalPath),
+            404,
+            'Recording file not found on server.'
+        );
+
+        $extension = strtolower(pathinfo($originalPath, PATHINFO_EXTENSION));
+
+        $playPath = $originalPath;
+        $mime = $this->getRecordingMime($relativePath);
+
+        // AMR is not reliably supported by Chrome.
+        // Convert it to MP3 using FFmpeg.
+        if ($extension === 'amr') {
+
+            $convertedDirectory = storage_path(
+                'app/private/call-recordings/converted'
+            );
+
+            File::ensureDirectoryExists($convertedDirectory);
+
+            $convertedPath = $convertedDirectory . DIRECTORY_SEPARATOR
+                . 'recording_' . $recording->id . '.mp3';
+
+            if (
+                !is_file($convertedPath) ||
+                filemtime($convertedPath) < filemtime($originalPath)
+            ) {
+
+                $process = new Process([
+                    '/usr/bin/ffmpeg',
+                    '-y',
+                    '-i',
+                    $originalPath,
+                    '-vn',
+                    '-codec:a',
+                    'libmp3lame',
+                    '-q:a',
+                    '4',
+                    $convertedPath,
+                ]);
+
+                $process->setTimeout(180);
+                $process->run();
+
+                if (!$process->isSuccessful() || !is_file($convertedPath)) {
+                    abort(
+                        500,
+                        'AMR conversion failed. Please check FFmpeg installation.'
+                    );
+                }
+            }
+
+            $playPath = $convertedPath;
+            $mime = 'audio/mpeg';
+        }
+
+        return response()->file($playPath, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="recording.' .
+                ($extension === 'amr' ? 'mp3' : $extension) . '"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
+        ]);
+    }
+
     public function dayWiseStaffPerformance(Request $request)
     {
 
@@ -3941,7 +4227,7 @@ class AdminController extends Controller
                             ->where('status', 'pending')
                             ->where(
                                 'order_source',
-                                'whatsapp'
+                                'deliveredreorder'
                             )
                             ->where(
                                 'remarks',
@@ -4111,7 +4397,7 @@ class AdminController extends Controller
                         ->where('status', 'pending')
                         ->where(
                             'order_source',
-                            'whatsapp'
+                            'deliveredreorder'
                         )
                         ->where(
                             'remarks',
@@ -4266,10 +4552,72 @@ class AdminController extends Controller
             ]
         );
     }
+    public function staffRecordingReport(Request $request)
+    {
+        $staffList = DB::table('calling_users')
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        $recordings = collect();
+
+        // Default page par recordings load nahi hongi
+        if ($request->filled('from') && $request->filled('to')) {
+
+            $request->validate([
+                'staff_id' => 'nullable|integer',
+                'from'     => 'required|date',
+                'to'       => 'required|date|after_or_equal:from',
+            ]);
+
+            $from = Carbon::parse($request->from)->startOfDay();
+            $to   = Carbon::parse($request->to)->endOfDay();
+
+            $query = DB::table('staff_call_recordings as r')
+                ->leftJoin('calling_users as s', 's.id', '=', 'r.staff_id')
+                ->select(
+                    'r.*',
+                    's.name as staff_name'
+                )
+                ->whereBetween('r.created_at', [$from, $to]);
+
+            if ($request->filled('staff_id')) {
+                $query->where('r.staff_id', $request->staff_id);
+            }
+
+            // Client access restriction
+            if ($this->isClient()) {
+                $clientId = $this->clientId();
+
+                $query->whereExists(function ($q) use ($clientId) {
+                    $q->select(DB::raw(1))
+                        ->from('callingorder as co')
+                        ->whereColumn('co.assigned_to', 'r.staff_id')
+                        ->where('co.client_id', $clientId);
+                });
+
+                $staffList = $staffList->filter(function ($staff) use ($clientId) {
+                    return DB::table('callingorder')
+                        ->where('assigned_to', $staff->id)
+                        ->where('client_id', $clientId)
+                        ->exists();
+                })->values();
+            }
+
+            $recordings = $query
+                ->orderByDesc('r.created_at')
+                ->paginate(50)
+                ->appends($request->query());
+        }
+
+        return view('staff-recording-report', compact(
+            'staffList',
+            'recordings'
+        ));
+    }
     public function assignSelloshipOrders(Request $request)
     {
         $clientId = (int) $request->client_id;
-
         $assignments = $request->input('assign', []);
 
         if (!$clientId) {
@@ -4286,7 +4634,6 @@ class AdminController extends Controller
             ], 422);
         }
 
-
         /*
     |--------------------------------------------------------------------------
     | Clean Assignments
@@ -4294,7 +4641,6 @@ class AdminController extends Controller
     */
 
         $cleanAssignments = [];
-
         $totalRequested = 0;
 
         foreach ($assignments as $staffId => $quantity) {
@@ -4306,63 +4652,16 @@ class AdminController extends Controller
                 continue;
             }
 
-            $cleanAssignments[$staffId] =
-                $quantity;
-
+            $cleanAssignments[$staffId] = $quantity;
             $totalRequested += $quantity;
         }
 
-
         if ($totalRequested <= 0) {
-
             return response()->json([
                 'success' => false,
-                'message' =>
-                'Enter quantity for at least one staff.'
+                'message' => 'Enter quantity for at least one staff.'
             ], 422);
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Get Available Selloship Records
-    |--------------------------------------------------------------------------
-    */
-
-        $orders = CallingOrder::where(
-            'client_id',
-            $clientId
-        )
-            ->whereNull('assigned_to')
-            ->where(
-                'status',
-                'pending'
-            )
-            ->where(
-                'order_source',
-                'whatsapp'
-            )
-            ->where(
-                'remarks',
-                'Selloship Import'
-            )
-            ->orderBy('id')
-            ->limit($totalRequested)
-            ->get();
-
-
-        $availableCount = $orders->count();
-
-
-        if ($availableCount < $totalRequested) {
-
-            return response()->json([
-                'success' => false,
-                'message' =>
-                "Only {$availableCount} Selloship records are available, but {$totalRequested} were requested."
-            ], 422);
-        }
-
 
         /*
     |--------------------------------------------------------------------------
@@ -4373,227 +4672,259 @@ class AdminController extends Controller
         $staffMembers = CallingUser::whereIn(
             'id',
             array_keys($cleanAssignments)
-        )
-            ->get()
-            ->keyBy('id');
+        )->get()->keyBy('id');
 
-
-        if (
-            $staffMembers->count() !==
-            count($cleanAssignments)
-        ) {
-
+        if ($staffMembers->count() !== count($cleanAssignments)) {
             return response()->json([
                 'success' => false,
-                'message' =>
-                'One or more selected staff members were not found.'
+                'message' => 'One or more selected staff members were not found.'
             ], 422);
         }
 
-
         /*
     |--------------------------------------------------------------------------
-    | Start Transaction
+    | Date & MySQL Advisory Lock
     |--------------------------------------------------------------------------
     */
 
-        DB::beginTransaction();
+        $date = now()->format('d-m-y');
+
+        // Global lock because order_id has a UNIQUE index across the table.
+        $lockName = 'selloship_orderid_' . $date;
+
+        $lockAcquired = false;
 
         try {
 
-            $orderIndex = 0;
+            // Prevent simultaneous assignments generating the same Order ID.
+            $lockResult = DB::selectOne(
+                'SELECT GET_LOCK(?, 15) AS acquired',
+                [$lockName]
+            );
 
+            if (!$lockResult || (int) $lockResult->acquired !== 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Another assignment is in progress. Please try again.'
+                ], 409);
+            }
+
+            $lockAcquired = true;
+
+            /*
+        |--------------------------------------------------------------------------
+        | Start Transaction
+        |--------------------------------------------------------------------------
+        */
+
+            DB::beginTransaction();
+
+            /*
+        |--------------------------------------------------------------------------
+        | Get Available Selloship Records
+        |--------------------------------------------------------------------------
+        */
+
+            $orders = CallingOrder::where('client_id', $clientId)
+                ->whereNull('assigned_to')
+                ->where('status', 'pending')
+                ->where('order_source', 'deliveredreorder')
+                ->where('remarks', 'Selloship Import')
+                ->orderBy('id')
+                ->limit($totalRequested)
+                ->lockForUpdate()
+                ->get();
+
+            $availableCount = $orders->count();
+
+            if ($availableCount < $totalRequested) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Only {$availableCount} Selloship records are available, but {$totalRequested} were requested."
+                ], 422);
+            }
+
+            /*
+        |--------------------------------------------------------------------------
+        | Serial Counters
+        |--------------------------------------------------------------------------
+        */
+
+            $serialCounters = [];
+
+            $orderIndex = 0;
             $assignedTotal = 0;
 
+            /*
+        |--------------------------------------------------------------------------
+        | Assign Orders Staff Wise
+        |--------------------------------------------------------------------------
+        */
 
-            foreach (
-                $cleanAssignments as $staffId => $quantity
-            ) {
+            foreach ($cleanAssignments as $staffId => $quantity) {
 
-                $staff =
-                    $staffMembers->get($staffId);
+                $staff = $staffMembers->get($staffId);
 
+                $name = trim($staff->name);
 
+                $nameParts = preg_split('/\s+/', $name, -1, PREG_SPLIT_NO_EMPTY);
 
-                $name =
-                    trim($staff->name);
+                // Generate Staff Prefix
+                if (count($nameParts) >= 2) {
 
-
-                $nameParts =
-                    preg_split(
-                        '/\s+/',
-                        $name
+                    $prefix = strtoupper(
+                        substr($nameParts[0], 0, 1) .
+                            substr(end($nameParts), 0, 1)
                     );
-
-
-                if (
-                    count($nameParts) >= 2
-                ) {
-
-                    $prefix =
-                        strtoupper(
-                            substr(
-                                $nameParts[0],
-                                0,
-                                1
-                            ) .
-                                substr(
-                                    end($nameParts),
-                                    0,
-                                    1
-                                )
-                        );
                 } else {
 
-                    $prefix =
-                        strtoupper(
-                            substr(
-                                $name,
-                                0,
-                                2
-                            )
-                        );
+                    $prefix = strtoupper(substr($name, 0, 2));
                 }
 
+                if ($prefix === '') {
+                    $prefix = 'ST';
+                }
 
-                $date =
-                    now()->format('d-m-y');
+                $serialKey = $prefix . '-' . $date;
 
+                /*
+            |--------------------------------------------------------------------------
+            | Get Last Serial Once Per Staff Prefix
+            |--------------------------------------------------------------------------
+            */
 
+                if (!isset($serialCounters[$serialKey])) {
 
-                for (
-                    $i = 0;
-                    $i < $quantity;
-                    $i++
-                ) {
+                    $existingOrderIds = CallingOrder::where(
+                        'order_id',
+                        'like',
+                        $serialKey . '-%'
+                    )->pluck('order_id');
 
-                    if (
-                        !isset(
-                            $orders[$orderIndex]
-                        )
-                    ) {
+                    $lastSerial = 0;
+
+                    foreach ($existingOrderIds as $existingOrderId) {
+
+                        // Extract serial after the complete prefix and date.
+                        $serialPart = substr(
+                            $existingOrderId,
+                            strlen($serialKey) + 1
+                        );
+
+                        if (ctype_digit($serialPart)) {
+                            $lastSerial = max(
+                                $lastSerial,
+                                (int) $serialPart
+                            );
+                        }
+                    }
+
+                    $serialCounters[$serialKey] = $lastSerial;
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Assign Individual Records
+            |--------------------------------------------------------------------------
+            */
+
+                for ($i = 0; $i < $quantity; $i++) {
+
+                    if (!isset($orders[$orderIndex])) {
                         break;
                     }
 
+                    $callingOrder = $orders[$orderIndex];
 
-                    $callingOrder =
-                        $orders[$orderIndex];
+                    // Generate next serial number.
+                    do {
 
+                        $serialCounters[$serialKey]++;
 
-
-                    $lastSerial =
+                        $newOrderId = $serialKey . '-' .
+                            $serialCounters[$serialKey];
+                    } while (
                         CallingOrder::where(
                             'order_id',
-                            'like',
-                            $prefix .
-                                '-' .
-                                $date .
-                                '-%'
-                        )
-                        ->pluck('order_id')
-                        ->map(function ($orderId) {
+                            $newOrderId
+                        )->exists()
+                    );
 
-                            $parts =
-                                explode(
-                                    '-',
-                                    $orderId
-                                );
-
-                            return
-                                isset($parts[3])
-                                ? (int) $parts[3]
-                                : 0;
-                        })
-                        ->max();
-
-
-                    $serial =
-                        ((int) $lastSerial) + 1;
-
-
-                    $newOrderId =
-                        $prefix .
-                        '-' .
-                        $date .
-                        '-' .
-                        $serial;
-
-
-
-
-                    $callingOrder->assigned_to =
-                        $staff->id;
-
-                    $callingOrder->order_id =
-                        $newOrderId;
-
-                    $callingOrder->status =
-                        'pending';
+                    // Update record.
+                    $callingOrder->assigned_to = $staff->id;
+                    $callingOrder->order_id = $newOrderId;
+                    $callingOrder->status = 'pending';
 
                     $callingOrder->save();
 
-
                     $orderIndex++;
-
                     $assignedTotal++;
                 }
             }
 
+            /*
+        |--------------------------------------------------------------------------
+        | Commit Transaction
+        |--------------------------------------------------------------------------
+        */
 
             DB::commit();
 
-            $remaining =
-                CallingOrder::where(
-                    'client_id',
-                    $clientId
-                )
+            /*
+        |--------------------------------------------------------------------------
+        | Remaining Selloship Orders
+        |--------------------------------------------------------------------------
+        */
+
+            $remaining = CallingOrder::where('client_id', $clientId)
                 ->whereNull('assigned_to')
-                ->where(
-                    'status',
-                    'pending'
-                )
-                ->where(
-                    'order_source',
-                    'whatsapp'
-                )
-                ->where(
-                    'remarks',
-                    'Selloship Import'
-                )
+                ->where('status', 'pending')
+                ->where('order_source', 'deliveredreorder')
+                ->where('remarks', 'Selloship Import')
                 ->count();
 
-
             return response()->json([
-
-                'success' =>
-                true,
-
-                'message' =>
-                "{$assignedTotal} Selloship records assigned successfully.",
-
-                'assigned' =>
-                $assignedTotal,
-
-                'remaining' =>
-                $remaining,
-
+                'success' => true,
+                'message' => "{$assignedTotal} Selloship records assigned successfully.",
+                'assigned' => $assignedTotal,
+                'remaining' => $remaining
             ]);
         } catch (\Throwable $e) {
 
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
 
+            Log::error('Selloship Assignment Error', [
+                'client_id' => $clientId,
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
-
-                'success' =>
-                false,
-
-                'message' =>
-                $e->getMessage(),
-
+                'success' => false,
+                'message' => 'Selloship assignment failed. Please try again.'
             ], 500);
+        } finally {
+
+            /*
+        |--------------------------------------------------------------------------
+        | Release MySQL Lock
+        |--------------------------------------------------------------------------
+        */
+
+            if ($lockAcquired) {
+
+                DB::selectOne(
+                    'SELECT RELEASE_LOCK(?) AS released',
+                    [$lockName]
+                );
+            }
         }
     }
+
 
     /**
      * Clients 2 and 14 use separate Shopify stores but share staff.

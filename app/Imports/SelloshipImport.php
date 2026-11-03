@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class SelloshipImport implements ToCollection, WithHeadingRow
 {
@@ -36,7 +37,7 @@ class SelloshipImport implements ToCollection, WithHeadingRow
              */
             $exists = CallingOrder::where('client_id', $this->clientId)
                 ->where('order_id', $orderId)
-                ->where('order_source', 'whatsapp')
+                ->where('order_source', 'deliveredreorder')
                 ->where('remarks', 'Selloship Import')
                 ->exists();
 
@@ -62,9 +63,27 @@ class SelloshipImport implements ToCollection, WithHeadingRow
 
             if (!empty($row['orderdate'])) {
                 try {
-                    $orderDate = Carbon::parse($row['orderdate']);
+                    $value = trim((string) $row['orderdate']);
+
+                    if (is_numeric($value)) {
+
+                        // Excel serial date conversion
+                        $orderDate = Carbon::instance(
+                            Date::excelToDateTimeObject((float) $value)
+                        );
+                    } else {
+
+                        // Excel formatted date: 26-07-2026 19.47
+                        $orderDate = Carbon::createFromFormat(
+                            'd-m-Y H.i',
+                            $value
+                        );
+                    }
+
+                    $orderDate = $orderDate->format('Y-m-d H:i:s');
                 } catch (\Throwable $e) {
                     $orderDate = null;
+                    //Log::error('Order Date Conversion Error: ' . $e->getMessage());
                 }
             }
 
@@ -144,7 +163,7 @@ class SelloshipImport implements ToCollection, WithHeadingRow
                  * IMPORTANT:
                  * Selloship import is counted as WhatsApp
                  */
-                'order_source' => 'whatsapp',
+                'order_source' => 'deliveredreorder',
 
                 /*
                  * Used to identify Selloship imported records

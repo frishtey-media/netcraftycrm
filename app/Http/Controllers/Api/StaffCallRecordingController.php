@@ -19,24 +19,25 @@ class StaffCallRecordingController extends Controller
         $validated = $request->validate([
             'staff_id'          => 'required|integer',
             'device_phone'      => 'nullable|string|max:30',
-            'customer_phone'    => 'required|string|max:30',
+            'customer_phone' => 'nullable|string|max:30',
+            'customer_name'  => 'nullable|string|max:191',
             'call_type'         => 'required|in:incoming,outgoing,missed,unknown',
             'call_started_at'   => 'nullable|date',
             'duration_seconds'  => 'nullable|integer|min:0',
             'device_record_id'  => 'required|string|max:191',
-            'recording'         => 'nullable|file|mimes:mp3,m4a,mp4,wav,aac,ogg|max:51200',
+            'recording'         => 'nullable|file|mimes:mp3,m4a,mp4,wav,amr,3gp,aac,ogg,opus|max:51200',
         ]);
 
         $staffId = (int) $validated['staff_id'];
-
-        // Use upload date for the directory.
         $uploadDate = now();
 
-        $customerPhone = preg_replace(
-            '/[^0-9+]/',
-            '',
-            $validated['customer_phone']
-        );
+        $customerPhone = !empty($validated['customer_phone'])
+            ? substr(preg_replace('/\D+/', '', $validated['customer_phone']), -10)
+            : null;
+
+        $customerName = !empty($validated['customer_name'])
+            ? trim($validated['customer_name'])
+            : null;
 
         $relativePath = null;
         $mimeType = null;
@@ -45,7 +46,9 @@ class StaffCallRecordingController extends Controller
         if ($request->hasFile('recording')) {
             $file = $request->file('recording');
 
-            $extension = strtolower($file->getClientOriginalExtension() ?: 'mp3');
+            $extension = strtolower(
+                $file->getClientOriginalExtension() ?: 'mp3'
+            );
 
             $folder = sprintf(
                 'call-recordings/%s/staff_%d',
@@ -53,7 +56,11 @@ class StaffCallRecordingController extends Controller
                 $staffId
             );
 
-            $filename = $customerPhone . '_' .
+            $filename = Str::slug(
+                pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)
+            );
+
+            $filename = ($filename ?: 'recording') . '_' .
                 $uploadDate->format('His') . '_' .
                 Str::lower(Str::random(6)) . '.' . $extension;
 
@@ -67,11 +74,11 @@ class StaffCallRecordingController extends Controller
             $fileSize = $file->getSize();
         }
 
-        // Map these fields to your existing model and columns.
-        $record = \App\Models\StaffCallRecording::create([
+        $record = StaffCallRecording::create([
             'staff_id'         => $staffId,
             'device_phone'     => $validated['device_phone'] ?? null,
             'customer_phone'   => $customerPhone,
+            'customer_name'    => $customerName,
             'call_type'        => $validated['call_type'],
             'call_started_at'  => $validated['call_started_at'] ?? null,
             'duration_seconds' => $validated['duration_seconds'] ?? null,
@@ -79,7 +86,7 @@ class StaffCallRecordingController extends Controller
             'recording_path'   => $relativePath,
             'recording_mime'   => $mimeType,
             'recording_size'   => $fileSize,
-            'upload_status'    => 'uploaded',
+            'upload_status'    => $relativePath ? 'uploaded' : 'metadata_only',
             'upload_error'     => null,
         ]);
 
