@@ -54,57 +54,40 @@ Route::match(
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-
     Route::get('/dashboard/orders', [AdminController::class, 'dashboardOrders'])
         ->name('dashboard.orders');
-
     Route::get('/users', [UserController::class, 'index'])
         ->name('users.index');
-
     Route::get('/users/create', [UserController::class, 'create'])
         ->name('users.create');
-
     Route::post('/users/store', [UserController::class, 'store'])
         ->name('users.store');
-
     Route::get('/users/{id}/edit', [UserController::class, 'edit'])
         ->name('users.edit');
-
     Route::put('/users/{id}', [UserController::class, 'update'])
         ->name('users.update');
     Route::get('/generate-order-id/{staffId}', [RecordController::class, 'generateOrderId']);
-
     Route::get('/generate-order-id', [RecordController::class, 'generateOrderId'])
         ->name('generate.order.id');
-
     Route::get('/ordersdashboard/{client_id?}', [AdminController::class, 'ordersdashboard'])
         ->name('ordersdashboard');
-
     Route::get('/clientsorders', [AdminController::class, 'clientsorders'])->name('clientsorders');
-
     Route::get(
         '/whatsapp-fresh-leads/{clientId?}',
         [AdminController::class, 'whatsappFreshLeads']
     )->name('whatsapp.fresh-leads.index');
-
     Route::post(
         '/whatsapp-fresh-leads/share',
         [AdminController::class, 'assignWhatsappFreshLeads']
     )->name('whatsapp.fresh-leads.assign');
-
     Route::post(
         '/whatsapp-fresh-leads/status',
         [AdminController::class, 'updateWhatsappFreshLeadStatus']
     )->name('whatsapp.fresh-leads.status');
-
-
-Route::get(
-    '/staff-recording-report',
-    [AdminController::class, 'staffRecordingReport']
-)->name('admin.staff-recording-report');
-
-
-
+    Route::get(
+        '/staff-recording-report',
+        [AdminController::class, 'staffRecordingReport']
+    )->name('admin.staff-recording-report');
     Route::get('/labelsenders', [AdminController::class, 'labelsenders'])->name('labelsenders');
     Route::post('/labelsenders', [AdminController::class, 'storeLabelSenders'])->name('labelsenders.store');
     Route::get('/labelgenrate', [AdminController::class, 'labelgenrate'])->name('labelgenrate');
@@ -123,123 +106,83 @@ Route::get(
     Route::post('/orders/{id}/assign-barcode', [ShopifyController::class, 'assignBarcode'])->name('orders.assign-barcode');
     Route::get('/barcodes', [BarcodeController::class, 'index'])->name('barcodes');
     Route::post('/barcodes/import', [BarcodeController::class, 'import'])->name('barcodes.import');
-
     Route::get('/barcodesview', [BarcodeController::class, 'indexbarcode']);
-
     Route::get('/download-barcodes', [BarcodeController::class, 'download'])
         ->name('download.barcodes');
-
     Route::post('/admin/download-barcodes', [OrderController::class, 'downloadBarcodes'])->name('admin.download.barcodes');
-
     Route::post('/download-barcodes-excel', [OrderController::class, 'downloadBarcodesexcel'])
         ->name('admin.download.barcodesexcel');
-
     Route::post('/clear-duplicate-orders', [PostOfficeExportController::class, 'clearDuplicates'])
         ->name('clear.duplicates');
     Route::get('/export', [PostOfficeExportController::class, 'export'])->name('export.orders');
-
     Route::delete('/admin/orders/delete', [OrderController::class, 'deleteOrdersWithLog'])->name('admin.orders.delete');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.list');
-
     Route::get(
         '/day-wise-staff-performance',
         [AdminController::class, 'dayWiseStaffPerformance']
     )->name('admin.day-wise-staff-performance');
-
     Route::get(
         '/reports/delivered',
         [OrderController::class, 'deliverindex']
     )->name('delivered.index');
-
     Route::get(
         '/reports/delivered/export',
         [OrderController::class, 'deliverExport']
     )->name('delivered.export');
-
-
     Route::get('/staff-performance-report', [
         OrdersReportController::class,
         'index'
     ])->name('staff.performance.report');
-
     Route::get('/staff-performance-report1', [
         OrdersReportController::class,
         'index1'
     ])->name('staff.performance.report1');
-
-
     Route::get(
         '/staff-performance/{staffId}',
         [OrdersReportController::class, 'staffDetails']
     )->name('staff.performance.detail');
-
     Route::get('/staff-performance-report/export', [
         OrdersReportController::class,
         'export'
     ])->name('staff.performance.export');
-
-
     Route::get(
         '/reports/staff-delivery-detail',
         [OrderController::class, 'staffDeliveryDetail']
     )->name('reports.staff.delivery.detail');
-
-
     Route::get(
         '/record/customer-history',
         [RepeatCustomerController::class, 'customerHistory']
     )->name('record.customer.history');
-
-
-
     /*------------------------------selloship---------------------*/
     Route::get(
         '/selloship-import',
         [AdminController::class, 'selloshipImportPage']
     )->name('selloship.import.page');
-
-
     Route::post(
         '/selloship-import',
         [AdminController::class, 'selloshipImport']
     )->name('selloship.import');
-
     Route::post(
         '/assign-selloship-orders',
         [AdminController::class, 'assignSelloshipOrders']
     )->name('assign.selloship.orders');
-
     /*------------------------------selloship end---------------------*/
-
-
     Route::get(
         '/order/staff-summary/export',
         [OrderController::class, 'exportStaffSummary']
     )->name('order.staff.export');
-
-
     Route::get('/orders/import', [OrderController::class, 'importForm'])->name('orders.import');
     Route::post('/orders/import', [OrderController::class, 'importExcel'])->name('orders.import.post');
-
-
     Route::get('/orders/products', [OrderController::class, 'getProducts'])
         ->name('orders.products');
-
-
     Route::post('/orders/whstappimport', [RecordController::class, 'whstappimportOrders'])
         ->name('record.whstappimport');
-
-
     Route::get('/labels', [OrderController::class, 'labelIndex'])->name('labels.index');
     Route::get('/labels/final-export', [OrderController::class, 'finalLabelExport'])->name('labels.final.export');
-
-
     Route::post(
         '/export-post-office',
         [PostOfficeExportController::class, 'export']
     )->name('postoffice.export');
-
-
     Route::post('/whatsapp-excel-import', [ShopifyOrderController::class, 'whatsappExcelImport'])->name('whatsapp.excel.import');
     Route::post(
         '/delhivery/import',
@@ -311,12 +254,10 @@ Route::get(
     Route::get('/rto', [RTOController::class, 'index'])->name('rto.index');
     Route::post('/rto-search', [RTOController::class, 'search'])->name('rto.search');
 
-
     Route::get('/rto/received-based', [RTOController::class, 'receivedBased'])
         ->name('rto.receivedBased');
     Route::get('/rto/received-Ofc', [RTOController::class, 'receivedofcBased'])
         ->name('rto.receivedofcBased');
-
 
     Route::get('/rto/details', [RTOController::class, 'details'])
         ->name('rto.details');
@@ -367,13 +308,10 @@ Route::get(
         '/calling-orders/{id}/edit',
         [AdminController::class, 'editCallingOrder']
     )->name('calling-orders.edit');
-
-
     Route::put(
         '/calling-orders/{id}',
         [AdminController::class, 'updateCallingOrder']
     )->name('calling-orders.update');
-
 
     Route::get(
         '/performance/export-selected',
@@ -384,7 +322,6 @@ Route::get(
         '/performance/verify-selected',
         [AdminController::class, 'verifySelected']
     )->name('performance.verify.selected');
-
 
     Route::get('/get-products/{client}', [OrderController::class, 'getProducts'])->name('get.products');
     Route::get('/performance/orders', [AdminController::class, 'orderDetails'])->name('performance.orders');
@@ -402,7 +339,6 @@ Route::get(
         '/admin/staff-recordings/{id}/play',
         [AdminController::class, 'playStaffRecording']
     )->name('admin.staff-recordings.play');
-
 
     Route::get(
         '/admin/call-recordings/{id}/play',
@@ -469,18 +405,15 @@ Route::get(
     Route::get('/staff-verified-export', [AdminController::class, 'staffVerifiedExport'])
         ->name('admin.staff.verified.export');
 
-
     Route::get(
         '/shift-order-sources/{staff}',
         [AdminController::class, 'shiftOrderSources']
     )->name('shift.order.sources');
 
-
     Route::post(
         '/shift-orders',
         [AdminController::class, 'shiftOrders']
     )->name('shift.orders');
-
 
     Route::get('/test-order', function () {
         CallingOrder::create([
@@ -499,12 +432,10 @@ Route::get(
         return "Inserted";
     });
 
-
     Route::get('/phpinfo', function () {
         phpinfo();
     });
 });
-
 
 Route::middleware(['auth', 'client'])
     ->prefix('client')
@@ -517,13 +448,11 @@ Route::middleware(['auth', 'client'])
         Route::get('/orders', [OrderController::class, 'clientOrders']);
     });
 
-
 Route::get('/calling/login', [CallingUserAuthController::class, 'showLogin'])->name('calling.login');
 Route::post('/calling/login', [CallingUserAuthController::class, 'login'])->name('calling.login.post');
 Route::middleware('calling_user')->group(function () {
     Route::get('/calling/dashboard', [CallingUserAuthController::class, 'dashboard'])
         ->name('calling.dashboard');
-
 
     Route::get('/calling/orders', [CallingUserAuthController::class, 'orders'])
         ->name('calling.orders');
@@ -547,7 +476,6 @@ Route::middleware('calling_user')->group(function () {
         ->name('calling.weborders');
     Route::get('/calling/prepaidorders', [CallingUserAuthController::class, 'prepaidorders'])
         ->name('calling.prepaidorders');
-
 
     Route::get('/calling/WhatsApp', [CallingUserAuthController::class, 'WhatsApp'])
         ->name('calling.WhatsApp');
@@ -581,10 +509,8 @@ Route::middleware('calling_user')->group(function () {
     Route::get('/calling/verified', [CallingUserAuthController::class, 'verified'])
         ->name('calling.verified');
 
-
     Route::get('/calling/same_order', [CallingUserAuthController::class, 'same_order'])
         ->name('calling.same_order');
-
 
     Route::get('/calling/cancel', [CallingUserAuthController::class, 'cancel'])
         ->name('calling.cancel');
@@ -599,11 +525,8 @@ Route::middleware('calling_user')->group(function () {
     Route::post('/calling/update1/{id}', [CallingUserAuthController::class, 'update1'])
         ->middleware('calling_user');
 
-
     Route::post('/calling/statusupdate/{id}', [CallingUserAuthController::class, 'statusupdate'])
         ->middleware('calling_user');
-
-
 
     Route::get('/calling/manual-order', [CallingOrderController::class, 'create'])->name('calling.manual');
     Route::post('/calling/manual-order', [CallingOrderController::class, 'store'])->name('calling.manual.store');
@@ -623,11 +546,8 @@ Route::middleware('calling_user')->group(function () {
     )->name('calling.preview.order.id');
     Route::get('/calling/whatsapp-orders', [CallingOrderController::class, 'whatsappOrders'])->name('calling.whatsapp');
 
-
-
     Route::post('/calling/logout', [CallingUserAuthController::class, 'logout'])
         ->name('calling.logout');
-
 
     Route::get('/calling/inbox', [StaffChatController::class, 'inbox'])->name('calling.inbox');
 

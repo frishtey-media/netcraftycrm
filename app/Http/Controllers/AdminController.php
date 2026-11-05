@@ -4131,7 +4131,6 @@ class AdminController extends Controller
         $from = Carbon::yesterday()->startOfDay();
         $to   = Carbon::now();
 
-
         $getRepeatPending = function ($clientId) {
 
             $repeatDays = ((int) $clientId === 2) ? 20 : 45;
@@ -4561,7 +4560,7 @@ class AdminController extends Controller
 
         $recordings = collect();
 
-        // Default page par recordings load nahi hongi
+
         if ($request->filled('from') && $request->filled('to')) {
 
             $request->validate([
@@ -4585,7 +4584,7 @@ class AdminController extends Controller
                 $query->where('r.staff_id', $request->staff_id);
             }
 
-            // Client access restriction
+
             if ($this->isClient()) {
                 $clientId = $this->clientId();
 
@@ -4634,12 +4633,6 @@ class AdminController extends Controller
             ], 422);
         }
 
-        /*
-    |--------------------------------------------------------------------------
-    | Clean Assignments
-    |--------------------------------------------------------------------------
-    */
-
         $cleanAssignments = [];
         $totalRequested = 0;
 
@@ -4663,12 +4656,6 @@ class AdminController extends Controller
             ], 422);
         }
 
-        /*
-    |--------------------------------------------------------------------------
-    | Get Staff
-    |--------------------------------------------------------------------------
-    */
-
         $staffMembers = CallingUser::whereIn(
             'id',
             array_keys($cleanAssignments)
@@ -4681,22 +4668,14 @@ class AdminController extends Controller
             ], 422);
         }
 
-        /*
-    |--------------------------------------------------------------------------
-    | Date & MySQL Advisory Lock
-    |--------------------------------------------------------------------------
-    */
-
         $date = now()->format('d-m-y');
 
-        // Global lock because order_id has a UNIQUE index across the table.
         $lockName = 'selloship_orderid_' . $date;
 
         $lockAcquired = false;
 
         try {
 
-            // Prevent simultaneous assignments generating the same Order ID.
             $lockResult = DB::selectOne(
                 'SELECT GET_LOCK(?, 15) AS acquired',
                 [$lockName]
@@ -4711,19 +4690,7 @@ class AdminController extends Controller
 
             $lockAcquired = true;
 
-            /*
-        |--------------------------------------------------------------------------
-        | Start Transaction
-        |--------------------------------------------------------------------------
-        */
-
             DB::beginTransaction();
-
-            /*
-        |--------------------------------------------------------------------------
-        | Get Available Selloship Records
-        |--------------------------------------------------------------------------
-        */
 
             $orders = CallingOrder::where('client_id', $clientId)
                 ->whereNull('assigned_to')
@@ -4747,22 +4714,10 @@ class AdminController extends Controller
                 ], 422);
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | Serial Counters
-        |--------------------------------------------------------------------------
-        */
-
             $serialCounters = [];
 
             $orderIndex = 0;
             $assignedTotal = 0;
-
-            /*
-        |--------------------------------------------------------------------------
-        | Assign Orders Staff Wise
-        |--------------------------------------------------------------------------
-        */
 
             foreach ($cleanAssignments as $staffId => $quantity) {
 
@@ -4772,7 +4727,6 @@ class AdminController extends Controller
 
                 $nameParts = preg_split('/\s+/', $name, -1, PREG_SPLIT_NO_EMPTY);
 
-                // Generate Staff Prefix
                 if (count($nameParts) >= 2) {
 
                     $prefix = strtoupper(
@@ -4790,12 +4744,6 @@ class AdminController extends Controller
 
                 $serialKey = $prefix . '-' . $date;
 
-                /*
-            |--------------------------------------------------------------------------
-            | Get Last Serial Once Per Staff Prefix
-            |--------------------------------------------------------------------------
-            */
-
                 if (!isset($serialCounters[$serialKey])) {
 
                     $existingOrderIds = CallingOrder::where(
@@ -4808,7 +4756,6 @@ class AdminController extends Controller
 
                     foreach ($existingOrderIds as $existingOrderId) {
 
-                        // Extract serial after the complete prefix and date.
                         $serialPart = substr(
                             $existingOrderId,
                             strlen($serialKey) + 1
@@ -4825,12 +4772,6 @@ class AdminController extends Controller
                     $serialCounters[$serialKey] = $lastSerial;
                 }
 
-                /*
-            |--------------------------------------------------------------------------
-            | Assign Individual Records
-            |--------------------------------------------------------------------------
-            */
-
                 for ($i = 0; $i < $quantity; $i++) {
 
                     if (!isset($orders[$orderIndex])) {
@@ -4839,7 +4780,7 @@ class AdminController extends Controller
 
                     $callingOrder = $orders[$orderIndex];
 
-                    // Generate next serial number.
+
                     do {
 
                         $serialCounters[$serialKey]++;
@@ -4853,7 +4794,6 @@ class AdminController extends Controller
                         )->exists()
                     );
 
-                    // Update record.
                     $callingOrder->assigned_to = $staff->id;
                     $callingOrder->order_id = $newOrderId;
                     $callingOrder->status = 'pending';
@@ -4865,19 +4805,7 @@ class AdminController extends Controller
                 }
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | Commit Transaction
-        |--------------------------------------------------------------------------
-        */
-
             DB::commit();
-
-            /*
-        |--------------------------------------------------------------------------
-        | Remaining Selloship Orders
-        |--------------------------------------------------------------------------
-        */
 
             $remaining = CallingOrder::where('client_id', $clientId)
                 ->whereNull('assigned_to')
@@ -4909,12 +4837,6 @@ class AdminController extends Controller
             ], 500);
         } finally {
 
-            /*
-        |--------------------------------------------------------------------------
-        | Release MySQL Lock
-        |--------------------------------------------------------------------------
-        */
-
             if ($lockAcquired) {
 
                 DB::selectOne(
@@ -4925,11 +4847,6 @@ class AdminController extends Controller
         }
     }
 
-
-    /**
-     * Clients 2 and 14 use separate Shopify stores but share staff.
-     * Other clients remain isolated.
-     */
     private function rtoLookupClientIds(int $clientId): array
     {
         return in_array($clientId, [2, 14], true)
@@ -4937,10 +4854,6 @@ class AdminController extends Controller
             : [$clientId];
     }
 
-    /**
-     * Find the most recent assigned parent order, including an earlier RTO.
-     * This is necessary when the same order returns as RTO repeatedly.
-     */
     private function findRtoParentOrder(int $clientId, string $orderId): ?CallingOrder
     {
         $clientIds = $this->rtoLookupClientIds($clientId);
@@ -4957,8 +4870,7 @@ class AdminController extends Controller
             return $parent;
         }
 
-        // Fallback for data where the report points to an RTO ID
-        // but only the original/base calling order exists.
+
         $baseOrderId = preg_replace('/R+$/i', '', $orderId);
 
         if (!$baseOrderId || $baseOrderId === $orderId) {
@@ -7264,13 +7176,6 @@ class AdminController extends Controller
             )
             ->count();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | WHATSAPP TOTAL
-    |--------------------------------------------------------------------------
-    */
-
         $waBaseQuery = function () use (
             $clientId,
             $effectiveStaffIds,
@@ -7312,26 +7217,12 @@ class AdminController extends Controller
         $totalWA = $waBaseQuery()
             ->count();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | WHATSAPP VERIFIED
-    |--------------------------------------------------------------------------
-    */
-
         $verifiedWA = $waBaseQuery()
             ->where(
                 'status',
                 'verified'
             )
             ->count();
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | RETURN VIEW
-    |--------------------------------------------------------------------------
-    */
 
         return view(
             'performance',
@@ -7352,12 +7243,6 @@ class AdminController extends Controller
                 'clientWise',
 
                 'allStaff',
-
-                /*
-            |--------------------------------------------------------------------------
-            | TOTALS
-            |--------------------------------------------------------------------------
-            */
 
                 'totalOrders',
 
@@ -7433,12 +7318,6 @@ class AdminController extends Controller
 
                 'totalRtoVerified',
 
-                /*
-            |--------------------------------------------------------------------------
-            | ABANDONED
-            |--------------------------------------------------------------------------
-            */
-
                 'totalAbandoned',
 
                 'pendingAbandoned',
@@ -7452,12 +7331,6 @@ class AdminController extends Controller
                 'sameOrderAbandoned',
 
                 'otherAbandoned',
-
-                /*
-            |--------------------------------------------------------------------------
-            | WHATSAPP
-            |--------------------------------------------------------------------------
-            */
 
                 'totalWA',
 

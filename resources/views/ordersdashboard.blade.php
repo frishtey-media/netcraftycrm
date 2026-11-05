@@ -504,10 +504,10 @@
     </div>
     <script>
         /*
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |--------------------------------------------------------------------------
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Open Selloship Assignment Modal
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |--------------------------------------------------------------------------
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |--------------------------------------------------------------------------
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Open Selloship Assignment Modal
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |--------------------------------------------------------------------------
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    */
 
         function openSelloshipAssignModal(clientId, count) {
 
@@ -954,7 +954,7 @@
                         name="assign[${staff.id}]"
                         value="${staff.count}"
                         class="form-control w-25"
-                        readonly
+                       
                     >
 
                 </div>

@@ -141,10 +141,10 @@
 
                                         <td>
                                             @if ($recording->upload_status == 'uploaded' && !empty($recording->recording_path))
-                                                <audio controls preload="none">
+                                                <audio controls preload="none" style="width:250px;">
                                                     <source
                                                         src="{{ route('admin.staff-recordings.play', $recording->id) }}"
-                                                        type="{{ $recording->recording_mime ?: 'audio/mpeg' }}">
+                                                        type="audio/mpeg">
                                                 </audio>
                                             @else
                                                 <span class="text-muted">Recording Not Available</span>
